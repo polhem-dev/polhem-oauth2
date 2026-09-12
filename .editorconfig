@@ -1,0 +1,112 @@
+root = true
+
+# All files
+[*]
+indent_style = space
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# C# files
+[*.cs]
+indent_size = 4
+
+# Build-time check: remove unnecessary using directives.
+dotnet_diagnostic.IDE0005.severity = warning
+
+# Build-time check: use collection initializers.
+dotnet_diagnostic.IDE0028.severity = warning
+
+# Build-time check: the last namespace segment must not share its name with a type declared in it.
+dotnet_diagnostic.CA1724.severity = warning
+
+# ───── Checks that mirror SonarCloud rules, enforced at build time ─────
+
+# Methods that use no instance members should be static (Sonar S2325).
+dotnet_diagnostic.CA1822.severity = warning
+
+# Classes with only static members should be static classes (Sonar S1118 and S3442).
+dotnet_diagnostic.CA1052.severity = warning
+
+# Fields that are never reassigned after initialization should be readonly (Sonar S2933).
+dotnet_diagnostic.IDE0044.severity = warning
+
+# Unused private members (Sonar S4487).
+dotnet_diagnostic.IDE0051.severity = warning
+dotnet_diagnostic.IDE0052.severity = warning
+
+# Parameter names of overrides and interface implementations must match the declaration (Sonar S927).
+dotnet_diagnostic.CA1725.severity = warning
+
+# Culture-sensitive APIs must be given an IFormatProvider (Sonar S6580).
+dotnet_diagnostic.CA1305.severity = warning
+
+# ───── Security ─────
+
+# XXE protection: parse XML with safe settings.
+dotnet_diagnostic.CA3075.severity = warning
+
+# Do not use SHA1 or MD5 for security hashing.
+dotnet_diagnostic.CA5350.severity = warning
+dotnet_diagnostic.CA5351.severity = warning
+
+# Do not use System.Random where security matters.
+dotnet_diagnostic.CA5394.severity = warning
+
+# ───── Field naming ─────
+#
+# Naming rules are matched in declaration order and the first match wins, so the three rules below
+# must stay in this order: const fields, then static fields, then the remaining private and protected fields.
+dotnet_diagnostic.IDE1006.severity = warning
+
+dotnet_naming_rule.private_const_fields_pascal.symbols = private_const_fields
+dotnet_naming_rule.private_const_fields_pascal.style = pascal_case_style
+dotnet_naming_rule.private_const_fields_pascal.severity = warning
+dotnet_naming_symbols.private_const_fields.applicable_kinds = field
+dotnet_naming_symbols.private_const_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
+dotnet_naming_symbols.private_const_fields.required_modifiers = const
+
+# The required modifier is static rather than static readonly on purpose. Mutable process-wide state is
+# exactly what most needs to stand out to a reader. If only immutable statics matched here, mutable statics
+# would fall through to the underscore rule and look like instance fields, although their concurrency risks
+# are very different.
+dotnet_naming_rule.private_static_fields_s_prefix.symbols = private_static_fields
+dotnet_naming_rule.private_static_fields_s_prefix.style = s_camel_case_style
+dotnet_naming_rule.private_static_fields_s_prefix.severity = warning
+dotnet_naming_symbols.private_static_fields.applicable_kinds = field
+dotnet_naming_symbols.private_static_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
+dotnet_naming_symbols.private_static_fields.required_modifiers = static
+
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel_case_style
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private, protected, protected_internal, private_protected
+
+dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+dotnet_naming_style.s_camel_case_style.required_prefix = s_
+dotnet_naming_style.s_camel_case_style.capitalization = camel_case
+dotnet_naming_style.underscore_camel_case_style.required_prefix = _
+dotnet_naming_style.underscore_camel_case_style.capitalization = camel_case
+
+# XML project files
+[*.{csproj,props,targets}]
+indent_size = 2
+
+# XML files
+[*.xml]
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# Markdown files
+[*.md]
+indent_size = 2
+trim_trailing_whitespace = false
+
+# Solution files
+[*.{sln,slnx}]
+indent_size = 2

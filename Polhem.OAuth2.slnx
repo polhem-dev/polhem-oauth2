@@ -3,7 +3,6 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/samples/">
-    <Project Path="samples/OAuthAspNet/OAuthAspNet.csproj" />
     <Project Path="samples/OAuthAspNetCore/OAuthAspNetCore.csproj" />
     <Project Path="samples/OAuthDesktop/OAuthDesktop.csproj" />
     <Project Path="samples/OAuthWinForms/OAuthWinForms.csproj" />

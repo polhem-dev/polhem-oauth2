@@ -1,53 +1,42 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Facebook OAuth2 驗證服務提供者，負責處理授權流程、交換 Access Token 及取得用戶資訊。
+    /// The Facebook OAuth2 provider.
     /// </summary>
     public class FacebookOAuth2Provider : OAuth2Provider
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="FacebookOAuth2Provider"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
+        /// <param name="options">The Facebook OAuth2 options.</param>
         public FacebookOAuth2Provider(FacebookOAuth2Options options) : base(options)
         {
         }
 
-        /// <summary>
-        /// OAuth2 驗證服務提供者名稱。
-        /// </summary>
+        /// <inheritdoc/>
         public override string ProviderName { get; } = "Facebook";
 
-        /// <summary>
-        /// 取得 OAuth2 授權 URL 的參數集合。
-        /// </summary>
-        /// <param name="state">用於防止 CSRF 的隨機字串</param>
-        /// <param name="codeChallenge">使用 PKCE 驗證時， 需傳入 `code_challenge` 參數值。</param>
+        /// <inheritdoc/>
         protected override Dictionary<string, string> GetAuthorizationUrlParams(string state, string codeChallenge = "")
         {
             var queryParams = base.GetAuthorizationUrlParams(state, codeChallenge);
-            queryParams["scope"] = string.Join(",", Options.Scopes);  // Facebook 的 scope 以逗號分隔
+            // Facebook separates scopes with commas rather than spaces.
+            queryParams["scope"] = string.Join(",", Options.Scopes);
             return queryParams;
         }
 
-        /// <summary>
-        /// 取得用戶資訊的 URL，預設為 `UserInfoEndpoint`。
-        /// </summary>
+        /// <inheritdoc/>
         protected override string GetUserInfoUrl()
         {
+            // The Graph API returns only the fields that are asked for.
             var fields = "id,name,email,picture";
             return $"{Options.UserInfoEndpoint}?fields={Uri.EscapeDataString(fields)}";
         }
 
-        /// <summary>
-        /// 解析用戶資訊 JSON 字串。
-        /// </summary>
-        /// <param name="json">用戶資訊 JSON 字串。</param>
+        /// <inheritdoc/>
+        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
         public override UserInfo ParseUserJson(string json)
         {
             if (string.IsNullOrEmpty(json))
@@ -65,14 +54,14 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// 使用 Refresh Token 取得新的 Access Token。
+        /// Not supported, because Facebook Login does not issue refresh tokens.
         /// </summary>
-        /// <param name="refreshToken">Refresh Token。</param>
-        /// <returns>新的 Access Token</returns>
+        /// <param name="refreshToken">Not used.</param>
+        /// <returns>This method does not return.</returns>
+        /// <exception cref="NotSupportedException">Always thrown.</exception>
         public override Task<string> RefreshAccessTokenAsync(string refreshToken)
         {
-            throw new NotSupportedException();  // Facebook 不支援 Refresh Token
+            throw new NotSupportedException();
         }
     }
-
 }

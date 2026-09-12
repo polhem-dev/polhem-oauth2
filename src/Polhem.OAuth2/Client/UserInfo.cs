@@ -1,28 +1,28 @@
-﻿namespace Polhem.OAuth2
+namespace Polhem.OAuth2
 {
     /// <summary>
-    /// 用戶資料。
+    /// The user information returned by a provider.
     /// </summary>
     public class UserInfo
     {
         /// <summary>
-        /// 用戶帳號。
+        /// Gets the user identifier issued by the provider, or null if the response does not include one.
         /// </summary>
-        public string UserId { get; protected internal set; }
+        public string? UserId { get; protected internal set; }
 
         /// <summary>
-        /// 用戶名稱。
+        /// Gets the user's display name, or null if the response does not include one.
         /// </summary>
-        public string UserName { get; protected internal set; }
+        public string? UserName { get; protected internal set; }
 
         /// <summary>
-        /// 電子郵件。
+        /// Gets the user's email address, or null if the response does not include one.
         /// </summary>
-        public string Email { get; protected internal set; }
+        public string? Email { get; protected internal set; }
 
         /// <summary>
-        /// 原始的 JSON 資料)。
+        /// Gets the raw JSON returned by the user information endpoint.
         /// </summary>
-        public string RawJson { get; protected internal set; }
+        public string RawJson { get; protected internal set; } = string.Empty;
     }
 }

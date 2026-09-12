@@ -1,7 +1,7 @@
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Okta OAuth2 設定選項，包含 Domain、Authorization Server、Client ID、Secret、Redirect URI 及相關端點。
+    /// OAuth2 options for Okta. Setting <see cref="Domain"/> and <see cref="AuthorizationServerId"/> fills in the endpoints.
     /// </summary>
     public class OktaOAuth2Options : OAuth2Options
     {
@@ -9,8 +9,8 @@ namespace Polhem.OAuth2
         private string _authorizationServerId = "default";
 
         /// <summary>
-        /// Okta 網域，例如: dev-123456.okta.com 或 https://dev-123456.okta.com。
-        /// 設定後會自動更新相關端點。
+        /// Gets or sets the Okta domain, for example <c>dev-123456.okta.com</c> or <c>https://dev-123456.okta.com</c>.
+        /// Setting it updates the authorization, token and user information endpoints.
         /// </summary>
         public string Domain
         {
@@ -23,21 +23,21 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Okta 授權伺服器 ID，預設為 "default"。
-        /// 設定後會自動更新相關端點。
+        /// Gets or sets the ID of the Okta authorization server. The default is <c>default</c>.
+        /// Setting it updates the authorization, token and user information endpoints.
         /// </summary>
         public string AuthorizationServerId
         {
             get => _authorizationServerId;
             set
             {
-                _authorizationServerId = string.IsNullOrWhiteSpace(value) ? "default" : value.Trim().Trim('/') ;
+                _authorizationServerId = string.IsNullOrWhiteSpace(value) ? "default" : value.Trim().Trim('/');
                 UpdateEndpoints();
             }
         }
 
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="OktaOAuth2Options"/> class.
         /// </summary>
         public OktaOAuth2Options()
         {
@@ -49,7 +49,7 @@ namespace Polhem.OAuth2
             if (string.IsNullOrEmpty(_domain))
                 return;
 
-            var baseUrl = _domain.StartsWith("http", System.StringComparison.OrdinalIgnoreCase)
+            var baseUrl = _domain.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                 ? _domain
                 : $"https://{_domain}";
 

@@ -1,30 +1,27 @@
-﻿namespace Polhem.OAuth2.AspNet
+namespace Polhem.OAuth2.AspNet
 {
     /// <summary>
-    /// 提供 ASP.NET 程式進行 OAuth2 整合認證的用戶端。
+    /// An OAuth2 client for ASP.NET applications on System.Web. It keeps the state in a cookie and the PKCE code
+    /// verifier in session state.
     /// </summary>
     public class OAuth2Client : BaseOAuth2Client
     {
-        private StateStorage _stateStorage = null;
+        private StateStorage? _stateStorage;
 
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="OAuth2Client"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
+        /// <param name="options">The OAuth2 options. Their type selects the provider.</param>
         public OAuth2Client(OAuth2Options options) : base(options)
         {
         }
 
-        /// <summary>
-        /// OAuth2 驗證流程中的狀態儲存機制。
-        /// </summary>
+        /// <inheritdoc/>
         public override IStateStorage StateStorage
         {
             get
             {
-                if (_stateStorage == null)
-                    _stateStorage = new StateStorage();
-                return _stateStorage;
+                return _stateStorage ??= new StateStorage();
             }
         }
     }

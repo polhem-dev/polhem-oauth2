@@ -1,12 +1,12 @@
-﻿namespace Polhem.OAuth2
+namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Google OAuth2 設定選項，包含 Client ID、Secret、Redirect URI 及相關端點。
+    /// OAuth2 options preset with the Google endpoints and scopes.
     /// </summary>
     public class GoogleOAuth2Options : OAuth2Options
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="GoogleOAuth2Options"/> class.
         /// </summary>
         public GoogleOAuth2Options()
         {
@@ -16,5 +16,4 @@
             UserInfoEndpoint = "https://www.googleapis.com/oauth2/v3/userinfo";
         }
     }
-
 }

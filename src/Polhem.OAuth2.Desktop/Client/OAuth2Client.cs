@@ -1,4 +1,4 @@
-﻿namespace Polhem.OAuth2.Desktop
+namespace Polhem.OAuth2.Desktop
 {
     /// <summary>
     /// 提供 WInForms 程式進行 OAuth2 整合認證的用戶端。

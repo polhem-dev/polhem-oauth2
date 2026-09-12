@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   build:
-    # The .NET Framework and Windows Forms targets only build on Windows.
+    # Windows builds the net48 and Windows Forms targets natively. Other operating systems need
+    # -p:EnableWindowsTargeting=true for the net8.0-windows projects.
     runs-on: windows-latest
 
     steps:
@@ -25,20 +26,8 @@ jobs:
             8.0.x
             10.0.x
 
-      - name: Build packages
-        shell: pwsh
-        run: |
-          $projects = @(
-            'src/Polhem.OAuth2/Polhem.OAuth2.csproj',
-            'src/Polhem.OAuth2.AspNet/Polhem.OAuth2.AspNet.csproj',
-            'src/Polhem.OAuth2.AspNetCore/Polhem.OAuth2.AspNetCore.csproj',
-            'src/Polhem.OAuth2.WinForms/Polhem.OAuth2.WinForms.csproj',
-            'src/Polhem.OAuth2.Desktop/Polhem.OAuth2.Desktop.csproj'
-          )
-          foreach ($project in $projects) {
-            dotnet build $project --configuration Release
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+      - name: Build
+        run: dotnet build Polhem.OAuth2.slnx --configuration Release
 
       - name: Test
-        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release
+        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build

@@ -1,4 +1,4 @@
-﻿namespace OAuthDesktop
+namespace OAuthDesktop
 {
     partial class Form1
     {

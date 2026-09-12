@@ -1,30 +1,25 @@
-﻿using System;
 using Newtonsoft.Json.Linq;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// LINE OAuth2 驗證服務提供者，負責處理授權流程、交換 Access Token 及取得用戶資訊。
+    /// The LINE Login OAuth2 provider.
     /// </summary>
     public class LineOAuth2Provider : OAuth2Provider
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="LineOAuth2Provider"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
+        /// <param name="options">The LINE OAuth2 options.</param>
         public LineOAuth2Provider(LineOAuth2Options options) : base(options)
         {
         }
 
-        /// <summary>
-        /// OAuth2 驗證服務提供者名稱。
-        /// </summary>
+        /// <inheritdoc/>
         public override string ProviderName { get; } = "LINE";
 
-        /// <summary>
-        /// 解析用戶資訊 JSON 字串。
-        /// </summary>
-        /// <param name="json">用戶資訊 JSON 字串。</param>
+        /// <inheritdoc/>
+        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
         public override UserInfo ParseUserJson(string json)
         {
             if (string.IsNullOrEmpty(json))
@@ -36,10 +31,10 @@ namespace Polhem.OAuth2
             {
                 UserId = jObject["userId"]?.ToString(),
                 UserName = jObject["displayName"]?.ToString(),
-                Email = jObject["email"]?.ToString(), // LINE API 可能不會提供 email
+                // The LINE profile response may not include an email address.
+                Email = jObject["email"]?.ToString(),
                 RawJson = json
             };
         }
     }
-
 }

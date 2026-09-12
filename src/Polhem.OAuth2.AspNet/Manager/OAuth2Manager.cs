@@ -1,25 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Security.Cryptography;
 using System.Web;
 
 namespace Polhem.OAuth2.AspNet
 {
     /// <summary>
-    /// 提供 ASP.NET 程式 OAuth2 整合認證管理者。
+    /// Registers OAuth2 clients and runs the authorization code flow for ASP.NET applications on System.Web.
     /// </summary>
     public static class OAuth2Manager
     {
+        private static Dictionary<string, OAuth2Client> Clients { get; } = [];
+
         /// <summary>
-        /// 存放 OAuth2 用戶端的集合。
+        /// Registers an OAuth2 client under a name, replacing any client registered earlier under the same name.
         /// </summary>
-        private static Dictionary<string, OAuth2Client> Clients { get; } = new Dictionary<string, OAuth2Client>();
- 
-        /// <summary>
-        /// 註冊 OAuth2 用戶端。
-        /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
-        /// <param name="client">OAuth2 用戶端。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <param name="client">The OAuth2 client.</param>
+        /// <exception cref="ArgumentException"><paramref name="clientName"/> is null, empty or white space.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="client"/> is null.</exception>
         public static void RegisterClient(string clientName, OAuth2Client client)
         {
             if (string.IsNullOrWhiteSpace(clientName))
@@ -32,10 +29,11 @@ namespace Polhem.OAuth2.AspNet
         }
 
         /// <summary>
-        /// 取得已註冊的 OAuth2 用戶端。
+        /// Gets the client registered under a name.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
-        public static OAuth2Client GetClient(string clientName)
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <returns>The client, or null if no client is registered under that name.</returns>
+        public static OAuth2Client? GetClient(string clientName)
         {
             if (Clients.TryGetValue(clientName, out var client))
             {
@@ -46,20 +44,24 @@ namespace Polhem.OAuth2.AspNet
         }
 
         /// <summary>
-        /// 取得 OAuth2 授權 URL。
+        /// Builds the authorization URL for a registered client. The client name travels in the state, protected by
+        /// <see cref="OAuth2StateCryptor"/>.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <returns>The URL to send the user to.</returns>
+        /// <exception cref="InvalidOperationException">No client is registered under <paramref name="clientName"/>.</exception>
         public static string GetAuthorizationUrl(string clientName)
         {
-            var client = GetClient(clientName);
+            var client = GetClient(clientName) ?? throw new InvalidOperationException($"Client '{clientName}' is not registered.");
             var state = OAuth2StateCryptor.EncryptClientName(clientName);
             return client.GetAuthorizationUrl(state);
         }
 
         /// <summary>
-        /// 轉向 OAuth2 授權 URL。
+        /// Redirects the current response to the authorization URL of a registered client.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <exception cref="InvalidOperationException">No client is registered under <paramref name="clientName"/>.</exception>
         public static void RedirectToAuthorization(string clientName)
         {
             var authUrl = GetAuthorizationUrl(clientName);
@@ -67,32 +69,53 @@ namespace Polhem.OAuth2.AspNet
         }
 
         /// <summary>
-        /// 驗證 OAuth2 回傳授權碼，並取得用戶資料。
+        /// Handles the OAuth2 callback of the current request: validates the state, exchanges the authorization code
+        /// and retrieves the user information.
         /// </summary>
+        /// <returns>A successful result, or a failed result that carries the exception.</returns>
+        /// <remarks>
+        /// A state that is missing, cannot be decoded, fails authentication or does not match becomes a failed result,
+        /// in addition to the failures described on <see cref="BaseOAuth2Client.ValidateAuthorization"/>.
+        /// Any other exception propagates to the caller.
+        /// </remarks>
         public static async Task<AuthorizationResult> ValidateAuthorization()
         {
-            string code = HttpContext.Current.Request.QueryString["code"];
-            string state = HttpContext.Current.Request.QueryString["state"]; // OAuth2 回傳的 state
+            string? code = HttpContext.Current.Request.QueryString["code"];
+            string? state = HttpContext.Current.Request.QueryString["state"];
 
             try
             {
-                var clientName = OAuth2StateCryptor.DecryptClientName(state);
-                var client = GetClient(clientName);
-                if (!client.ValidateState(state))
-                {
-                    throw new InvalidOperationException("Invalid OAuth2 state.");
-                }
+                if (state is not { } returnedState || string.IsNullOrWhiteSpace(returnedState))
+                    throw new OAuth2Exception("The state is missing.");
+
+                var clientName = OAuth2StateCryptor.DecryptClientName(returnedState);
+                var client = GetClient(clientName) ?? throw new OAuth2Exception("The state does not name a registered client.");
+                if (!client.ValidateState(returnedState))
+                    throw new OAuth2Exception("The state does not match the stored state.");
+
                 return await client.ValidateAuthorization(code);
             }
-            catch (Exception ex)
+            catch (OAuth2Exception ex)
             {
-                return new AuthorizationResult()
-                {
-                    IsSuccess = false,
-                    Exception = ex
-                };
+                return Failure(ex);
+            }
+            catch (FormatException ex)
+            {
+                return Failure(ex);
+            }
+            catch (CryptographicException ex)
+            {
+                return Failure(ex);
             }
         }
-    }
 
+        private static AuthorizationResult Failure(Exception exception)
+        {
+            return new AuthorizationResult()
+            {
+                IsSuccess = false,
+                Exception = exception
+            };
+        }
+    }
 }

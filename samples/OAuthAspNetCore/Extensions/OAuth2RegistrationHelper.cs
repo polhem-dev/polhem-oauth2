@@ -1,4 +1,4 @@
-﻿using Polhem.OAuth2;
+using Polhem.OAuth2;
 using Polhem.OAuth2.AspNetCore;
 using Newtonsoft.Json;
 using OAuthAspNetCore.Models;

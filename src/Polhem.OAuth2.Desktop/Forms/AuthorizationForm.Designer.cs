@@ -1,4 +1,4 @@
-﻿namespace Polhem.OAuth2.Desktop
+namespace Polhem.OAuth2.Desktop
 {
     partial class AuthorizationForm
     {

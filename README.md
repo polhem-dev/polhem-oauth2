@@ -1,4 +1,4 @@
-﻿# Polhem.OAuth2
+# Polhem.OAuth2
 
 Polhem.OAuth2 is a .NET library for integrating OAuth2 authentication into various applications, including desktop and web.
 

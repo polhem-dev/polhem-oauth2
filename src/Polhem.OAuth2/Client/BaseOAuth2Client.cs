@@ -1,28 +1,25 @@
-﻿using System;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// 提供 OAuth2 驗證的基本功能，適用於不同平台的擴充。
+    /// The platform-independent part of the OAuth2 authorization code flow. Each platform package derives from it and
+    /// supplies an <see cref="IStateStorage"/>.
     /// </summary>
     public abstract class BaseOAuth2Client
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="BaseOAuth2Client"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
+        /// <param name="options">The OAuth2 options. Their type selects the provider.</param>
+        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public BaseOAuth2Client(OAuth2Options options)
         {
             UsePkce = options.UsePkce;
             Provider = CreateProvider(options);
         }
 
-        /// <summary>
-        /// 建立 OAuth2 驗證服務提供者。  
-        /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
-        private IOAuth2Provider CreateProvider(OAuth2Options options)
+        private static IOAuth2Provider CreateProvider(OAuth2Options options)
         {
             switch (options)
             {
@@ -44,100 +41,101 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// OAuth2 驗證服務提供者。
+        /// Gets the OAuth2 provider.
         /// </summary>
         public IOAuth2Provider Provider { get; private set; }
 
         /// <summary>
-        /// OAuth2 驗證流程中的狀態儲存機制。
+        /// Gets the storage that keeps the state and the PKCE code verifier between the redirect and the callback.
         /// </summary>
         public abstract IStateStorage StateStorage { get; }
 
         /// <summary>
-        /// 是否使用 PKCE 驗證。
+        /// Gets a value indicating whether the flow uses PKCE.
         /// </summary>
         public bool UsePkce { get; private set; }
 
         /// <summary>
-        /// 產生 OAuth2 授權 URL，讓使用者登入並授權應用程式。
+        /// Stores the state, and the PKCE code verifier when PKCE is used, then builds the authorization URL.
         /// </summary>
-        /// <param name="state">用於防止 CSRF 的隨機字串</param>
+        /// <param name="state">A random value that protects against cross-site request forgery.</param>
+        /// <returns>The URL to send the user to.</returns>
         public string GetAuthorizationUrl(string state)
         {
-            // 儲存 `state` 參數值，以便後續驗證
             StateStorage.SaveState(state);
 
             string codeChallenge = string.Empty;
             if (UsePkce)
             {
-                // 產生 PKCE 驗證碼
-                string codeVerifier = PkceHelper.GenerateCodeVerifier();
-                codeChallenge = PkceHelper.GenerateCodeChallenge(codeVerifier);
-                // 使用 PKCE 驗證時，儲存 `code_Verifier` 參數值
+                string codeVerifier = Pkce.GenerateCodeVerifier();
+                codeChallenge = Pkce.GenerateCodeChallenge(codeVerifier);
                 StateStorage.SaveCodeVerifier(codeVerifier);
             }
             return Provider.GetAuthorizationUrl(state, codeChallenge);
         }
 
         /// <summary>
-        /// 檢查回傳的 `state` 是否有效，避免 CSRF 攻擊。
+        /// Compares the state returned to the callback with the stored state, then removes the stored state.
         /// </summary>
-        /// <param name="returnedState">回傳的狀態碼。</param>
-        public bool ValidateState(string returnedState)
+        /// <param name="returnedState">The state returned by the provider.</param>
+        /// <returns><see langword="true"/> if the two states are equal; otherwise, <see langword="false"/>.</returns>
+        public bool ValidateState(string? returnedState)
         {
-            // 取得指定 `state` 的值，用於驗證 OAuth2 callback 時返回的 `state` 是否一致
-            string storedState = StateStorage.GetState();
+            string? storedState = StateStorage.GetState();
             StateStorage.RemoveState();
-            return  returnedState == storedState;
+            return returnedState == storedState;
         }
 
         /// <summary>
-        /// 透過授權碼 (Authorization Code) 交換 Access Token。
+        /// Exchanges the authorization code for an access token, sending the stored PKCE code verifier when PKCE is used.
         /// </summary>
-        /// <param name="authorizationCode">回傳的授權碼</param>
+        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
+        /// <returns>The access token.</returns>
         public async Task<string> GetAccessTokenAsync(string authorizationCode)
         {
             string codeVerifier = string.Empty;
             if (UsePkce)
             {
-                // 使用 PKCE 驗證時，取得 `code_Verifier` 參數值，用於驗證授權碼請求的合法性
-                codeVerifier = StateStorage.GetCodeVerifier();
-                StateStorage.RemoveCodeVerifier();                        
+                codeVerifier = StateStorage.GetCodeVerifier() ?? string.Empty;
+                StateStorage.RemoveCodeVerifier();
             }
             return await Provider.GetAccessTokenAsync(authorizationCode, codeVerifier);
         }
 
         /// <summary>
-        /// 透過 Access Token 取得用戶資訊。
+        /// Retrieves user information with an access token.
         /// </summary>
-        /// <param name="accessToken">Access Token</param>
-        /// <returns>用戶資訊 JSON 字串</returns>
+        /// <param name="accessToken">The access token.</param>
+        /// <returns>The user information as a JSON string.</returns>
         public Task<string> GetUserInfoAsync(string accessToken)
         {
             return Provider.GetUserInfoAsync(accessToken);
         }
 
         /// <summary>
-        /// 透過授權碼交換 Access Token，並取得用戶資訊。
+        /// Exchanges the authorization code for an access token and retrieves the user information.
         /// </summary>
-        /// <param name="authorizationCode">回傳的授權碼。</param>
-        /// <returns>授權碼取得相關資訊的回傳結果。</returns>
-        public async Task<AuthorizationResult> ValidateAuthorization(string authorizationCode)
+        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
+        /// <returns>A successful result with the access token and user information, or a failed result that carries the exception.</returns>
+        /// <remarks>
+        /// Only the failures an OAuth2 exchange is expected to produce become a failed result: an <see cref="OAuth2Exception"/>,
+        /// an HTTP failure, a request timeout, or a response that is not valid JSON. Any other exception propagates to the caller.
+        /// </remarks>
+        public async Task<AuthorizationResult> ValidateAuthorization(string? authorizationCode)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(authorizationCode))
-                    throw new Exception("Authorization code is empty.");
+                if (authorizationCode is not { } code || string.IsNullOrWhiteSpace(code))
+                    throw new OAuth2Exception("The authorization code is empty.");
 
-                // 透過授權碼交換 Access Token
-                string accessToken = await GetAccessTokenAsync(authorizationCode);
+                string accessToken = await GetAccessTokenAsync(code);
                 if (string.IsNullOrEmpty(accessToken))
-                    throw new Exception("Access token not found in response.");
+                    throw new OAuth2Exception("The token response does not contain an access token.");
 
-                // 透過 Access Token 取得用戶資訊
                 string userInfo = await GetUserInfoAsync(accessToken);
+                if (string.IsNullOrWhiteSpace(userInfo))
+                    throw new OAuth2Exception("The user information response is empty.");
 
-                // 回傳結果
                 return new AuthorizationResult()
                 {
                     ProviderName = Provider.ProviderName,
@@ -146,14 +144,31 @@ namespace Polhem.OAuth2
                     UserInfo = Provider.ParseUserJson(userInfo)
                 };
             }
-            catch (Exception ex)
+            catch (OAuth2Exception ex)
             {
-                return new AuthorizationResult()
-                {
-                    IsSuccess = false,
-                    Exception = ex
-                };
+                return Failure(ex);
             }
+            catch (HttpRequestException ex)
+            {
+                return Failure(ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                return Failure(ex);
+            }
+            catch (JsonException ex)
+            {
+                return Failure(ex);
+            }
+        }
+
+        private static AuthorizationResult Failure(Exception exception)
+        {
+            return new AuthorizationResult()
+            {
+                IsSuccess = false,
+                Exception = exception
+            };
         }
     }
 }

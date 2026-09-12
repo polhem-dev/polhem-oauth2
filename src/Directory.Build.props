@@ -1,0 +1,50 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Package metadata -->
+    <Version>1.0.0</Version>
+    <Authors>Polhem contributors</Authors>
+    <Company>Polhem</Company>
+    <Product>Polhem</Product>
+    <Copyright>Copyright (c) Polhem contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/polhem-dev/polhem-oauth2</PackageProjectUrl>
+    <PackageIcon>polhem.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Packing -->
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!-- Documentation -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- Language features. netstandard2.0 and net48 default to C# 7.3, which has neither nullable
+         reference types nor global usings. -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Health checks. The .NET analyzers are only on by default for net5.0 and later, and these packages
+         also target netstandard2.0 and net48, so the CA rules in .editorconfig need them switched on. -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <RepositoryUrl>https://github.com/polhem-dev/polhem-oauth2</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)../polhem.png" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.303" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>

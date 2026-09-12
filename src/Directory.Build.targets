@@ -1,0 +1,9 @@
+<Project>
+
+  <!-- An item update only applies to items that already exist. The SDK adds its default None items after
+       Directory.Build.props is imported, so the package readme is marked here instead. -->
+  <ItemGroup>
+    <None Update="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

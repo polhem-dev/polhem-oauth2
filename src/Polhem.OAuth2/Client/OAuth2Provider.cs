@@ -1,27 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// OAuth2 驗證服務提供者基底類別，負責處理授權流程、交換 Access Token 及取得用戶資訊。
+    /// The base class for OAuth2 providers. It builds the authorization URL, exchanges the authorization code for an
+    /// access token, and retrieves user information.
     /// </summary>
     public abstract class OAuth2Provider : IOAuth2Provider
     {
         /// <summary>
-        /// HttpClient 實例，用於發送 HTTP 請求。
+        /// The HTTP client used for requests to the provider.
         /// </summary>
         protected readonly HttpClient _httpClient = new HttpClient();
 
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="OAuth2Provider"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
+        /// <param name="options">The OAuth2 options.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         public OAuth2Provider(OAuth2Options options)
         {
             if (options == null)
@@ -29,21 +26,20 @@ namespace Polhem.OAuth2
             Options = options;
         }
 
-        /// <summary>
-        /// OAuth2 驗證服務提供者名稱。
-        /// </summary>
+        /// <inheritdoc/>
         public abstract string ProviderName { get; }
 
         /// <summary>
-        /// OAuth2 設定選項。
+        /// Gets the OAuth2 options.
         /// </summary>
         public OAuth2Options Options { get; private set; }
 
         /// <summary>
-        /// 取得 OAuth2 授權 URL 的參數集合。
+        /// Builds the query parameters of the authorization URL.
         /// </summary>
-        /// <param name="state">用於防止 CSRF 的隨機字串</param>
-        /// <param name="codeChallenge">使用 PKCE 驗證時， 需傳入 `code_challenge` 參數值。</param>
+        /// <param name="state">A random value that protects against cross-site request forgery.</param>
+        /// <param name="codeChallenge">The PKCE <c>code_challenge</c>, or an empty string when PKCE is not used.</param>
+        /// <returns>The query parameters keyed by name.</returns>
         protected virtual Dictionary<string, string> GetAuthorizationUrlParams(string state, string codeChallenge = "")
         {
             var queryParams = new Dictionary<string, string>
@@ -58,42 +54,33 @@ namespace Polhem.OAuth2
             if (!string.IsNullOrWhiteSpace(codeChallenge))
             {
                 queryParams["code_challenge"] = codeChallenge;
-                queryParams["code_challenge_method"] = "S256"; // 必須指定 S256 方法
+                queryParams["code_challenge_method"] = "S256";
             }
             return queryParams;
         }
 
-        /// <summary>
-        /// 產生 OAuth2 授權 URL，讓使用者登入並授權應用程式。
-        /// </summary>
-        /// <param name="state">用於防止 CSRF 的隨機字串</param>
-        /// <param name="codeChallenge">使用 PKCE 驗證時， 需傳入 `code_challenge` 參數值。</param>
-        /// <returns>OAuth2 授權 URL</returns>
+        /// <inheritdoc/>
         public virtual string GetAuthorizationUrl(string state, string codeChallenge = "")
         {
-            // 取得 OAuth2 授權 URL 的參數集合
             var queryParams = GetAuthorizationUrlParams(state, codeChallenge);
-            // 使用 `HttpUtility.ParseQueryString` 或 `string.Join` 來組合 URL 參數，確保正確編碼
             string queryString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
             return $"{Options.AuthorizationEndpoint}?{queryString}";
         }
 
-        /// <summary>
-        /// 取得 OAuth2 驗證流程完成後的回呼網址。
-        /// </summary>
+        /// <inheritdoc/>
         public virtual string GetRedirectUrl()
         {
             return Options.RedirectUri;
         }
 
         /// <summary>
-        /// 取得 Access Token 的參數集合。
+        /// Builds the form parameters of the token request.
         /// </summary>
-        /// <param name="authorizationCode">回傳的授權碼 (Authorization Code)。</param>
-        /// <param name="codeVerifier">使用 PKCE 驗證時， 需傳入 `code_verifier` 參數值。</param>
+        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
+        /// <param name="codeVerifier">The PKCE <c>code_verifier</c>, or an empty string when PKCE is not used.</param>
+        /// <returns>The form parameters keyed by name.</returns>
         protected virtual Dictionary<string, string> GetAccessTokenParams(string authorizationCode, string codeVerifier = "")
         {
-            // 使用 Dictionary 簡化參數組合
             var requestParams = new Dictionary<string, string>
             {
                 { "client_id", Options.ClientId },
@@ -113,78 +100,61 @@ namespace Polhem.OAuth2
             return requestParams;
         }
 
-        /// <summary>
-        /// 透過授權碼 (Authorization Code) 交換 Access Token。
-        /// </summary>
-        /// <param name="authorizationCode">回傳的授權碼 (Authorization Code)。</param>
-        /// <param name="codeVerifier">使用 PKCE 驗證時， 需傳入 `code_verifier` 參數值。</param>
-        /// <returns>Access Token</returns>
+        /// <inheritdoc/>
+        /// <exception cref="HttpRequestException">The token endpoint returned an unsuccessful status code.</exception>
+        /// <exception cref="OAuth2Exception">The token response does not contain an access token.</exception>
         public virtual async Task<string> GetAccessTokenAsync(string authorizationCode, string codeVerifier = "")
         {
-            // 取得 Access Token 的參數集合
             var requestParams = GetAccessTokenParams(authorizationCode, codeVerifier);
 
             using (var requestBody = new FormUrlEncodedContent(requestParams))
             using (var response = await _httpClient.PostAsync(Options.TokenEndpoint, requestBody).ConfigureAwait(false))
             {
-                var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
                 if (!response.IsSuccessStatusCode)
-                {
-                    throw new HttpRequestException($"Failed to obtain access token. Status: {response.StatusCode}, Response: {responseContent}");
-                }
+                    throw new HttpRequestException($"Failed to obtain an access token. Status code: {(int)response.StatusCode}.");
 
+                var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var tokenData = JObject.Parse(responseContent);
-                return tokenData["access_token"]?.ToString() ?? throw new Exception("Access token not found in response.");
+                return tokenData["access_token"]?.ToString() ?? throw new OAuth2Exception("The token response does not contain an access token.");
             }
         }
 
         /// <summary>
-        /// 取得用戶資訊的 URL，預設為 `UserInfoEndpoint`。
+        /// Gets the URL of the user information endpoint. The default is <see cref="OAuth2Options.UserInfoEndpoint"/>.
         /// </summary>
+        /// <returns>The user information URL.</returns>
         protected virtual string GetUserInfoUrl()
         {
             return Options.UserInfoEndpoint;
         }
 
-        /// <summary>
-        /// 透過 Access Token 取得用戶資訊。
-        /// </summary>
-        /// <param name="accessToken">Access Token。</param>
-        /// <returns>用戶資訊 JSON 字串</returns>
-        /// <exception cref="ArgumentNullException">當 `accessToken` 為空時拋出</exception>
-        /// <exception cref="HttpRequestException">當請求失敗時拋出</exception>
+        /// <inheritdoc/>
+        /// <exception cref="HttpRequestException">The user information endpoint returned an unsuccessful status code.</exception>
         public virtual async Task<string> GetUserInfoAsync(string accessToken)
         {
-            string url = GetUserInfoUrl();   // 取得用戶資訊的 URL
+            string url = GetUserInfoUrl();
             using (var request = new HttpRequestMessage(HttpMethod.Get, url))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 using (var response = await _httpClient.SendAsync(request).ConfigureAwait(false))
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
                     if (!response.IsSuccessStatusCode)
-                    {
-                        throw new HttpRequestException($"Failed to retrieve user information. Status: {response.StatusCode}, Response: {responseContent}");
-                    }
+                        throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
 
-                    return responseContent;
+                    return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 }
             }
         }
 
-        /// <summary>
-        /// 解析用戶資訊 JSON 字串。
-        /// </summary>
-        /// <param name="json">用戶資訊 JSON 字串。</param>
+        /// <inheritdoc/>
         public abstract UserInfo ParseUserJson(string json);
 
         /// <summary>
-        /// 取得 Refresh Token 的參數集合。
+        /// Builds the form parameters of the refresh token request.
         /// </summary>
-        /// <param name="refreshToken"></param>
+        /// <param name="refreshToken">The refresh token issued together with the original access token.</param>
+        /// <returns>The form parameters keyed by name.</returns>
         protected virtual Dictionary<string, string> GetRefreshAccessTokenParams(string refreshToken)
         {
             return new Dictionary<string, string>
@@ -196,32 +166,23 @@ namespace Polhem.OAuth2
             };
         }
 
-        /// <summary>
-        /// 使用 Refresh Token 取得新的 Access Token。
-        /// </summary>
-        /// <param name="refreshToken">Refresh Token</param>
-        /// <returns>新的 Access Token</returns>
+        /// <inheritdoc/>
+        /// <exception cref="HttpRequestException">The token endpoint returned an unsuccessful status code.</exception>
+        /// <exception cref="OAuth2Exception">The token response does not contain an access token.</exception>
         public virtual async Task<string> RefreshAccessTokenAsync(string refreshToken)
         {
-            // 取得 Refresh Token 的參數集合
             var parameters = GetRefreshAccessTokenParams(refreshToken);
 
-            var requestBody = new FormUrlEncodedContent(parameters);
-
+            using (var requestBody = new FormUrlEncodedContent(parameters))
             using (var response = await _httpClient.PostAsync(Options.TokenEndpoint, requestBody).ConfigureAwait(false))
             {
-                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
                 if (!response.IsSuccessStatusCode)
-                {
-                    throw new Exception($"Failed to refresh access token. Status: {response.StatusCode}, Response: {content}");
-                }
+                    throw new HttpRequestException($"Failed to refresh the access token. Status code: {(int)response.StatusCode}.");
 
+                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 var tokenData = JObject.Parse(content);
-                var accessToken = tokenData["access_token"]?.ToString();
-
-                if (string.IsNullOrEmpty(accessToken))
-                    throw new Exception("Access token not found in response.");
+                if (tokenData["access_token"]?.ToString() is not { Length: > 0 } accessToken)
+                    throw new OAuth2Exception("The token response does not contain an access token.");
 
                 return accessToken;
             }

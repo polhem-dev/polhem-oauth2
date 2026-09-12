@@ -1,29 +1,33 @@
-﻿using Microsoft.AspNetCore.Http;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Http;
 
 namespace Polhem.OAuth2.AspNetCore
 {
     /// <summary>
-    /// 提供 ASP.NET Core 程式 OAuth2 整合認證管理者。
+    /// Registers OAuth2 clients and runs the authorization code flow for ASP.NET Core applications.
     /// </summary>
     public class OAuth2Manager
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private Dictionary<string, OAuth2Client> Clients { get; } = new Dictionary<string, OAuth2Client>();
+        private Dictionary<string, OAuth2Client> Clients { get; } = [];
 
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="OAuth2Manager"/> class.
         /// </summary>
-        /// <param name="httpContextAccessor">提供目前 HttpContext 的存取權。</param>
+        /// <param name="httpContextAccessor">Provides the current HTTP context.</param>
         public OAuth2Manager(IHttpContextAccessor httpContextAccessor)
         {
             _httpContextAccessor = httpContextAccessor;
         }
 
         /// <summary>
-        /// 註冊 OAuth2 用戶端。
+        /// Registers an OAuth2 client under a name.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
-        /// <param name="client">OAuth2 用戶端。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <param name="client">The OAuth2 client.</param>
+        /// <exception cref="ArgumentException"><paramref name="clientName"/> is null, empty or white space.</exception>
+        /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="client"/> is null.</exception>
         public void RegisterClient(string clientName, OAuth2Client client)
         {
             if (string.IsNullOrWhiteSpace(clientName))
@@ -34,9 +38,10 @@ namespace Polhem.OAuth2.AspNetCore
         }
 
         /// <summary>
-        /// 取得已註冊的 OAuth2 用戶端。
+        /// Gets the client registered under a name.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <returns>The client, or null if no client is registered under that name.</returns>
         public OAuth2Client? GetClient(string clientName)
         {
             if (Clients.TryGetValue(clientName, out var client))
@@ -48,75 +53,84 @@ namespace Polhem.OAuth2.AspNetCore
         }
 
         /// <summary>
-        /// 取得 OAuth2 授權 URL。
+        /// Builds the authorization URL for a registered client. The client name travels in the state, protected by
+        /// <see cref="OAuth2StateCryptor"/>.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <returns>The URL to send the user to.</returns>
+        /// <exception cref="InvalidOperationException">No client is registered under <paramref name="clientName"/>.</exception>
         public string GetAuthorizationUrl(string clientName)
         {
-            var client = GetClient(clientName);
-            if (client == null)
-            {
-                throw new InvalidOperationException($"Client '{clientName}' is not registered.");
-            }
+            var client = GetClient(clientName) ?? throw new InvalidOperationException($"Client '{clientName}' is not registered.");
             var state = OAuth2StateCryptor.EncryptClientName(clientName);
             return client.GetAuthorizationUrl(state);
         }
 
         /// <summary>
-        /// 轉向 OAuth2 授權 URL。
+        /// Redirects the current response to the authorization URL of a registered client.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
+        /// <param name="clientName">The name that identifies the client.</param>
+        /// <exception cref="InvalidOperationException">
+        /// No client is registered under <paramref name="clientName"/>, or there is no current HTTP context.
+        /// </exception>
         public void RedirectToAuthorization(string clientName)
         {
             string authUrl = GetAuthorizationUrl(clientName);
-            _httpContextAccessor.HttpContext.Response.Redirect(authUrl);
+            var context = _httpContextAccessor.HttpContext ?? throw new InvalidOperationException("There is no current HTTP context.");
+            context.Response.Redirect(authUrl);
         }
 
         /// <summary>
-        /// 驗證 OAuth2 回傳授權碼，並取得用戶資料。
+        /// Handles the OAuth2 callback of the current request: validates the state, exchanges the authorization code
+        /// and retrieves the user information.
         /// </summary>
+        /// <returns>A successful result, or a failed result that carries the exception.</returns>
+        /// <remarks>
+        /// A missing authorization code, or a state that is missing, cannot be decoded, fails authentication or does not
+        /// match, becomes a failed result, in addition to the failures described on
+        /// <see cref="BaseOAuth2Client.ValidateAuthorization"/>. Any other exception propagates to the caller.
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">There is no current HTTP request.</exception>
         public async Task<AuthorizationResult> ValidateAuthorization()
         {
-            var request = _httpContextAccessor.HttpContext?.Request;
-            if (request == null)
-            {
-                return new AuthorizationResult()
-                {
-                    IsSuccess = false,
-                    Exception = new InvalidOperationException("HttpContext or Request is null.")
-                };
-            }
+            var request = _httpContextAccessor.HttpContext?.Request ?? throw new InvalidOperationException("There is no current HTTP request.");
 
             string? code = request.Query["code"];
-            string? state = request.Query["state"]; // OAuth2 回傳的 state
-
-            if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
-            {
-                return new AuthorizationResult()
-                {
-                    IsSuccess = false,
-                    Exception = new InvalidOperationException("Authorization code or state is missing.")
-                };
-            }
+            string? state = request.Query["state"];
 
             try
             {
-                var clientName = OAuth2StateCryptor.DecryptClientName(state);
-                var client = GetClient(clientName);
-                if (client == null || !client.ValidateState(state))
-                {
-                    throw new InvalidOperationException("Invalid OAuth2 state or client not found.");
-                }
+                if (string.IsNullOrEmpty(code) || state is not { Length: > 0 } returnedState)
+                    throw new OAuth2Exception("The authorization code or the state is missing.");
+
+                var clientName = OAuth2StateCryptor.DecryptClientName(returnedState);
+                var client = GetClient(clientName) ?? throw new OAuth2Exception("The state does not name a registered client.");
+                if (!client.ValidateState(returnedState))
+                    throw new OAuth2Exception("The state does not match the stored state.");
+
                 return await client.ValidateAuthorization(code);
             }
-            catch (Exception ex)
+            catch (OAuth2Exception ex)
             {
-                return new AuthorizationResult()
-                {
-                    IsSuccess = false,
-                    Exception = ex
-                };
+                return Failure(ex);
             }
+            catch (FormatException ex)
+            {
+                return Failure(ex);
+            }
+            catch (CryptographicException ex)
+            {
+                return Failure(ex);
+            }
+        }
+
+        private static AuthorizationResult Failure(Exception exception)
+        {
+            return new AuthorizationResult()
+            {
+                IsSuccess = false,
+                Exception = exception
+            };
         }
     }
 }

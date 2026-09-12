@@ -1,12 +1,12 @@
-﻿namespace Polhem.OAuth2
+namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Facebook OAuth2 設定選項，包含 Client ID、Secret、Redirect URI 及相關端點。
+    /// OAuth2 options preset with the Facebook endpoints and scopes.
     /// </summary>
     public class FacebookOAuth2Options : OAuth2Options
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="FacebookOAuth2Options"/> class.
         /// </summary>
         public FacebookOAuth2Options()
         {
@@ -16,5 +16,4 @@
             UserInfoEndpoint = "https://graph.facebook.com/me";
         }
     }
-
 }

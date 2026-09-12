@@ -1,5 +1,5 @@
-﻿using Polhem.OAuth2.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
+using Polhem.OAuth2.AspNetCore;
 
 namespace OAuthAspNetCore.Controllers
 {
@@ -23,18 +23,16 @@ namespace OAuthAspNetCore.Controllers
         public async Task<IActionResult> Callback()
         {
             var result = await _oauth2Manager.ValidateAuthorization();
-            if (result.IsSuccess)
+            if (result.IsSuccess && result.UserInfo is { } user)
             {
                 return Content($"ProviderName: {result.ProviderName}\n" +
-                               $"UserID: {result.UserInfo.UserId}\n" +
-                               $"UserName: {result.UserInfo.UserName}\n" +
-                               $"Email: {result.UserInfo.Email}\n" +
-                               $"RawJson: {result.UserInfo.RawJson}");
+                               $"UserID: {user.UserId}\n" +
+                               $"UserName: {user.UserName}\n" +
+                               $"Email: {user.Email}\n" +
+                               $"RawJson: {user.RawJson}");
             }
-            else
-            {
-                return Content($"Error: {result.Exception?.Message}");
-            }
+
+            return Content($"Error: {result.Exception?.Message}");
         }
     }
 }

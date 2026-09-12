@@ -1,35 +1,33 @@
-﻿using System;
-
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// 授權碼取得相關資訊的回傳結果。
+    /// The outcome of exchanging an authorization code.
     /// </summary>
     public class AuthorizationResult
     {
         /// <summary>
-        /// OAuth2 驗證服務提供者名稱。
+        /// Gets or sets the provider name. Set only for a successful result.
         /// </summary>
-        public string ProviderName { get; set; }
+        public string? ProviderName { get; set; }
 
         /// <summary>
-        /// 是否成功。
+        /// Gets or sets a value indicating whether the exchange succeeded.
         /// </summary>
         public bool IsSuccess { get; set; }
 
         /// <summary>
-        /// 用戶資料。
+        /// Gets or sets the user information. Set only for a successful result.
         /// </summary>
-        public UserInfo UserInfo { get; set; }
+        public UserInfo? UserInfo { get; set; }
 
         /// <summary>
-        /// OAuth2 Access Token。
+        /// Gets or sets the access token. Set only for a successful result.
         /// </summary>
-        public string AccessToken { get; set; }
+        public string? AccessToken { get; set; }
 
         /// <summary>
-        /// 例外錯誤。
+        /// Gets or sets the exception that made the exchange fail. Set only for a failed result.
         /// </summary>
-        public Exception Exception { get; set; }
+        public Exception? Exception { get; set; }
     }
 }

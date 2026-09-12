@@ -1,4 +1,4 @@
-﻿namespace Polhem.OAuth2.WinForms
+namespace Polhem.OAuth2.WinForms
 {
     partial class AuthorizationForm
     {

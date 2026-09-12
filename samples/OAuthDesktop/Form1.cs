@@ -46,10 +46,6 @@ namespace OAuthDesktop
             }
         }
 
-        /// <summary>
-        /// ��� OAuth2 ��X�{�Ҧ^�ǵ��G�C
-        /// </summary>
-        /// <param name="result">���v�X���o������T���^�ǵ��G�C</param>
         private void ShowResult(AuthorizationResult result)
         {
             if (result.Exception != null)
@@ -74,10 +70,6 @@ namespace OAuthDesktop
             edtUserInfo.Text = value;
         }
 
-        /// <summary>
-        /// ����n�J�C
-        /// </summary>
-        /// <param name="clientName">�Τ�ݦW�١C</param>
         private async void Login(string clientName)
         {
             var result = await OAuth2Manager.Login(clientName);

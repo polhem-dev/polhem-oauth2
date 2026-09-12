@@ -1,12 +1,12 @@
-﻿namespace Polhem.OAuth2
+namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Azure OAuth2 設定選項，包含 Client ID、Secret、Redirect URI 及相關端點。
+    /// OAuth2 options preset with the Microsoft Entra ID endpoints and scopes.
     /// </summary>
     public class AzureOAuth2Options : OAuth2Options
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="AzureOAuth2Options"/> class.
         /// </summary>
         public AzureOAuth2Options()
         {
@@ -16,5 +16,4 @@
             UserInfoEndpoint = "https://graph.microsoft.com/oidc/userinfo";
         }
     }
-
 }

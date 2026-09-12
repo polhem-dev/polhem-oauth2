@@ -1,4 +1,4 @@
-﻿namespace OAuthWinForms
+namespace OAuthWinForms
 {
     partial class Form1
     {

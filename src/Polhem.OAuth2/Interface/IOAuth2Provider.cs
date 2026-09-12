@@ -1,56 +1,56 @@
-﻿using System.Threading.Tasks;
-
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// OAuth2 驗證服務提供者介面。
+    /// An OAuth2 provider.
     /// </summary>
     public interface IOAuth2Provider
     {
         /// <summary>
-        /// OAuth2 驗證服務提供者名稱。
+        /// Gets the provider name.
         /// </summary>
         string ProviderName { get; }
 
         /// <summary>
-        /// 產生 OAuth2 授權 URL，讓使用者登入並授權應用程式。
+        /// Builds the URL that sends the user to the provider to sign in and authorize the application.
         /// </summary>
-        /// <param name="state">用於防止 CSRF 的隨機字串</param>
-        /// <param name="codeChallenge">使用 PKCE 驗證時， 需傳入 `code_challenge` 參數值。</param>
-        /// <returns>OAuth2 授權 URL</returns>
+        /// <param name="state">A random value that protects against cross-site request forgery.</param>
+        /// <param name="codeChallenge">The PKCE <c>code_challenge</c>, or an empty string when PKCE is not used.</param>
+        /// <returns>The authorization URL.</returns>
         string GetAuthorizationUrl(string state, string codeChallenge = "");
 
         /// <summary>
-        /// 取得 OAuth2 驗證流程完成後的回呼網址。
+        /// Gets the URI the provider sends the user back to after sign-in.
         /// </summary>
+        /// <returns>The redirect URI.</returns>
         string GetRedirectUrl();
 
         /// <summary>
-        /// 透過授權碼 (Authorization Code) 交換 Access Token。
+        /// Exchanges an authorization code for an access token.
         /// </summary>
-        /// <param name="authorizationCode">回傳的授權碼 (Authorization Code)。</param>
-        /// <param name="codeVerifier">使用 PKCE 驗證時， 需傳入 `code_verifier` 參數值。</param>
-        /// <returns>Access Token</returns>
+        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
+        /// <param name="codeVerifier">The PKCE <c>code_verifier</c>, or an empty string when PKCE is not used.</param>
+        /// <returns>The access token.</returns>
         Task<string> GetAccessTokenAsync(string authorizationCode, string codeVerifier = "");
 
         /// <summary>
-        /// 透過 Access Token 取得用戶資訊。
+        /// Retrieves user information with an access token.
         /// </summary>
-        /// <param name="accessToken">Access Token</param>
-        /// <returns>用戶資訊 JSON 字串</returns>
+        /// <param name="accessToken">The access token.</param>
+        /// <returns>The user information as a JSON string.</returns>
         Task<string> GetUserInfoAsync(string accessToken);
 
         /// <summary>
-        /// 解析用戶資訊 JSON 字串。
+        /// Parses the JSON returned by the user information endpoint.
         /// </summary>
-        /// <param name="json">用戶資訊 JSON 字串。</param>
+        /// <param name="json">The user information as a JSON string.</param>
+        /// <returns>The parsed user information.</returns>
         UserInfo ParseUserJson(string json);
 
         /// <summary>
-        /// 使用 Refresh Token 取得新的 Access Token。
+        /// Obtains a new access token with a refresh token.
         /// </summary>
-        /// <param name="refreshToken">Refresh Token。</param>
-        /// <returns>新的 Access Token</returns>
+        /// <param name="refreshToken">The refresh token.</param>
+        /// <returns>The new access token.</returns>
         Task<string> RefreshAccessTokenAsync(string refreshToken);
     }
 }

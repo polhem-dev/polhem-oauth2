@@ -1,51 +1,49 @@
-﻿namespace Polhem.OAuth2
+namespace Polhem.OAuth2
 {
     /// <summary>
-    /// OAuth2 設定選項基底類別，包含 Client ID、Secret、Redirect URI 及相關端點。
+    /// The base class for OAuth2 options: the client credentials, the redirect URI and the provider endpoints.
     /// </summary>
     public abstract class OAuth2Options
     {
         /// <summary>
-        /// OAuth2 應用程式的 Client ID（用於識別應用）。
+        /// Gets or sets the client ID that identifies the application to the provider.
         /// </summary>
         public string ClientId { get; set; } = string.Empty;
 
         /// <summary>
-        /// OAuth2 應用程式的 Client Secret（用於驗證應用）。
-        /// 請妥善保管此值，避免洩漏。
+        /// Gets or sets the client secret that authenticates the application to the provider.
         /// </summary>
+        /// <remarks>Keep this value out of source control and logs.</remarks>
         public string ClientSecret { get; set; } = string.Empty;
 
         /// <summary>
-        /// OAuth2 回調網址，OAuth2 驗證流程完成後，會將使用者重定向到此 URI。
-        /// 必須與 Google Cloud Console 中設定的 Redirect URI 相符。
+        /// Gets or sets the URI the provider sends the user back to after sign-in. It must match a redirect URI
+        /// registered with the provider.
         /// </summary>
         public string RedirectUri { get; set; } = string.Empty;
 
         /// <summary>
-        /// 申請的 OAuth2 權限範圍（Scopes）。
+        /// Gets or sets the scopes to request.
         /// </summary>
         public string[] Scopes { get; set; } = new[] { "openid", "email", "profile" };
 
         /// <summary>
-        /// OAuth2 授權端點 (Authorization Endpoint)。
+        /// Gets or sets the authorization endpoint.
         /// </summary>
         public string AuthorizationEndpoint { get; set; } = string.Empty;
 
         /// <summary>
-        /// OAuth2 令牌端點 (Token Endpoint)。
-        /// 用於交換授權碼 (Authorization Code) 以取得 Access Token。
+        /// Gets or sets the token endpoint, where the authorization code is exchanged for an access token.
         /// </summary>
         public string TokenEndpoint { get; set; } = string.Empty;
 
         /// <summary>
-        /// OAuth2 用戶資訊端點 (UserInfo Endpoint)。
-        /// 用於取得用戶身份資訊，如名稱、Email、頭像等。
+        /// Gets or sets the user information endpoint, which returns details such as the user's name and email address.
         /// </summary>
         public string UserInfoEndpoint { get; set; } = string.Empty;
 
         /// <summary>
-        /// 是否使用 PKCE 驗證。
+        /// Gets or sets a value indicating whether the flow uses PKCE.
         /// </summary>
         public bool UsePkce { get; set; } = false;
     }

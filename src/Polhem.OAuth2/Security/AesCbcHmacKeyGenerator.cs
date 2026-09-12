@@ -1,5 +1,3 @@
-using System;
-
 namespace Polhem.OAuth2
 {
     /// <summary>

@@ -1,4 +1,4 @@
-﻿using Polhem.OAuth2;
+using Polhem.OAuth2;
 
 namespace OAuthAspNetCore.Models
 {

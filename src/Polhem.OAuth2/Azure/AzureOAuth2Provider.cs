@@ -1,43 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
 using Newtonsoft.Json.Linq;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Azure OAuth2 驗證服務提供者，負責處理授權流程、交換 Access Token 及取得用戶資訊。
+    /// The Microsoft Entra ID OAuth2 provider.
     /// </summary>
     public class AzureOAuth2Provider : OAuth2Provider
     {
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="AzureOAuth2Provider"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
+        /// <param name="options">The Microsoft Entra ID OAuth2 options.</param>
         public AzureOAuth2Provider(AzureOAuth2Options options) : base(options)
         {
         }
 
-        /// <summary>
-        /// OAuth2 驗證服務提供者名稱。
-        /// </summary>
+        /// <inheritdoc/>
         public override string ProviderName { get; } = "Azure";
 
-        /// <summary>
-        /// 取得 Access Token 的參數集合。
-        /// </summary>
-        /// <param name="authorizationCode">回傳的授權碼 (Authorization Code)。</param>
-        /// <param name="codeVerifier">使用 PKCE 驗證時， 需傳入 `code_verifier` 參數值。</param>
+        /// <inheritdoc/>
         protected override Dictionary<string, string> GetAccessTokenParams(string authorizationCode, string codeVerifier = "")
         {
             var requestParams = base.GetAccessTokenParams(authorizationCode, codeVerifier);
-            requestParams["response_mode"] = "query"; // Azure 建議的 response_mode，確保回應方式為 QueryString
+            // NOTE: `response_mode` is defined for the authorization request, not for the token request.
+            requestParams["response_mode"] = "query";
             return requestParams;
         }
 
-        /// <summary>
-        /// 解析用戶資訊 JSON 字串。
-        /// </summary>
-        /// <param name="json">用戶資訊 JSON 字串。</param>
+        /// <inheritdoc/>
+        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
         public override UserInfo ParseUserJson(string json)
         {
             if (string.IsNullOrEmpty(json))
@@ -53,6 +44,5 @@ namespace Polhem.OAuth2
                 RawJson = json
             };
         }
-
     }
 }

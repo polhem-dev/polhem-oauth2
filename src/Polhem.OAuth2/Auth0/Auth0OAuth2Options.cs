@@ -1,15 +1,15 @@
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// Auth0 OAuth2 設定選項，包含 Domain、Client ID、Secret、Redirect URI 及相關端點。
+    /// OAuth2 options for Auth0. Setting <see cref="Domain"/> fills in the endpoints.
     /// </summary>
     public class Auth0OAuth2Options : OAuth2Options
     {
         private string _domain = string.Empty;
 
         /// <summary>
-        /// Auth0 Domain，例如: your-tenant.auth0.com。
-        /// 設定後會自動更新相關端點。
+        /// Gets or sets the Auth0 domain, for example <c>your-tenant.auth0.com</c>. Setting a non-empty value
+        /// updates the authorization, token and user information endpoints.
         /// </summary>
         public string Domain
         {
@@ -27,7 +27,7 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="Auth0OAuth2Options"/> class.
         /// </summary>
         public Auth0OAuth2Options()
         {

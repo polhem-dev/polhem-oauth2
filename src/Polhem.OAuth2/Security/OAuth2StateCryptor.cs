@@ -1,23 +1,25 @@
-﻿using System;
 using System.Text;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// 提供 OAuth2 state 加密與解密功能，使用 AES-CBC + HMAC 方式保護完整性。
-    /// 加密內容為 clientName，可日後擴充為 JSON payload。
+    /// Protects the client name carried in the OAuth2 <c>state</c> parameter.
     /// </summary>
+    /// <remarks>
+    /// When the <c>OAUTH2_STATE_KEY</c> environment variable holds a base64-encoded 64-byte key, the client name is
+    /// encrypted with AES-CBC and authenticated with HMAC-SHA256. Without the key it is only base64-encoded, which
+    /// neither hides it nor detects tampering.
+    /// </remarks>
     public static class OAuth2StateCryptor
     {
-        private static readonly string base64Key = Environment.GetEnvironmentVariable("OAUTH2_STATE_KEY");
-        private static readonly bool useEncryption = !string.IsNullOrWhiteSpace(base64Key);
-        private static readonly byte[] combinedKey = useEncryption ? Convert.FromBase64String(base64Key) : null;
+        private static readonly byte[]? s_combinedKey = ReadCombinedKey();
 
         /// <summary>
-        /// 將用戶端名稱加密為 state 字串。
-        /// 若未設定 OAUTH2_STATE_KEY，則僅做 Base64 編碼。
+        /// Converts a client name into a state value.
         /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
+        /// <param name="clientName">The name the client was registered under.</param>
+        /// <returns>The state value.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="clientName"/> is null, empty or white space.</exception>
         public static string EncryptClientName(string clientName)
         {
             if (string.IsNullOrWhiteSpace(clientName))
@@ -25,9 +27,9 @@ namespace Polhem.OAuth2
 
             var plainBytes = Encoding.UTF8.GetBytes(clientName);
 
-            if (useEncryption)
+            if (s_combinedKey != null)
             {
-                AesCbcHmacKeyGenerator.FromCombinedKey(combinedKey, out var aesKey, out var hmacKey);
+                AesCbcHmacKeyGenerator.FromCombinedKey(s_combinedKey, out var aesKey, out var hmacKey);
                 var cipherBytes = AesCbcHmacCryptor.Encrypt(plainBytes, aesKey, hmacKey);
                 return Convert.ToBase64String(cipherBytes);
             }
@@ -38,10 +40,12 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// 從 state 字串解密取得用戶端名稱，若驗證失敗將拋出例外。
-        /// 若未設定 OAUTH2_STATE_KEY，則僅做 Base64 解碼。
+        /// Recovers the client name from a state value.
         /// </summary>
-        /// <param name="state">state 字串。</param>
+        /// <param name="state">The state value returned to the callback.</param>
+        /// <returns>The client name.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="state"/> is null, empty or white space.</exception>
+        /// <exception cref="System.Security.Cryptography.CryptographicException">The key is set and the state fails authentication.</exception>
         public static string DecryptClientName(string state)
         {
             if (string.IsNullOrWhiteSpace(state))
@@ -49,9 +53,9 @@ namespace Polhem.OAuth2
 
             var cipherBytes = Convert.FromBase64String(state);
 
-            if (useEncryption)
+            if (s_combinedKey != null)
             {
-                AesCbcHmacKeyGenerator.FromCombinedKey(combinedKey, out var aesKey, out var hmacKey);
+                AesCbcHmacKeyGenerator.FromCombinedKey(s_combinedKey, out var aesKey, out var hmacKey);
                 var plainBytes = AesCbcHmacCryptor.Decrypt(cipherBytes, aesKey, hmacKey);
                 return Encoding.UTF8.GetString(plainBytes);
             }
@@ -60,6 +64,11 @@ namespace Polhem.OAuth2
                 return Encoding.UTF8.GetString(cipherBytes);
             }
         }
+
+        private static byte[]? ReadCombinedKey()
+        {
+            string? base64Key = Environment.GetEnvironmentVariable("OAUTH2_STATE_KEY");
+            return base64Key is null || base64Key.Trim().Length == 0 ? null : Convert.FromBase64String(base64Key);
+        }
     }
 }
-

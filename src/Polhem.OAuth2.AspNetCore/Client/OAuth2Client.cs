@@ -1,28 +1,27 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 
 namespace Polhem.OAuth2.AspNetCore
 {
     /// <summary>
-    /// 提供 ASP.NET Core 程式進行 OAuth2 整合認證的用戶端。
+    /// An OAuth2 client for ASP.NET Core applications. It keeps the state in a cookie and the PKCE code verifier in
+    /// session state.
     /// </summary>
     public class OAuth2Client : BaseOAuth2Client
     {
-        private StateStorage? _stateStorage = null;
+        private StateStorage? _stateStorage;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         /// <summary>
-        /// 建構函式。
+        /// Initializes a new instance of the <see cref="OAuth2Client"/> class.
         /// </summary>
-        /// <param name="options">OAuth2 設定選項。</param>
-        /// <param name="httpContextAccessor">提供目前 HttpContext 的存取權。</param>
+        /// <param name="options">The OAuth2 options. Their type selects the provider.</param>
+        /// <param name="httpContextAccessor">Provides the current HTTP context.</param>
         public OAuth2Client(OAuth2Options options, IHttpContextAccessor httpContextAccessor) : base(options)
         {
             _httpContextAccessor = httpContextAccessor;
         }
 
-        /// <summary>
-        /// OAuth2 驗證流程中的狀態儲存機制。
-        /// </summary>
+        /// <inheritdoc/>
         public override IStateStorage StateStorage
         {
             get
