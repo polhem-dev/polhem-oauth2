@@ -1,0 +1,65 @@
+﻿using System;
+using System.Text;
+
+namespace Polhem.OAuth2
+{
+    /// <summary>
+    /// 提供 OAuth2 state 加密與解密功能，使用 AES-CBC + HMAC 方式保護完整性。
+    /// 加密內容為 clientName，可日後擴充為 JSON payload。
+    /// </summary>
+    public static class OAuth2StateCryptor
+    {
+        private static readonly string base64Key = Environment.GetEnvironmentVariable("OAUTH2_STATE_KEY");
+        private static readonly bool useEncryption = !string.IsNullOrWhiteSpace(base64Key);
+        private static readonly byte[] combinedKey = useEncryption ? Convert.FromBase64String(base64Key) : null;
+
+        /// <summary>
+        /// 將用戶端名稱加密為 state 字串。
+        /// 若未設定 OAUTH2_STATE_KEY，則僅做 Base64 編碼。
+        /// </summary>
+        /// <param name="clientName">用戶端名稱。</param>
+        public static string EncryptClientName(string clientName)
+        {
+            if (string.IsNullOrWhiteSpace(clientName))
+                throw new ArgumentNullException(nameof(clientName));
+
+            var plainBytes = Encoding.UTF8.GetBytes(clientName);
+
+            if (useEncryption)
+            {
+                AesCbcHmacKeyGenerator.FromCombinedKey(combinedKey, out var aesKey, out var hmacKey);
+                var cipherBytes = AesCbcHmacCryptor.Encrypt(plainBytes, aesKey, hmacKey);
+                return Convert.ToBase64String(cipherBytes);
+            }
+            else
+            {
+                return Convert.ToBase64String(plainBytes);
+            }
+        }
+
+        /// <summary>
+        /// 從 state 字串解密取得用戶端名稱，若驗證失敗將拋出例外。
+        /// 若未設定 OAUTH2_STATE_KEY，則僅做 Base64 解碼。
+        /// </summary>
+        /// <param name="state">state 字串。</param>
+        public static string DecryptClientName(string state)
+        {
+            if (string.IsNullOrWhiteSpace(state))
+                throw new ArgumentNullException(nameof(state));
+
+            var cipherBytes = Convert.FromBase64String(state);
+
+            if (useEncryption)
+            {
+                AesCbcHmacKeyGenerator.FromCombinedKey(combinedKey, out var aesKey, out var hmacKey);
+                var plainBytes = AesCbcHmacCryptor.Decrypt(cipherBytes, aesKey, hmacKey);
+                return Encoding.UTF8.GetString(plainBytes);
+            }
+            else
+            {
+                return Encoding.UTF8.GetString(cipherBytes);
+            }
+        }
+    }
+}
+

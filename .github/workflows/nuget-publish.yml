@@ -1,0 +1,72 @@
+name: Publish NuGet Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore --locked-mode
+
+      - name: Build Polhem.OAuth2 projects
+        run: |
+          dotnet build src/Polhem.OAuth2/Polhem.OAuth2.csproj --configuration Release --no-restore
+          dotnet build src/Polhem.OAuth2.AspNet/Polhem.OAuth2.AspNet.csproj --configuration Release --no-restore
+          dotnet build src/Polhem.OAuth2.AspNetCore/Polhem.OAuth2.AspNetCore.csproj --configuration Release --no-restore
+          dotnet build src/Polhem.OAuth2.WinForms/Polhem.OAuth2.WinForms.csproj --configuration Release --no-restore
+          dotnet build src/Polhem.OAuth2.Desktop/Polhem.OAuth2.Desktop.csproj --configuration Release --no-restore
+
+      - name: Pack Polhem.OAuth2 projects
+        run: |
+          dotnet pack src/Polhem.OAuth2/Polhem.OAuth2.csproj --configuration Release --output ./nupkgs
+          dotnet pack src/Polhem.OAuth2.AspNet/Polhem.OAuth2.AspNet.csproj --configuration Release --output ./nupkgs
+          dotnet pack src/Polhem.OAuth2.AspNetCore/Polhem.OAuth2.AspNetCore.csproj --configuration Release --output ./nupkgs
+          dotnet pack src/Polhem.OAuth2.WinForms/Polhem.OAuth2.WinForms.csproj --configuration Release --output ./nupkgs
+          dotnet pack src/Polhem.OAuth2.Desktop/Polhem.OAuth2.Desktop.csproj --configuration Release --output ./nupkgs
+
+      - name: Push to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          Get-ChildItem -Path ./nupkgs -Filter *.nupkg | ForEach-Object {
+            dotnet nuget push $_.FullName --api-key "$env:NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          }
+
+  release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228  # v3.0.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          body: |
+            Published NuGet packages:
+            - Polhem.OAuth2
+            - Polhem.OAuth2.AspNet
+            - Polhem.OAuth2.AspNetCore
+            - Polhem.OAuth2.WinForms
+            - Polhem.OAuth2.Desktop
+
+            See NuGet.org for installation details.
