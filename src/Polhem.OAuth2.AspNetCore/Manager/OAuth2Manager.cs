@@ -114,10 +114,6 @@ namespace Polhem.OAuth2.AspNetCore
             {
                 return Failure(ex);
             }
-            catch (FormatException ex)
-            {
-                return Failure(ex);
-            }
             catch (CryptographicException ex)
             {
                 return Failure(ex);

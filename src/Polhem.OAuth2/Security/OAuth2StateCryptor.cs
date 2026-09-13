@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Polhem.OAuth2
@@ -45,13 +46,15 @@ namespace Polhem.OAuth2
         /// <param name="state">The state value returned to the callback.</param>
         /// <returns>The client name.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="state"/> is null, empty or white space.</exception>
-        /// <exception cref="System.Security.Cryptography.CryptographicException">The key is set and the state fails authentication.</exception>
+        /// <exception cref="CryptographicException">
+        /// The state is not valid base64, or the key is set and the state is malformed or fails authentication.
+        /// </exception>
         public static string DecryptClientName(string state)
         {
             if (string.IsNullOrWhiteSpace(state))
                 throw new ArgumentNullException(nameof(state));
 
-            var cipherBytes = Convert.FromBase64String(state);
+            var cipherBytes = DecodeBase64(state);
 
             if (s_combinedKey != null)
             {
@@ -62,6 +65,19 @@ namespace Polhem.OAuth2
             else
             {
                 return Encoding.UTF8.GetString(cipherBytes);
+            }
+        }
+
+        // A state value arrives from the browser, so every way it can be invalid is reported as the same exception type.
+        private static byte[] DecodeBase64(string state)
+        {
+            try
+            {
+                return Convert.FromBase64String(state);
+            }
+            catch (FormatException ex)
+            {
+                throw new CryptographicException("The state is not valid base64.", ex);
             }
         }
 

@@ -6,6 +6,9 @@ namespace Polhem.OAuth2.UnitTests
 {
     public class AesCbcHmacCryptorTests
     {
+        private const int CipherLengthOffset = 20;
+        private const int CipherOffset = 24;
+
         private static readonly byte[] s_aesKey = Encoding.UTF8.GetBytes("0123456789abcdef0123456789abcdef");
         private static readonly byte[] s_hmacKey = Encoding.UTF8.GetBytes("abcdef0123456789abcdef0123456789");
 
@@ -37,10 +40,79 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Decrypt rejects data whose HMAC was tampered with")]
         public void Decrypt_TamperedHmac_ThrowsCryptographicException()
         {
-            byte[] encrypted = AesCbcHmacCryptor.Encrypt(Encoding.UTF8.GetBytes("sensitive"), s_aesKey, s_hmacKey);
+            byte[] encrypted = EncryptSample();
 
             // The trailing 32 bytes are the HMAC, so this flips bits inside it.
             encrypted[encrypted.Length - 10] ^= 0xFF;
+
+            Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(encrypted, s_aesKey, s_hmacKey));
+        }
+
+        [Fact]
+        [DisplayName("Decrypt rejects data whose ciphertext was tampered with")]
+        public void Decrypt_TamperedCiphertext_ThrowsCryptographicException()
+        {
+            byte[] encrypted = EncryptSample();
+            encrypted[CipherOffset] ^= 0xFF;
+
+            Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(encrypted, s_aesKey, s_hmacKey));
+        }
+
+        [Fact]
+        [DisplayName("Decrypt rejects an empty buffer")]
+        public void Decrypt_EmptyData_ThrowsCryptographicException()
+        {
+            Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(Array.Empty<byte>(), s_aesKey, s_hmacKey));
+        }
+
+        [Theory]
+        [DisplayName("Decrypt rejects data with bytes missing from the end")]
+        [InlineData(1)]
+        [InlineData(16)]
+        [InlineData(33)]
+        public void Decrypt_TruncatedData_ThrowsCryptographicException(int bytesRemoved)
+        {
+            byte[] encrypted = EncryptSample();
+            byte[] truncated = encrypted.Take(encrypted.Length - bytesRemoved).ToArray();
+
+            Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(truncated, s_aesKey, s_hmacKey));
+        }
+
+        [Fact]
+        [DisplayName("Decrypt rejects data with extra bytes after the HMAC")]
+        public void Decrypt_TrailingBytes_ThrowsCryptographicException()
+        {
+            byte[] extended = EncryptSample().Concat(new byte[] { 0 }).ToArray();
+
+            Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(extended, s_aesKey, s_hmacKey));
+        }
+
+        [Theory]
+        [DisplayName("Decrypt rejects data whose IV length field was altered")]
+        [InlineData(0)]
+        [InlineData(15)]
+        [InlineData(17)]
+        [InlineData(int.MaxValue)]
+        [InlineData(-1)]
+        public void Decrypt_AlteredIvLength_ThrowsCryptographicException(int ivLength)
+        {
+            byte[] encrypted = EncryptSample();
+            WriteInt32LittleEndian(encrypted, 0, ivLength);
+
+            Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(encrypted, s_aesKey, s_hmacKey));
+        }
+
+        [Theory]
+        [DisplayName("Decrypt rejects data whose ciphertext length field was altered")]
+        [InlineData(0)]
+        [InlineData(15)]
+        [InlineData(32)]
+        [InlineData(int.MaxValue)]
+        [InlineData(-16)]
+        public void Decrypt_AlteredCipherLength_ThrowsCryptographicException(int cipherLength)
+        {
+            byte[] encrypted = EncryptSample();
+            WriteInt32LittleEndian(encrypted, CipherLengthOffset, cipherLength);
 
             Assert.Throws<CryptographicException>(() => AesCbcHmacCryptor.Decrypt(encrypted, s_aesKey, s_hmacKey));
         }
@@ -59,6 +131,21 @@ namespace Polhem.OAuth2.UnitTests
             byte[] decrypted = AesCbcHmacCryptor.Decrypt(Convert.FromBase64String(cipherBase64), aesKey, hmacKey);
 
             Assert.Equal(expected, Encoding.UTF8.GetString(decrypted));
+        }
+
+        // A nine-byte plaintext pads to one 16-byte block, so the sample is 72 bytes: the IV length (offset 0), the IV,
+        // the ciphertext length (offset 20), the ciphertext (offset 24) and the 32-byte HMAC.
+        private static byte[] EncryptSample()
+        {
+            return AesCbcHmacCryptor.Encrypt(Encoding.UTF8.GetBytes("sensitive"), s_aesKey, s_hmacKey);
+        }
+
+        private static void WriteInt32LittleEndian(byte[] data, int offset, int value)
+        {
+            data[offset] = (byte)value;
+            data[offset + 1] = (byte)(value >> 8);
+            data[offset + 2] = (byte)(value >> 16);
+            data[offset + 3] = (byte)(value >> 24);
         }
     }
 }

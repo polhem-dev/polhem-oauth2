@@ -19,8 +19,8 @@
 - `ValidateAuthorization` 只把 OAuth2 交換預期會發生的失敗轉成失敗結果：
   - `BaseOAuth2Client`：`OAuth2Exception`、`HttpRequestException`、`TaskCanceledException`（請求逾時），
     以及 JSON 解析錯誤。
-  - ASP.NET 與 ASP.NET Core 的 manager 另外會把解碼 state 時發生的 `FormatException` 與
-    `CryptographicException` 轉成失敗結果。
+  - ASP.NET 與 ASP.NET Core 的 manager 另外會把 `CryptographicException` 轉成失敗結果。
+    state 不是合法的 Base64、格式錯亂或驗證失敗時，都會擲出這個例外。
 - 其他例外一律往外拋。設定或程式錯誤（例如 client 名稱沒有註冊、沒有 HTTP context）擲出 `InvalidOperationException`。
 - 例外訊息只帶 HTTP 狀態碼，不帶回應內容，因為回應內容可能包含不該顯示給使用者的細節。
 
@@ -30,5 +30,5 @@
 - 呼叫端要跟呼叫任何函式庫一樣，準備好處理其他例外。
 - `tests/Polhem.OAuth2.UnitTests/BaseOAuth2ClientTests.cs` 涵蓋 `BaseOAuth2Client` 的兩條路徑：
   授權碼為空、token 端點連不到時回傳失敗結果；儲存層發生非預期錯誤時往外拋。
-- 已知缺口：state 的內部長度欄位格式錯亂（而不只是被竄改）時，目前仍會以非預期例外往外拋。
-  預計讓解密流程改以 `CryptographicException` 回報這種情況。
+- `tests/Polhem.OAuth2.UnitTests/AesCbcHmacCryptorTests.cs` 與 `OAuth2StateCryptorTests.cs` 涵蓋 state 無效的各種情況：
+  資料被截短、長度欄位被竄改、內容被竄改，以及不是 Base64 的文字；每一種都以 `CryptographicException` 回報。

@@ -78,12 +78,15 @@ namespace Polhem.OAuth2
         /// Compares the state returned to the callback with the stored state, then removes the stored state.
         /// </summary>
         /// <param name="returnedState">The state returned by the provider.</param>
-        /// <returns><see langword="true"/> if the two states are equal; otherwise, <see langword="false"/>.</returns>
+        /// <returns>
+        /// <see langword="true"/> if a non-empty state was returned and it equals the stored state; otherwise,
+        /// <see langword="false"/>. A missing state does not match even when no state is stored.
+        /// </returns>
         public bool ValidateState(string? returnedState)
         {
             string? storedState = StateStorage.GetState();
             StateStorage.RemoveState();
-            return returnedState == storedState;
+            return !string.IsNullOrEmpty(returnedState) && returnedState == storedState;
         }
 
         /// <summary>

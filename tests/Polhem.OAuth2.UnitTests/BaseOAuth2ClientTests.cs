@@ -43,6 +43,62 @@ namespace Polhem.OAuth2.UnitTests
             await Assert.ThrowsAsync<InvalidOperationException>(() => client.ValidateAuthorization("code"));
         }
 
+        [Theory]
+        [DisplayName("ValidateState rejects a missing state even when no state is stored")]
+        [InlineData(null)]
+        [InlineData("")]
+        public void ValidateState_MissingStateAndNothingStored_ReturnsFalse(string? returnedState)
+        {
+            var client = new TestClient(new GoogleOAuth2Options(), new MemoryStateStorage());
+
+            Assert.False(client.ValidateState(returnedState));
+        }
+
+        [Fact]
+        [DisplayName("ValidateState rejects an empty state even when an empty state is stored")]
+        public void ValidateState_EmptyStateStored_ReturnsFalse()
+        {
+            var storage = new MemoryStateStorage();
+            storage.SaveState(string.Empty);
+            var client = new TestClient(new GoogleOAuth2Options(), storage);
+
+            Assert.False(client.ValidateState(string.Empty));
+        }
+
+        [Fact]
+        [DisplayName("ValidateState accepts the state that was stored")]
+        public void ValidateState_MatchingState_ReturnsTrue()
+        {
+            var storage = new MemoryStateStorage();
+            storage.SaveState("expected-state");
+            var client = new TestClient(new GoogleOAuth2Options(), storage);
+
+            Assert.True(client.ValidateState("expected-state"));
+        }
+
+        [Fact]
+        [DisplayName("ValidateState rejects a state that differs from the stored state")]
+        public void ValidateState_DifferentState_ReturnsFalse()
+        {
+            var storage = new MemoryStateStorage();
+            storage.SaveState("expected-state");
+            var client = new TestClient(new GoogleOAuth2Options(), storage);
+
+            Assert.False(client.ValidateState("other-state"));
+        }
+
+        [Fact]
+        [DisplayName("ValidateState accepts a stored state only once")]
+        public void ValidateState_SameStateTwice_SecondCallReturnsFalse()
+        {
+            var storage = new MemoryStateStorage();
+            storage.SaveState("expected-state");
+            var client = new TestClient(new GoogleOAuth2Options(), storage);
+            client.ValidateState("expected-state");
+
+            Assert.False(client.ValidateState("expected-state"));
+        }
+
         private sealed class TestClient : BaseOAuth2Client
         {
             public TestClient(OAuth2Options options, IStateStorage stateStorage) : base(options)

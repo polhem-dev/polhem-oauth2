@@ -19,8 +19,8 @@ therefore looked the same as a routine sign-in failure, and problems that needed
 - `ValidateAuthorization` turns only the failures an OAuth2 exchange is expected to produce into a failed result:
   - In `BaseOAuth2Client`: `OAuth2Exception`, `HttpRequestException`, `TaskCanceledException` (a request timeout),
     and JSON parse errors.
-  - The ASP.NET and ASP.NET Core managers additionally turn `FormatException` and `CryptographicException`, raised while
-    decoding the state, into a failed result.
+  - The ASP.NET and ASP.NET Core managers additionally turn `CryptographicException` into a failed result. It is raised
+    when the state is not valid base64, is malformed, or fails authentication.
 - Every other exception propagates. Configuration and programming errors, such as an unregistered client name or a
   missing HTTP context, throw `InvalidOperationException`.
 - Exception messages include the HTTP status code but not the response body, which can contain details an application
@@ -33,5 +33,6 @@ therefore looked the same as a routine sign-in failure, and problems that needed
 - Callers must be ready for other exceptions, as with any library call.
 - `tests/Polhem.OAuth2.UnitTests/BaseOAuth2ClientTests.cs` covers both paths in `BaseOAuth2Client`: failed results for an
   empty authorization code and an unreachable token endpoint, and propagation of an unexpected storage failure.
-- Known gap: a state value whose internal length fields are malformed, rather than only tampered with, still surfaces
-  as an unexpected exception. Making decryption report it as `CryptographicException` is planned.
+- `tests/Polhem.OAuth2.UnitTests/AesCbcHmacCryptorTests.cs` and `OAuth2StateCryptorTests.cs` cover the ways a state
+  value can be invalid: truncated data, altered length fields, altered content, and text that is not base64. Each one
+  is reported as `CryptographicException`.
