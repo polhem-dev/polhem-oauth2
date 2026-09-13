@@ -1,5 +1,3 @@
-using Newtonsoft.Json.Linq;
-
 namespace Polhem.OAuth2
 {
     /// <summary>
@@ -37,20 +35,23 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
+        /// <exception cref="System.Text.Json.JsonException"><paramref name="json"/> is not a JSON object.</exception>
         public override UserInfo ParseUserJson(string json)
         {
             if (string.IsNullOrEmpty(json))
                 throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");
 
-            var jObject = JObject.Parse(json);
-
-            return new UserInfo
+            using (var document = OAuth2Json.ParseObject(json))
             {
-                UserId = jObject["id"]?.ToString(),
-                UserName = jObject["name"]?.ToString(),
-                Email = jObject["email"]?.ToString(),
-                RawJson = json
-            };
+                var root = document.RootElement;
+                return new UserInfo
+                {
+                    UserId = OAuth2Json.GetString(root, "id"),
+                    UserName = OAuth2Json.GetString(root, "name"),
+                    Email = OAuth2Json.GetString(root, "email"),
+                    RawJson = json
+                };
+            }
         }
 
         /// <summary>

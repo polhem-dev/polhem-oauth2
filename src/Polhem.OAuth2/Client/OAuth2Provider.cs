@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using Newtonsoft.Json.Linq;
 
 namespace Polhem.OAuth2
 {
@@ -103,6 +102,7 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         /// <exception cref="HttpRequestException">The token endpoint returned an unsuccessful status code.</exception>
         /// <exception cref="OAuth2Exception">The token response does not contain an access token.</exception>
+        /// <exception cref="System.Text.Json.JsonException">The token response is not a JSON object.</exception>
         public virtual async Task<string> GetAccessTokenAsync(string authorizationCode, string codeVerifier = "")
         {
             var requestParams = GetAccessTokenParams(authorizationCode, codeVerifier);
@@ -114,8 +114,11 @@ namespace Polhem.OAuth2
                     throw new HttpRequestException($"Failed to obtain an access token. Status code: {(int)response.StatusCode}.");
 
                 var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var tokenData = JObject.Parse(responseContent);
-                return tokenData["access_token"]?.ToString() ?? throw new OAuth2Exception("The token response does not contain an access token.");
+                using (var tokenData = OAuth2Json.ParseObject(responseContent))
+                {
+                    return OAuth2Json.GetString(tokenData.RootElement, "access_token")
+                        ?? throw new OAuth2Exception("The token response does not contain an access token.");
+                }
             }
         }
 
@@ -169,6 +172,7 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         /// <exception cref="HttpRequestException">The token endpoint returned an unsuccessful status code.</exception>
         /// <exception cref="OAuth2Exception">The token response does not contain an access token.</exception>
+        /// <exception cref="System.Text.Json.JsonException">The token response is not a JSON object.</exception>
         public virtual async Task<string> RefreshAccessTokenAsync(string refreshToken)
         {
             var parameters = GetRefreshAccessTokenParams(refreshToken);
@@ -180,11 +184,13 @@ namespace Polhem.OAuth2
                     throw new HttpRequestException($"Failed to refresh the access token. Status code: {(int)response.StatusCode}.");
 
                 var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var tokenData = JObject.Parse(content);
-                if (tokenData["access_token"]?.ToString() is not { Length: > 0 } accessToken)
-                    throw new OAuth2Exception("The token response does not contain an access token.");
+                using (var tokenData = OAuth2Json.ParseObject(content))
+                {
+                    if (OAuth2Json.GetString(tokenData.RootElement, "access_token") is not { Length: > 0 } accessToken)
+                        throw new OAuth2Exception("The token response does not contain an access token.");
 
-                return accessToken;
+                    return accessToken;
+                }
             }
         }
     }
