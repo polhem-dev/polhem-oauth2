@@ -1,12 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
     <Description>Polhem.OAuth2 is a lightweight .NET OAuth2 authentication library that supports multiple providers, including Google, Facebook, LINE, Azure, Auth0, and Okta.</Description>
     <PackageTags>OAuth2</PackageTags>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- System.Text.Json is part of the net10.0 framework, so only the netstandard2.0 build needs the package. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Text.Json" Version="10.0.12" />
   </ItemGroup>
 
