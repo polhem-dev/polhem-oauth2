@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 # macOS Finder metadata
 .DS_Store
+
+# Local credentials for the loopback redirect probe
+tools/LoopbackRedirectProbe/probe.settings.json

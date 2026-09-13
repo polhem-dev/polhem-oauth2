@@ -1,0 +1,29 @@
+{
+  "Google": {
+    "ClientId": "",
+    "ClientSecret": ""
+  },
+  "Facebook": {
+    "ClientId": "",
+    "ClientSecret": ""
+  },
+  "Line": {
+    "ClientId": "",
+    "ClientSecret": ""
+  },
+  "Azure": {
+    "ClientId": "",
+    "ClientSecret": ""
+  },
+  "Auth0": {
+    "Domain": "your-tenant.auth0.com",
+    "ClientId": "",
+    "ClientSecret": ""
+  },
+  "Okta": {
+    "Domain": "dev-123456.okta.com",
+    "AuthorizationServerId": "default",
+    "ClientId": "",
+    "ClientSecret": ""
+  }
+}
