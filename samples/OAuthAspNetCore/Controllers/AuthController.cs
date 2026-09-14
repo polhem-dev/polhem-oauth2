@@ -12,10 +12,10 @@ namespace OAuthAspNetCore.Controllers
             _oauth2Manager = oauth2Manager;
         }
 
-        [HttpGet("/auth/login")]
-        public IActionResult Login()
+        [HttpGet("/auth/login/{clientName=Google}")]
+        public IActionResult Login(string clientName)
         {
-            return Redirect(_oauth2Manager.CreateAuthorizationUrl(HttpContext, "Google"));
+            return Redirect(_oauth2Manager.CreateAuthorizationUrl(HttpContext, clientName));
         }
 
         [HttpGet("/auth/callback")]
