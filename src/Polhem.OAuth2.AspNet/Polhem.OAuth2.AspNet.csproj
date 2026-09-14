@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
+    <!-- .NET Framework 4.7.2 is the first version with HttpCookie.SameSite. -->
+    <TargetFramework>net472</TargetFramework>
     <Description>OAuth2 sign-in for ASP.NET Web Forms and MVC applications on System.Web, with Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.</Description>
     <PackageTags>oauth2 openid-connect pkce aspnet webforms mvc google facebook line entra-id azure-ad auth0 okta</PackageTags>
   </PropertyGroup>
@@ -11,7 +12,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Web" />
+  </ItemGroup>
+
+  <!-- Both web packages compile the format of the pending sign-in cookie from this one file. -->
+  <ItemGroup>
+    <Compile Include="..\Shared\PendingAuthorizationCookie.cs" Link="Shared\PendingAuthorizationCookie.cs" />
   </ItemGroup>
 
 </Project>

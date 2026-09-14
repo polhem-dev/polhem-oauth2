@@ -1,18 +1,10 @@
 #nullable enable
-Polhem.OAuth2.AspNet.OAuth2Client
-Polhem.OAuth2.AspNet.OAuth2Client.OAuth2Client(Polhem.OAuth2.OAuth2Options! options) -> void
 Polhem.OAuth2.AspNet.OAuth2Manager
-Polhem.OAuth2.AspNet.StateStorage
-Polhem.OAuth2.AspNet.StateStorage.GetCodeVerifier() -> string?
-Polhem.OAuth2.AspNet.StateStorage.GetState() -> string?
-Polhem.OAuth2.AspNet.StateStorage.RemoveCodeVerifier() -> void
-Polhem.OAuth2.AspNet.StateStorage.RemoveState() -> void
-Polhem.OAuth2.AspNet.StateStorage.SaveCodeVerifier(string! codeVerifier) -> void
-Polhem.OAuth2.AspNet.StateStorage.SaveState(string! value) -> void
-Polhem.OAuth2.AspNet.StateStorage.StateStorage() -> void
-override Polhem.OAuth2.AspNet.OAuth2Client.StateStorage.get -> Polhem.OAuth2.IStateStorage!
-static Polhem.OAuth2.AspNet.OAuth2Manager.GetAuthorizationUrl(string! clientName) -> string!
-static Polhem.OAuth2.AspNet.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.AspNet.OAuth2Client?
+static Polhem.OAuth2.AspNet.OAuth2Manager.CompleteAuthorizationAsync() -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+static Polhem.OAuth2.AspNet.OAuth2Manager.CompleteAuthorizationAsync(System.Web.HttpContextBase! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+static Polhem.OAuth2.AspNet.OAuth2Manager.CreateAuthorizationUrl(System.Web.HttpContextBase! context, string! clientName) -> string!
+static Polhem.OAuth2.AspNet.OAuth2Manager.CreateAuthorizationUrl(string! clientName) -> string!
+static Polhem.OAuth2.AspNet.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.OAuth2Client?
+static Polhem.OAuth2.AspNet.OAuth2Manager.RedirectToAuthorization(System.Web.HttpContextBase! context, string! clientName) -> void
 static Polhem.OAuth2.AspNet.OAuth2Manager.RedirectToAuthorization(string! clientName) -> void
-static Polhem.OAuth2.AspNet.OAuth2Manager.RegisterClient(string! clientName, Polhem.OAuth2.AspNet.OAuth2Client! client) -> void
-static Polhem.OAuth2.AspNet.OAuth2Manager.ValidateAuthorization() -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+static Polhem.OAuth2.AspNet.OAuth2Manager.RegisterClient(string! clientName, Polhem.OAuth2.OAuth2Options! options, System.Net.Http.HttpClient? httpClient = null) -> void

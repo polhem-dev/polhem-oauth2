@@ -1,24 +1,20 @@
-using Polhem.OAuth2;
-using Polhem.OAuth2.AspNetCore;
 using Newtonsoft.Json;
 using OAuthAspNetCore.Models;
+using Polhem.OAuth2;
 
 namespace OAuthAspNetCore.Extensions
 {
     public static class OAuth2RegistrationHelper
     {
-        public static OAuth2Manager CreateOAuth2Manager(IServiceProvider provider)
+        public static void AddOAuth2Clients(IServiceCollection services, string configPath)
         {
-            var accessor = provider.GetRequiredService<IHttpContextAccessor>();
-            var config = LoadOAuthConfig(@"OAuthConfig.json");
-            var manager = new OAuth2Manager(accessor);
-            RegisterIfExists(manager, "Google", config?.GoogleOAuth, accessor);
-            RegisterIfExists(manager, "Facebook", config?.FacebookOAuth, accessor);
-            RegisterIfExists(manager, "Line", config?.LineOAuth, accessor);
-            RegisterIfExists(manager, "Azure", config?.AzureOAuth, accessor);
-            RegisterIfExists(manager, "Auth0", config?.Auth0OAuth, accessor);
-            RegisterIfExists(manager, "Okta", config?.OktaOAuth, accessor);
-            return manager;
+            var config = LoadOAuthConfig(configPath);
+            AddIfConfigured(services, "Google", config.GoogleOAuth);
+            AddIfConfigured(services, "Facebook", config.FacebookOAuth);
+            AddIfConfigured(services, "Line", config.LineOAuth);
+            AddIfConfigured(services, "Azure", config.AzureOAuth);
+            AddIfConfigured(services, "Auth0", config.Auth0OAuth);
+            AddIfConfigured(services, "Okta", config.OktaOAuth);
         }
 
         private static OAuthConfig LoadOAuthConfig(string filePath)
@@ -30,13 +26,12 @@ namespace OAuthAspNetCore.Extensions
             return JsonConvert.DeserializeObject<OAuthConfig>(json) ?? new OAuthConfig();
         }
 
-        private static void RegisterIfExists(OAuth2Manager manager, string name, OAuth2Options? options, IHttpContextAccessor accessor)
+        private static void AddIfConfigured(IServiceCollection services, string name, OAuth2Options? options)
         {
             if (options != null)
             {
-                manager.RegisterClient(name, new Polhem.OAuth2.AspNetCore.OAuth2Client(options, accessor));
+                services.AddOAuth2Client(name, options);
             }
         }
     }
-
 }

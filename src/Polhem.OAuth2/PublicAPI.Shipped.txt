@@ -22,24 +22,10 @@ Polhem.OAuth2.AzureOAuth2Options
 Polhem.OAuth2.AzureOAuth2Options.AzureOAuth2Options() -> void
 Polhem.OAuth2.AzureOAuth2Options.Tenant.get -> string!
 Polhem.OAuth2.AzureOAuth2Options.Tenant.set -> void
-Polhem.OAuth2.BaseOAuth2Client
-Polhem.OAuth2.BaseOAuth2Client.BaseOAuth2Client(Polhem.OAuth2.OAuth2Options! options) -> void
-Polhem.OAuth2.BaseOAuth2Client.GetAuthorizationUrl(string! state) -> string!
-Polhem.OAuth2.BaseOAuth2Client.UsePkce.get -> bool
-Polhem.OAuth2.BaseOAuth2Client.UsePkce.set -> void
-Polhem.OAuth2.BaseOAuth2Client.ValidateAuthorization(string? authorizationCode) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
-Polhem.OAuth2.BaseOAuth2Client.ValidateState(string? returnedState) -> bool
 Polhem.OAuth2.FacebookOAuth2Options
 Polhem.OAuth2.FacebookOAuth2Options.FacebookOAuth2Options() -> void
 Polhem.OAuth2.GoogleOAuth2Options
 Polhem.OAuth2.GoogleOAuth2Options.GoogleOAuth2Options() -> void
-Polhem.OAuth2.IStateStorage
-Polhem.OAuth2.IStateStorage.GetCodeVerifier() -> string?
-Polhem.OAuth2.IStateStorage.GetState() -> string?
-Polhem.OAuth2.IStateStorage.RemoveCodeVerifier() -> void
-Polhem.OAuth2.IStateStorage.RemoveState() -> void
-Polhem.OAuth2.IStateStorage.SaveCodeVerifier(string! codeVerifier) -> void
-Polhem.OAuth2.IStateStorage.SaveState(string! value) -> void
 Polhem.OAuth2.LineOAuth2Options
 Polhem.OAuth2.LineOAuth2Options.LineOAuth2Options() -> void
 Polhem.OAuth2.LoopbackOAuth2Client
@@ -80,7 +66,6 @@ Polhem.OAuth2.OAuth2Options.UsePkce.get -> bool
 Polhem.OAuth2.OAuth2Options.UsePkce.set -> void
 Polhem.OAuth2.OAuth2Options.UserInfoEndpoint.get -> string!
 Polhem.OAuth2.OAuth2Options.UserInfoEndpoint.set -> void
-Polhem.OAuth2.OAuth2StateCryptor
 Polhem.OAuth2.OktaOAuth2Options
 Polhem.OAuth2.OktaOAuth2Options.AuthorizationServerId.get -> string!
 Polhem.OAuth2.OktaOAuth2Options.AuthorizationServerId.set -> void
@@ -107,8 +92,5 @@ Polhem.OAuth2.UserInfo.RawJson.get -> string!
 Polhem.OAuth2.UserInfo.UserId.get -> string?
 Polhem.OAuth2.UserInfo.UserInfo(string? userId, string? userName, string? email, string! rawJson) -> void
 Polhem.OAuth2.UserInfo.UserName.get -> string?
-abstract Polhem.OAuth2.BaseOAuth2Client.StateStorage.get -> Polhem.OAuth2.IStateStorage!
 static Polhem.OAuth2.AuthorizationResult.Failure(System.Exception! exception) -> Polhem.OAuth2.AuthorizationResult!
 static Polhem.OAuth2.AuthorizationResult.Success(string! providerName, Polhem.OAuth2.TokenResponse! token, Polhem.OAuth2.UserInfo! userInfo) -> Polhem.OAuth2.AuthorizationResult!
-static Polhem.OAuth2.OAuth2StateCryptor.DecryptClientName(string! state) -> string!
-static Polhem.OAuth2.OAuth2StateCryptor.EncryptClientName(string! clientName) -> string!

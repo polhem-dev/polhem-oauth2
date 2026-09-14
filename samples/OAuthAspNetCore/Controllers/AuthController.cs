@@ -15,24 +15,23 @@ namespace OAuthAspNetCore.Controllers
         [HttpGet("/auth/login")]
         public IActionResult Login()
         {
-            _oauth2Manager.RedirectToAuthorization("Google");
-            return new EmptyResult();
+            return Redirect(_oauth2Manager.CreateAuthorizationUrl(HttpContext, "Google"));
         }
 
         [HttpGet("/auth/callback")]
         public async Task<IActionResult> Callback()
         {
-            var result = await _oauth2Manager.ValidateAuthorization();
-            if (result.IsSuccess && result.UserInfo is { } user)
+            var result = await _oauth2Manager.CompleteAuthorizationAsync(HttpContext, HttpContext.RequestAborted);
+            if (result.IsSuccess)
             {
                 return Content($"ProviderName: {result.ProviderName}\n" +
-                               $"UserID: {user.UserId}\n" +
-                               $"UserName: {user.UserName}\n" +
-                               $"Email: {user.Email}\n" +
-                               $"RawJson: {user.RawJson}");
+                               $"UserID: {result.UserInfo.UserId}\n" +
+                               $"UserName: {result.UserInfo.UserName}\n" +
+                               $"Email: {result.UserInfo.Email}\n" +
+                               $"RawJson: {result.UserInfo.RawJson}");
             }
 
-            return Content($"Error: {result.Exception?.Message}");
+            return Content($"Error: {result.Exception.Message}");
         }
     }
 }

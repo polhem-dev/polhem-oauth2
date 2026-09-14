@@ -15,8 +15,13 @@
     <InternalsVisibleTo Include="Polhem.OAuth2.UnitTests" />
   </ItemGroup>
 
-  <!-- net10.0 has the nullable analysis attributes, so only netstandard2.0 compiles the internal copies. -->
+  <!-- A file named *.NetStandard.cs is compiled for netstandard2.0 only, and a file named *.Net.cs for net10.0 only.
+       net10.0 has the nullable analysis attributes, so only netstandard2.0 compiles the internal copies in Polyfills. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <Compile Remove="**/*.Net.cs" />
+  </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <Compile Remove="**/*.NetStandard.cs" />
     <Compile Remove="Polyfills/**" />
   </ItemGroup>
 

@@ -9,9 +9,6 @@ namespace Polhem.OAuth2
     /// </summary>
     internal abstract class OAuth2Provider
     {
-        // HttpClient is designed to be shared. Creating one for each request can exhaust the available sockets under load.
-        private static readonly HttpClient s_sharedHttpClient = new HttpClient();
-
         private readonly HttpClient _httpClient;
 
         /// <summary>
@@ -29,7 +26,7 @@ namespace Polhem.OAuth2
                 throw new ArgumentException($"{endpoint} must be an absolute https URI.", nameof(options));
 
             Options = options;
-            _httpClient = httpClient ?? s_sharedHttpClient;
+            _httpClient = httpClient ?? SharedHttpClient.Instance;
         }
 
         /// <summary>

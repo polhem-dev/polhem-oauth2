@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
+    <ProjectReference Include="..\..\src\Polhem.OAuth2.AspNetCore\Polhem.OAuth2.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,14 +1,10 @@
-using Polhem.OAuth2.AspNetCore;
 using OAuthAspNetCore.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
-builder.Services.AddSession();
-builder.Services.AddHttpContextAccessor();
-
-builder.Services.AddSingleton<OAuth2Manager>(OAuth2RegistrationHelper.CreateOAuth2Manager);
+OAuth2RegistrationHelper.AddOAuth2Clients(builder.Services, "OAuthConfig.json");
 
 var app = builder.Build();
 
@@ -24,7 +20,6 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-app.UseSession();
 app.UseAuthorization();
 
 app.MapControllerRoute(

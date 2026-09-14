@@ -191,6 +191,33 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("CompleteAuthorizationAsync turns a network failure into a failed result")]
+        public async Task CompleteAuthorizationAsync_NetworkFailure_ReturnsFailedResultWithHttpRequestException()
+        {
+            var handler = new StubHttpMessageHandler().Fail(new HttpRequestException("Simulated network failure."));
+            var client = new OAuth2Client(CreateOptions(), handler.CreateClient());
+            var pending = client.CreateAuthorizationRequest().Pending;
+
+            var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("code", pending.State, null, null), pending);
+
+            Assert.False(result.IsSuccess);
+            Assert.IsType<HttpRequestException>(result.Exception);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync turns an error from the token endpoint into a failed result with the error code")]
+        public async Task CompleteAuthorizationAsync_TokenEndpointError_ReturnsFailedResultWithErrorCode()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
+            var client = new OAuth2Client(CreateOptions(), handler.CreateClient());
+            var pending = client.CreateAuthorizationRequest().Pending;
+
+            var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("code", pending.State, null, null), pending);
+
+            Assert.Equal("invalid_grant", Assert.IsType<OAuth2Exception>(result.Exception).Error);
+        }
+
+        [Fact]
         [DisplayName("CompleteAuthorizationAsync turns a request timeout into a failed result")]
         public async Task CompleteAuthorizationAsync_RequestTimeout_ReturnsFailedResult()
         {

@@ -14,4 +14,13 @@
     <ProjectReference Include="..\Polhem.OAuth2\Polhem.OAuth2.csproj" />
   </ItemGroup>
 
+  <!-- Both web packages compile the format of the pending sign-in cookie from this one file. -->
+  <ItemGroup>
+    <Compile Include="..\Shared\PendingAuthorizationCookie.cs" Link="Shared\PendingAuthorizationCookie.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Polhem.OAuth2.UnitTests" />
+  </ItemGroup>
+
 </Project>

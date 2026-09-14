@@ -1,19 +1,8 @@
 #nullable enable
-Polhem.OAuth2.AspNetCore.OAuth2Client
-Polhem.OAuth2.AspNetCore.OAuth2Client.OAuth2Client(Polhem.OAuth2.OAuth2Options! options, Microsoft.AspNetCore.Http.IHttpContextAccessor! httpContextAccessor) -> void
+Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions
 Polhem.OAuth2.AspNetCore.OAuth2Manager
-Polhem.OAuth2.AspNetCore.OAuth2Manager.GetAuthorizationUrl(string! clientName) -> string!
-Polhem.OAuth2.AspNetCore.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.AspNetCore.OAuth2Client?
-Polhem.OAuth2.AspNetCore.OAuth2Manager.OAuth2Manager(Microsoft.AspNetCore.Http.IHttpContextAccessor! httpContextAccessor) -> void
-Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAuthorization(string! clientName) -> void
-Polhem.OAuth2.AspNetCore.OAuth2Manager.RegisterClient(string! clientName, Polhem.OAuth2.AspNetCore.OAuth2Client! client) -> void
-Polhem.OAuth2.AspNetCore.OAuth2Manager.ValidateAuthorization() -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
-Polhem.OAuth2.AspNetCore.StateStorage
-Polhem.OAuth2.AspNetCore.StateStorage.GetCodeVerifier() -> string?
-Polhem.OAuth2.AspNetCore.StateStorage.GetState() -> string?
-Polhem.OAuth2.AspNetCore.StateStorage.RemoveCodeVerifier() -> void
-Polhem.OAuth2.AspNetCore.StateStorage.RemoveState() -> void
-Polhem.OAuth2.AspNetCore.StateStorage.SaveCodeVerifier(string! codeVerifier) -> void
-Polhem.OAuth2.AspNetCore.StateStorage.SaveState(string! value) -> void
-Polhem.OAuth2.AspNetCore.StateStorage.StateStorage(Microsoft.AspNetCore.Http.IHttpContextAccessor! httpContextAccessor) -> void
-override Polhem.OAuth2.AspNetCore.OAuth2Client.StateStorage.get -> Polhem.OAuth2.IStateStorage!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.CompleteAuthorizationAsync(Microsoft.AspNetCore.Http.HttpContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> string!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.OAuth2Client?
+Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> void
+static Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2Client(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! clientName, Polhem.OAuth2.OAuth2Options! options, System.Net.Http.HttpClient? httpClient = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
