@@ -42,36 +42,45 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Start fails when the IPv4 loopback port is already in use")]
         public void Start_PortInUse_ThrowsSocketException()
         {
-            using var blocker = new TcpListener(IPAddress.Loopback, 0);
+            var blocker = new TcpListener(IPAddress.Loopback, 0);
             blocker.Start();
-            int port = ((IPEndPoint)blocker.LocalEndpoint).Port;
+            try
+            {
+                int port = ((IPEndPoint)blocker.LocalEndpoint).Port;
 
-            Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback")));
+                Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback")));
+            }
+            finally
+            {
+                // TcpListener is not IDisposable on .NET Framework.
+                blocker.Stop();
+            }
         }
 
-        [Fact]
+        // The browser may resolve localhost to the IPv6 loopback, so that program could receive the authorization code.
+        [Ipv6Fact]
         [DisplayName("Start for localhost fails when another program uses the port on the IPv6 loopback")]
         public void Start_LocalhostWithIpv6PortInUse_ThrowsSocketException()
         {
-            // The browser may resolve localhost to the IPv6 loopback, so that program could receive the authorization code.
-            // On a machine without IPv6 the situation cannot arise.
-            if (!Socket.OSSupportsIPv6)
-                return;
-
-            using var blocker = new TcpListener(IPAddress.IPv6Loopback, 0);
+            var blocker = new TcpListener(IPAddress.IPv6Loopback, 0);
             blocker.Start();
-            int port = ((IPEndPoint)blocker.LocalEndpoint).Port;
+            try
+            {
+                int port = ((IPEndPoint)blocker.LocalEndpoint).Port;
 
-            Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback")));
+                Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback")));
+            }
+            finally
+            {
+                // TcpListener is not IDisposable on .NET Framework.
+                blocker.Stop();
+            }
         }
 
-        [Fact]
+        [Ipv6Fact]
         [DisplayName("Start for localhost with port 0 also accepts connections on the IPv6 loopback")]
         public async Task Start_LocalhostPortZero_AcceptsIpv6Connection()
         {
-            if (!Socket.OSSupportsIPv6)
-                return;
-
             using var listener = LoopbackListener.Start(new Uri("http://localhost:0/callback"));
             var send = LoopbackTestHttp.SendAsync(IPAddress.IPv6Loopback, listener.RedirectUri.Port, "GET /callback?code=abc HTTP/1.1\r\n\r\n");
 
@@ -81,7 +90,7 @@ namespace Polhem.OAuth2.UnitTests
                 await request.RespondAsync("200 OK", "Done.");
             }
 
-            Assert.StartsWith("HTTP/1.1 200 OK", await send, StringComparison.Ordinal);
+            Assert.StartsWith("HTTP/1.1 200 OK", await send.WithTimeout(), StringComparison.Ordinal);
         }
 
         [Fact]
@@ -98,7 +107,7 @@ namespace Polhem.OAuth2.UnitTests
                 await request.RespondAsync("200 OK", "<done>");
             }
 
-            string response = await send;
+            string response = await send.WithTimeout();
             Assert.StartsWith("HTTP/1.1 200 OK", response, StringComparison.Ordinal);
             Assert.Contains("&lt;done&gt;", response, StringComparison.Ordinal);
         }
@@ -121,7 +130,7 @@ namespace Polhem.OAuth2.UnitTests
                 await request.RespondAsync("200 OK", "Done.");
             }
 
-            await send;
+            await send.WithTimeout();
         }
 
         [Fact]
@@ -136,7 +145,7 @@ namespace Polhem.OAuth2.UnitTests
                 Assert.Null(request.Target);
             }
 
-            await send;
+            await send.WithTimeout();
         }
 
         [Fact]
@@ -159,7 +168,7 @@ namespace Polhem.OAuth2.UnitTests
             using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
             using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => listener.AcceptClientAsync(cancellation.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => listener.AcceptClientAsync(cancellation.Token).WithTimeout());
         }
 
         [Theory]
@@ -196,8 +205,8 @@ namespace Polhem.OAuth2.UnitTests
 
         private static async Task<LoopbackRequest> AcceptRequestAsync(LoopbackListener listener, TimeSpan? readTimeout = null)
         {
-            TcpClient client = await listener.AcceptClientAsync(CancellationToken.None);
-            return await LoopbackRequest.ReadAsync(client, readTimeout ?? s_readTimeout, CancellationToken.None);
+            TcpClient client = await listener.AcceptClientAsync(CancellationToken.None).WithTimeout();
+            return await LoopbackRequest.ReadAsync(client, readTimeout ?? s_readTimeout, CancellationToken.None).WithTimeout();
         }
     }
 }

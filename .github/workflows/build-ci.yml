@@ -14,6 +14,8 @@ jobs:
     # Windows builds the net48 and Windows Forms targets natively. Other operating systems need
     # -p:EnableWindowsTargeting=true for the net10.0-windows sample.
     runs-on: windows-latest
+    # A hung test or restore ends the run instead of holding the runner for the default six hours.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code

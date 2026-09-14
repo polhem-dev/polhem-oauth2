@@ -20,7 +20,7 @@ namespace Polhem.OAuth2.UnitTests
             string verifier = Pkce.GenerateCodeVerifier();
 
             Assert.Equal(43, verifier.Length);
-            Assert.All(verifier, c => Assert.True(char.IsAsciiLetterOrDigit(c) || c == '-' || c == '_', $"Unexpected character '{c}'."));
+            Assert.All(verifier, c => Assert.True(IsBase64UrlCharacter(c), $"Unexpected character '{c}'."));
         }
 
         [Fact]
@@ -28,6 +28,11 @@ namespace Polhem.OAuth2.UnitTests
         public void GenerateCodeVerifier_TwoCalls_ReturnDifferentValues()
         {
             Assert.NotEqual(Pkce.GenerateCodeVerifier(), Pkce.GenerateCodeVerifier());
+        }
+
+        private static bool IsBase64UrlCharacter(char c)
+        {
+            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
         }
     }
 }

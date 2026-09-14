@@ -22,7 +22,8 @@ namespace Polhem.OAuth2.UnitTests
             using var client = new TcpClient(address.AddressFamily);
             await client.ConnectAsync(address, port);
             var stream = client.GetStream();
-            await stream.WriteAsync(Encoding.ASCII.GetBytes(request));
+            byte[] bytes = Encoding.ASCII.GetBytes(request);
+            await stream.WriteAsync(bytes, 0, bytes.Length);
             using var reader = new StreamReader(stream, Encoding.UTF8);
             return await reader.ReadToEndAsync();
         }
@@ -36,9 +37,9 @@ namespace Polhem.OAuth2.UnitTests
         {
             foreach (string pair in query.Split('&'))
             {
-                int equals = pair.IndexOf('=', StringComparison.Ordinal);
-                if (equals > 0 && string.Equals(pair[..equals], name, StringComparison.Ordinal))
-                    return Uri.UnescapeDataString(pair[(equals + 1)..].Replace('+', ' '));
+                int equals = pair.IndexOf('=');
+                if (equals > 0 && string.Equals(pair.Substring(0, equals), name, StringComparison.Ordinal))
+                    return Uri.UnescapeDataString(pair.Substring(equals + 1).Replace('+', ' '));
             }
             return null;
         }

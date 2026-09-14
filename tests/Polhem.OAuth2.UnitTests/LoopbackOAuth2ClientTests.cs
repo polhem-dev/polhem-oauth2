@@ -43,8 +43,8 @@ namespace Polhem.OAuth2.UnitTests
                 }
             };
 
-            var result = await client.SignInAsync();
-            await browser.Completed;
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             // The stub token endpoint rejects the request without an error code, so the exchange ends as an HTTP failure.
             Assert.IsType<HttpRequestException>(result.Exception);
@@ -66,8 +66,8 @@ namespace Polhem.OAuth2.UnitTests
             var browser = new FakeBrowser("/favicon.ico", "{path}?code=forged&state=forged", "{path}?code=genuine&state={state}");
             var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
-            await client.SignInAsync();
-            await browser.Completed;
+            await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.Equal("genuine", Assert.Single(handler.Requests).FormValue("code"));
             Assert.StartsWith("HTTP/1.1 404", browser.Responses[0], StringComparison.Ordinal);
@@ -83,8 +83,8 @@ namespace Polhem.OAuth2.UnitTests
             var browser = new FakeBrowser("Host=attacker.example {path}?code=forged&state={state}", "{path}?code=genuine&state={state}");
             var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
-            await client.SignInAsync();
-            await browser.Completed;
+            await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.Equal("genuine", Assert.Single(handler.Requests).FormValue("code"));
             Assert.StartsWith("HTTP/1.1 400", browser.Responses[0], StringComparison.Ordinal);
@@ -98,8 +98,8 @@ namespace Polhem.OAuth2.UnitTests
             var browser = new FakeBrowser("/call%62ack?code=abc&state={state}");
             var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
-            await client.SignInAsync();
-            await browser.Completed;
+            await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.Equal("abc", Assert.Single(handler.Requests).FormValue("code"));
         }
@@ -118,8 +118,8 @@ namespace Polhem.OAuth2.UnitTests
                 Timeout = TimeSpan.FromSeconds(3)
             };
 
-            var result = await client.SignInAsync();
-            await browser.Completed;
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.IsType<HttpRequestException>(result.Exception);
         }
@@ -132,8 +132,8 @@ namespace Polhem.OAuth2.UnitTests
             var browser = new FakeBrowser("{path}?error=access_denied&state={state}");
             var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
-            var result = await client.SignInAsync();
-            await browser.Completed;
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.False(result.IsSuccess);
             Assert.Equal("access_denied", Assert.IsType<OAuth2Exception>(result.Exception).Error);
@@ -152,8 +152,8 @@ namespace Polhem.OAuth2.UnitTests
                 Timeout = TimeSpan.FromSeconds(1)
             };
 
-            var result = await client.SignInAsync();
-            await browser.Completed;
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.IsType<TimeoutException>(result.Exception);
         }
@@ -172,7 +172,7 @@ namespace Polhem.OAuth2.UnitTests
                 }
             };
 
-            var result = await client.SignInAsync(cancellation.Token);
+            var result = await client.SignInAsync(cancellation.Token).WithTimeout();
 
             Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
         }
@@ -187,10 +187,10 @@ namespace Polhem.OAuth2.UnitTests
             var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
             var signIn = client.SignInAsync(cancellation.Token);
-            await handler.Hanging;
-            await cancellation.CancelAsync();
-            var result = await signIn;
-            await browser.Completed;
+            await handler.Hanging.WithTimeout();
+            cancellation.Cancel();
+            var result = await signIn.WithTimeout();
+            await browser.Completed.WithTimeout();
 
             Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
         }
@@ -209,7 +209,7 @@ namespace Polhem.OAuth2.UnitTests
                 }
             };
 
-            var result = await client.SignInAsync(new CancellationToken(canceled: true));
+            var result = await client.SignInAsync(new CancellationToken(canceled: true)).WithTimeout();
 
             Assert.False(opened);
             Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
@@ -219,23 +219,23 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("SignInAsync refuses to start a second sign-in on the same client")]
         public async Task SignInAsync_WhileInProgress_ThrowsInvalidOperationException()
         {
-            var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var opened = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             using var cancellation = new CancellationTokenSource();
             var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
             {
                 OpenBrowser = _ =>
                 {
-                    opened.TrySetResult();
+                    opened.TrySetResult(true);
                     return Task.CompletedTask;
                 }
             };
 
             var first = client.SignInAsync(cancellation.Token);
-            await opened.Task;
+            await opened.Task.WithTimeout();
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => client.SignInAsync());
-            await cancellation.CancelAsync();
-            Assert.IsAssignableFrom<OperationCanceledException>((await first).Exception);
+            cancellation.Cancel();
+            Assert.IsAssignableFrom<OperationCanceledException>((await first.WithTimeout()).Exception);
         }
 
         [Fact]
@@ -253,8 +253,8 @@ namespace Polhem.OAuth2.UnitTests
             var browser = new FakeBrowser("{path}?code=abc&state={state}");
             var client = new LoopbackOAuth2Client(options, handler.CreateClient()) { OpenBrowser = browser.Open };
 
-            await client.SignInAsync();
-            await browser.Completed;
+            await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
 
             var tokenRequest = Assert.Single(handler.Requests);
             string? verifier = tokenRequest.FormValue("code_verifier");
@@ -300,6 +300,8 @@ namespace Polhem.OAuth2.UnitTests
         /// </summary>
         private sealed class FakeBrowser
         {
+            private const string HostPrefix = "Host=";
+
             private readonly string[] _requests;
 
             public FakeBrowser(params string[] requests)
@@ -335,16 +337,14 @@ namespace Polhem.OAuth2.UnitTests
 
                             string? host = null;
                             string request = template;
-                            if (template.StartsWith("Host=", StringComparison.Ordinal))
+                            if (template.StartsWith(HostPrefix, StringComparison.Ordinal))
                             {
-                                int space = template.IndexOf(' ', StringComparison.Ordinal);
-                                host = template[5..space];
-                                request = template[(space + 1)..];
+                                int space = template.IndexOf(' ');
+                                host = template.Substring(HostPrefix.Length, space - HostPrefix.Length);
+                                request = template.Substring(space + 1);
                             }
 
-                            string pathAndQuery = request
-                                .Replace("{path}", redirectUri.AbsolutePath, StringComparison.Ordinal)
-                                .Replace("{state}", state, StringComparison.Ordinal);
+                            string pathAndQuery = request.Replace("{path}", redirectUri.AbsolutePath).Replace("{state}", state);
                             Responses.Add(await LoopbackTestHttp.GetAsync(redirectUri, pathAndQuery, host));
                         }
                     }

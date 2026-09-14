@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- On Windows the tests also run on .NET Framework, which loads the netstandard2.0 build of the core package and tests
+       the System.Web package. Other operating systems cannot run them, but -p:IncludeNetFrameworkTests=true compiles them. -->
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' == 'Windows_NT' Or '$(IncludeNetFrameworkTests)' == 'true'">net10.0;net48</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,7 +26,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <ProjectReference Include="..\..\src\Polhem.OAuth2.AspNetCore\Polhem.OAuth2.AspNetCore.csproj" />
+    <Compile Remove="AspNetOAuth2ManagerTests.cs;FakeHttpContext.cs" />
+  </ItemGroup>
+
+  <!-- The implicit usings of .NET Framework leave out System.Net.Http. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <ProjectReference Include="..\..\src\Polhem.OAuth2.AspNet\Polhem.OAuth2.AspNet.csproj" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Web" />
+    <Using Include="System.Net.Http" />
+    <Compile Remove="AspNetCoreOAuth2ManagerTests.cs" />
   </ItemGroup>
 
 </Project>

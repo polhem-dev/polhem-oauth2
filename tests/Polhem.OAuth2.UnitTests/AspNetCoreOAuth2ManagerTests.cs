@@ -239,10 +239,10 @@ namespace Polhem.OAuth2.UnitTests
             callback.RequestAborted = aborted.Token;
 
             var completion = manager.CompleteAuthorizationAsync(callback);
-            await handler.Hanging;
+            await handler.Hanging.WithTimeout();
             await aborted.CancelAsync();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => completion);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => completion.WithTimeout());
         }
 
         [Fact]

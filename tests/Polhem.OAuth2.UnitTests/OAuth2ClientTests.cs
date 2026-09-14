@@ -240,10 +240,10 @@ namespace Polhem.OAuth2.UnitTests
             using var cancellation = new CancellationTokenSource();
 
             var completion = client.CompleteAuthorizationAsync(new AuthorizationCallback("code", pending.State, null, null), pending, cancellation.Token);
-            await handler.Hanging;
-            await cancellation.CancelAsync();
+            await handler.Hanging.WithTimeout();
+            cancellation.Cancel();
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => completion);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => completion.WithTimeout());
         }
 
         [Fact]

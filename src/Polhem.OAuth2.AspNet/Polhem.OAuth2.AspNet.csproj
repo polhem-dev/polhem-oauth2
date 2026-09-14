@@ -21,4 +21,8 @@
     <Compile Include="..\Shared\PendingAuthorizationCookie.cs" Link="Shared\PendingAuthorizationCookie.cs" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Polhem.OAuth2.UnitTests" />
+  </ItemGroup>
+
 </Project>
