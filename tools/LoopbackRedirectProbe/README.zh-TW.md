@@ -9,20 +9,23 @@
 ## 準備
 
 1. 在 provider 的後台登記要測試的回呼網址。
-2. 把這個資料夾裡的 `probe.settings.example.json` 複製成 `probe.settings.json`，填入 client 憑證。
-   `probe.settings.json` 已被 git 忽略，不要把憑證 commit 進去。
+2. 把這個資料夾裡的 `probe.settings.example.json` 複製成 `probe.settings.json`。每個要測的 provider，填入 client 憑證，
+   以及在該 provider 登記的 `RedirectUri`。`probe.settings.json` 已被 git 忽略，不要把憑證 commit 進去。
+
+各 provider 比對回呼網址的規則不同，所以每個 provider 區段各有自己的 `RedirectUri`。port 一定要寫：沒寫 port 的網址
+等於 port 80，而 macOS 不允許沒有管理員權限的程式監聽它。port 寫 `0` 會自動挑一個可用的 port，適用於接受任意 loopback port 的 provider。
 
 ## 執行
 
 ```bash
 cd tools/LoopbackRedirectProbe
-dotnet run -- --provider Google --redirect http://127.0.0.1:0/callback
+dotnet run -- --provider Google
 ```
 
 | 選項 | 說明 |
 |------|------|
 | `--provider` | `Google`、`Facebook`、`Line`、`Azure`、`Auth0` 或 `Okta` |
-| `--redirect` | loopback 回呼網址。port 寫 `0` 會自動挑一個可用的 port，適用於接受任意 loopback port 的 provider。 |
+| `--redirect` | 選填。這次執行改用這個 loopback 回呼網址，取代設定檔裡該 provider 的 `RedirectUri`。 |
 | `--pkce` | `on`（預設）或 `off`。開啟 PKCE 時，只有本來就要求 client secret 的 provider 才會收到它。 |
 | `--settings` | 設定檔路徑，預設是目前資料夾的 `probe.settings.json`。 |
 | `--timeout` | 等待導回的秒數，預設 180。 |

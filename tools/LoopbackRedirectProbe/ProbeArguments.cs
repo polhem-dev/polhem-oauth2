@@ -9,12 +9,12 @@ namespace LoopbackRedirectProbe
     internal sealed class ProbeArguments
     {
         public const string Usage =
-            "Usage: LoopbackRedirectProbe --provider <Google|Facebook|Line|Azure|Auth0|Okta> --redirect <loopback URI>" +
+            "Usage: LoopbackRedirectProbe --provider <Google|Facebook|Line|Azure|Auth0|Okta> [--redirect <loopback URI>]" +
             " [--pkce <on|off>] [--settings <path>] [--timeout <seconds>]";
 
         private static readonly string[] s_providers = { "Google", "Facebook", "Line", "Azure", "Auth0", "Okta" };
 
-        private ProbeArguments(string provider, Uri redirectUri, bool usePkce, string settingsPath, int timeoutSeconds)
+        private ProbeArguments(string provider, Uri? redirectUri, bool usePkce, string settingsPath, int timeoutSeconds)
         {
             Provider = provider;
             RedirectUri = redirectUri;
@@ -25,7 +25,10 @@ namespace LoopbackRedirectProbe
 
         public string Provider { get; }
 
-        public Uri RedirectUri { get; }
+        /// <summary>
+        /// Gets the redirect URI that replaces the one in the settings file, or null to use the settings file.
+        /// </summary>
+        public Uri? RedirectUri { get; }
 
         public bool UsePkce { get; }
 
@@ -57,7 +60,8 @@ namespace LoopbackRedirectProbe
                 return false;
             }
 
-            if (!values.TryGetValue("redirect", out var redirect) || !Uri.TryCreate(redirect, UriKind.Absolute, out var redirectUri))
+            Uri? redirectUri = null;
+            if (values.TryGetValue("redirect", out var redirect) && !Uri.TryCreate(redirect, UriKind.Absolute, out redirectUri))
             {
                 error = "--redirect must be an absolute URI, for example http://127.0.0.1:0/callback.";
                 return false;

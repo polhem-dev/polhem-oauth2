@@ -23,7 +23,10 @@ namespace LoopbackRedirectProbe
             try
             {
                 options = ProbeSettings.Load(arguments.SettingsPath, arguments.Provider);
-                options.RedirectUri = arguments.RedirectUri.OriginalString;
+                if (arguments.RedirectUri is not null)
+                    options.RedirectUri = arguments.RedirectUri.OriginalString;
+                if (string.IsNullOrWhiteSpace(options.RedirectUri))
+                    return Fail($"Set RedirectUri in the '{arguments.Provider}' section of the settings file, or pass --redirect.", 2);
                 options.UsePkce = arguments.UsePkce;
                 client = new LoopbackOAuth2Client(options) { Timeout = TimeSpan.FromSeconds(arguments.TimeoutSeconds) };
             }
@@ -62,7 +65,7 @@ namespace LoopbackRedirectProbe
             }
             catch (SocketException ex)
             {
-                return Fail($"Cannot listen for {arguments.RedirectUri}: {ex.Message}", 2);
+                return Fail($"Cannot listen for {options.RedirectUri}: {ex.Message}", 2);
             }
 
             if (result.IsSuccess && result.UserInfo is { } user)
