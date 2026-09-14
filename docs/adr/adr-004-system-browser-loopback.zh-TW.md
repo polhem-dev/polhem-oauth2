@@ -54,7 +54,7 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | Auth0 | Native | `http://127.0.0.1:53682/callback`、`http://localhost:53682/callback` | 尚未測試 |
 | Okta | Native | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | 尚未測試 |
 | LINE | — | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | 尚未測試 |
-| Facebook | — | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | 尚未測試 |
+| Facebook | — | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | `localhost:53682` 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。`127.0.0.1:53682` 被拒：登入頁顯示應用程式的網路連線不安全。`localhost` 以可用 port 導回也被接受，雖然只登記了 port 53682。app 的模式（開發或上線）沒有記錄，上線狀態的 app 尚未測試。 |
 
 ## 影響
 

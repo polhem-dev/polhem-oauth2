@@ -60,7 +60,7 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
 | Auth0 | Native | `http://127.0.0.1:53682/callback`, `http://localhost:53682/callback` | Not tested yet |
 | Okta | Native | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
 | LINE | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
-| Facebook | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
+| Facebook | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | `localhost:53682` was accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). `127.0.0.1:53682` was refused: the sign-in page reported that the application's connection is not secure. `localhost` with a free port was also accepted, although only port 53682 was registered. The app's mode (development or live) was not recorded, and a live app has not been tested. |
 
 ## Consequences
 
