@@ -15,8 +15,6 @@ The reasons are recorded in `docs/adr/adr-002-language-policy.md`.
 
 - The rules live in `.editorconfig`, `src/Directory.Build.props` and `tests/Directory.Build.props`, and
   `TreatWarningsAsErrors` turns every violation into a build error. Read those files instead of restating rules here.
-- `Polhem.OAuth2.Desktop` and `Polhem.OAuth2.WinForms` opt out of the code-style gate in their project files, because
-  they are removed when the WebView2 sign-in flow is replaced.
 
 ## Decisions
 
@@ -29,4 +27,4 @@ dotnet build Polhem.OAuth2.slnx -c Release -p:EnableWindowsTargeting=true
 dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj -c Release
 ```
 
-`EnableWindowsTargeting` is only needed on macOS and Linux, where it lets the `net8.0-windows` project build.
+`EnableWindowsTargeting` is only needed on macOS and Linux, where it lets the `net10.0-windows` sample build.

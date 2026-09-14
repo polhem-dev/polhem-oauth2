@@ -18,9 +18,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
         with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
+          dotnet-version: 10.0.x
 
       - name: Restore dependencies
         run: dotnet restore --locked-mode
@@ -30,16 +28,12 @@ jobs:
           dotnet build src/Polhem.OAuth2/Polhem.OAuth2.csproj --configuration Release --no-restore
           dotnet build src/Polhem.OAuth2.AspNet/Polhem.OAuth2.AspNet.csproj --configuration Release --no-restore
           dotnet build src/Polhem.OAuth2.AspNetCore/Polhem.OAuth2.AspNetCore.csproj --configuration Release --no-restore
-          dotnet build src/Polhem.OAuth2.WinForms/Polhem.OAuth2.WinForms.csproj --configuration Release --no-restore
-          dotnet build src/Polhem.OAuth2.Desktop/Polhem.OAuth2.Desktop.csproj --configuration Release --no-restore
 
       - name: Pack Polhem.OAuth2 projects
         run: |
           dotnet pack src/Polhem.OAuth2/Polhem.OAuth2.csproj --configuration Release --output ./nupkgs
           dotnet pack src/Polhem.OAuth2.AspNet/Polhem.OAuth2.AspNet.csproj --configuration Release --output ./nupkgs
           dotnet pack src/Polhem.OAuth2.AspNetCore/Polhem.OAuth2.AspNetCore.csproj --configuration Release --output ./nupkgs
-          dotnet pack src/Polhem.OAuth2.WinForms/Polhem.OAuth2.WinForms.csproj --configuration Release --output ./nupkgs
-          dotnet pack src/Polhem.OAuth2.Desktop/Polhem.OAuth2.Desktop.csproj --configuration Release --output ./nupkgs
 
       - name: Push to NuGet
         env:
@@ -66,7 +60,5 @@ jobs:
             - Polhem.OAuth2
             - Polhem.OAuth2.AspNet
             - Polhem.OAuth2.AspNetCore
-            - Polhem.OAuth2.WinForms
-            - Polhem.OAuth2.Desktop
 
             See NuGet.org for installation details.

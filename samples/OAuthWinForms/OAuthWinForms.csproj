@@ -8,12 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3405.78" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\Polhem.OAuth2.WinForms\Polhem.OAuth2.WinForms.csproj" />
     <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
   </ItemGroup>
 

@@ -3,8 +3,8 @@ using System.Text.Json;
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// The platform-independent part of the OAuth2 authorization code flow. Each platform package derives from it and
-    /// supplies an <see cref="IStateStorage"/>.
+    /// The platform-independent part of the OAuth2 authorization code flow. Each client derives from it and supplies an
+    /// <see cref="IStateStorage"/>, for example <see cref="LoopbackOAuth2Client"/> for desktop and console applications.
     /// </summary>
     public abstract class BaseOAuth2Client
     {
@@ -53,7 +53,7 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Gets a value indicating whether the flow uses PKCE.
         /// </summary>
-        public bool UsePkce { get; private set; }
+        public bool UsePkce { get; protected set; }
 
         /// <summary>
         /// Stores the state, and the PKCE code verifier when PKCE is used, then builds the authorization URL.

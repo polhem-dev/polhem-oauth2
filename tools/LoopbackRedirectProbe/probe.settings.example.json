@@ -1,0 +1,35 @@
+{
+  "Google": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "RedirectUri": "http://127.0.0.1:0/callback"
+  },
+  "Facebook": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "RedirectUri": "http://localhost:53682/callback"
+  },
+  "Line": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "RedirectUri": "http://localhost:53682/callback"
+  },
+  "Azure": {
+    "ClientId": "",
+    "ClientSecret": "",
+    "RedirectUri": "http://localhost:0"
+  },
+  "Auth0": {
+    "Domain": "your-tenant.auth0.com",
+    "ClientId": "",
+    "ClientSecret": "",
+    "RedirectUri": "http://127.0.0.1:53682/callback"
+  },
+  "Okta": {
+    "Domain": "dev-123456.okta.com",
+    "AuthorizationServerId": "default",
+    "ClientId": "",
+    "ClientSecret": "",
+    "RedirectUri": "http://localhost:53682/callback"
+  }
+}
