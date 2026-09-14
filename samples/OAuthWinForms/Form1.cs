@@ -1,14 +1,20 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net.Sockets;
+using System.Text.Json;
 using System.Windows.Forms;
 using Polhem.OAuth2;
-using Polhem.OAuth2.WinForms;
-using Newtonsoft.Json;
 
 namespace OAuthWinForms
 {
-    public partial class Form1: Form
+    public partial class Form1 : Form
     {
+        private static readonly JsonSerializerOptions s_readOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        private static readonly JsonSerializerOptions s_writeOptions = new JsonSerializerOptions { WriteIndented = true };
+
+        private readonly Dictionary<string, LoopbackOAuth2Client> _clients = new Dictionary<string, LoopbackOAuth2Client>(StringComparer.Ordinal);
+
         public Form1()
         {
             InitializeComponent();
@@ -16,43 +22,65 @@ namespace OAuthWinForms
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            string filePath = @"OAuthConfig.json";
-            var config = LoadOAuthConfig(filePath);
-            RegisterIfExists("Google", 600, 700, config?.GoogleOAuth);
-            RegisterIfExists("Facebook", 900, 500, config?.FacebookOAuth);
-            RegisterIfExists("Line", 600, 800, config?.LineOAuth);
-            RegisterIfExists("Azure", 800, 600, config?.AzureOAuth);
-            RegisterIfExists("Auth0", 800, 600, config?.Auth0OAuth);
-            RegisterIfExists("Okta", 800, 600, config?.OktaOAuth);
+            var config = LoadOAuthConfig(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "OAuthConfig.json"));
+            RegisterIfExists("Google", config.GoogleOAuth);
+            RegisterIfExists("Facebook", config.FacebookOAuth);
+            RegisterIfExists("Line", config.LineOAuth);
+            RegisterIfExists("Azure", config.AzureOAuth);
+            RegisterIfExists("Auth0", config.Auth0OAuth);
+            RegisterIfExists("Okta", config.OktaOAuth);
         }
 
-        private OAuthConfig LoadOAuthConfig(string filePath)
+        private static OAuthConfig LoadOAuthConfig(string filePath)
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException("Configuration file not found.", filePath);
 
             string json = File.ReadAllText(filePath);
-            return JsonConvert.DeserializeObject<OAuthConfig>(json) ?? new OAuthConfig();
+            return JsonSerializer.Deserialize<OAuthConfig>(json, s_readOptions) ?? new OAuthConfig();
         }
 
-        private void RegisterIfExists(string name, int width, int height, OAuth2Options options)
+        private void RegisterIfExists(string name, OAuth2Options options)
         {
-            if (options != null)
+            if (options == null)
+                return;
+
+            try
             {
-                var client = new OAuth2Client(options)
-                {
-                    Caption = $"{name} Login",
-                    Width = width,
-                    Height = height
-                };
-                OAuth2Manager.RegisterClient(name, client);
+                _clients[name] = new LoopbackOAuth2Client(options);
+            }
+            catch (ArgumentException ex)
+            {
+                edtUserInfo.AppendText($"{name}: {ex.Message}\r\n");
             }
         }
 
-        /// <summary>
-        /// 顯示 OAuth2 整合認證回傳結果。
-        /// </summary>
-        /// <param name="result">授權碼取得相關資訊的回傳結果。</param>
+        private async void Login(string clientName)
+        {
+            if (!_clients.TryGetValue(clientName, out var client))
+            {
+                edtUserInfo.Text = $"{clientName} is not configured in OAuthConfig.json.";
+                return;
+            }
+
+            edtUserInfo.Text = "Finish signing in in the browser.";
+            try
+            {
+                var result = await client.SignInAsync();
+                // The browser has the focus when the sign-in ends, so the form is brought back to the front.
+                Activate();
+                ShowResult(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                edtUserInfo.Text = ex.Message;
+            }
+            catch (SocketException ex)
+            {
+                edtUserInfo.Text = $"Cannot listen on the redirect URI: {ex.Message}";
+            }
+        }
+
         private void ShowResult(AuthorizationResult result)
         {
             if (result.Exception != null)
@@ -68,23 +96,17 @@ namespace OAuthWinForms
                 return;
             }
 
-            var json = JsonConvert.SerializeObject(JsonConvert.DeserializeObject(userInfo.RawJson), Formatting.Indented);
-            var value = $"ProviderName : {result.ProviderName}\r\n" +
-                                $"UserID : {userInfo.UserId}\r\n" +
-                                $"UserName : {userInfo.UserName}\r\n" +
-                                $"Email : {userInfo.Email}\r\n" +
-                                $"RawJson : \r\n{json}";
-            edtUserInfo.Text = value;
-        }
+            string json;
+            using (var document = JsonDocument.Parse(userInfo.RawJson))
+            {
+                json = JsonSerializer.Serialize(document.RootElement, s_writeOptions);
+            }
 
-        /// <summary>
-        /// 執行登入。
-        /// </summary>
-        /// <param name="clientName">用戶端名稱。</param>
-        private async void Login(string clientName)
-        {
-            var result = await OAuth2Manager.Login(clientName);
-            ShowResult(result);
+            edtUserInfo.Text = $"ProviderName : {result.ProviderName}\r\n" +
+                               $"UserID : {userInfo.UserId}\r\n" +
+                               $"UserName : {userInfo.UserName}\r\n" +
+                               $"Email : {userInfo.Email}\r\n" +
+                               $"RawJson : \r\n{json}";
         }
 
         private void btnGoogle_Click(object sender, EventArgs e)

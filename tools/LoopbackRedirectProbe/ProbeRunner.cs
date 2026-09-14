@@ -19,11 +19,13 @@ namespace LoopbackRedirectProbe
             }
 
             OAuth2Options options;
-            LoopbackListener listener;
+            LoopbackOAuth2Client client;
             try
             {
                 options = ProbeSettings.Load(arguments.SettingsPath, arguments.Provider);
-                listener = LoopbackListener.Start(arguments.RedirectUri);
+                options.RedirectUri = arguments.RedirectUri.OriginalString;
+                options.UsePkce = arguments.UsePkce;
+                client = new LoopbackOAuth2Client(options) { Timeout = TimeSpan.FromSeconds(arguments.TimeoutSeconds) };
             }
             catch (FileNotFoundException ex)
             {
@@ -41,52 +43,45 @@ namespace LoopbackRedirectProbe
             {
                 return Fail(ex.Message, 2);
             }
+
+            // The client calls this after it starts listening, when the redirect URI carries the port that was bound.
+            client.OpenBrowser = url =>
+            {
+                Console.WriteLine($"Provider:     {arguments.Provider}");
+                Console.WriteLine($"Redirect URI: {options.RedirectUri}");
+                Console.WriteLine($"PKCE:         {(arguments.UsePkce ? "on" : "off")}");
+                Console.WriteLine("Opening the system browser. If it does not open, visit this URL:");
+                Console.WriteLine(url);
+                BrowserLauncher.TryOpen(url);
+            };
+
+            AuthorizationResult result;
+            try
+            {
+                result = await client.SignInAsync();
+            }
             catch (SocketException ex)
             {
                 return Fail($"Cannot listen for {arguments.RedirectUri}: {ex.Message}", 2);
             }
 
-            using (listener)
+            if (result.IsSuccess && result.UserInfo is { } user)
             {
-                options.RedirectUri = listener.RedirectUri.AbsoluteUri;
-                options.UsePkce = arguments.UsePkce;
-
-                var client = new ProbeClient(options);
-                string authorizationUrl = client.GetAuthorizationUrl(Pkce.GenerateCodeVerifier());
-
-                Console.WriteLine($"Provider:     {arguments.Provider}");
-                Console.WriteLine($"Redirect URI: {options.RedirectUri}");
-                Console.WriteLine($"PKCE:         {(arguments.UsePkce ? "on" : "off")}");
-                Console.WriteLine("Opening the system browser. If it does not open, visit this URL:");
-                Console.WriteLine(authorizationUrl);
-                BrowserLauncher.TryOpen(authorizationUrl);
-
-                LoopbackCallback callback;
-                try
-                {
-                    callback = await listener.WaitForCallbackAsync(TimeSpan.FromSeconds(arguments.TimeoutSeconds));
-                }
-                catch (TimeoutException)
-                {
-                    return Fail("No callback arrived before the timeout. If the browser shows a redirect URI error, the provider rejected this URI.", 1);
-                }
-
-                if (callback.Error is { } providerError)
-                    return Fail($"The provider returned an error to the callback: {providerError} {callback.ErrorDescription}".TrimEnd(), 1);
-
-                if (!client.ValidateState(callback.State))
-                    return Fail("The state returned to the callback does not match.", 1);
-
-                var result = await client.ValidateAuthorization(callback.Code);
-                if (!result.IsSuccess || result.UserInfo is not { } user)
-                    return Fail($"The provider accepted the redirect, but the code exchange failed: {result.Exception?.Message}", 1);
-
                 Console.WriteLine("The provider accepted the loopback redirect, and the code exchange succeeded.");
                 Console.WriteLine($"  User ID:   {user.UserId}");
                 Console.WriteLine($"  User name: {user.UserName}");
                 Console.WriteLine($"  Email:     {user.Email}");
                 return 0;
             }
+
+            return result.Exception switch
+            {
+                TimeoutException => Fail(
+                    "No redirect with the state of this sign-in arrived before the timeout. If the browser shows a redirect URI error, the provider rejected this URI.", 1),
+                HttpRequestException ex => Fail($"The provider accepted the redirect, but the code exchange failed: {ex.Message}", 1),
+                { } ex => Fail($"The sign-in failed: {ex.Message}", 1),
+                null => Fail("The sign-in failed without an exception.", 1)
+            };
         }
 
         private static int Fail(string message, int exitCode)

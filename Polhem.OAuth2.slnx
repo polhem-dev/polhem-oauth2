@@ -4,14 +4,13 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/OAuthAspNetCore/OAuthAspNetCore.csproj" />
+    <Project Path="samples/OAuthConsole/OAuthConsole.csproj" />
     <Project Path="samples/OAuthDesktop/OAuthDesktop.csproj" />
     <Project Path="samples/OAuthWinForms/OAuthWinForms.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Polhem.OAuth2.AspNet/Polhem.OAuth2.AspNet.csproj" />
     <Project Path="src/Polhem.OAuth2.AspNetCore/Polhem.OAuth2.AspNetCore.csproj" />
-    <Project Path="src/Polhem.OAuth2.Desktop/Polhem.OAuth2.Desktop.csproj" />
-    <Project Path="src/Polhem.OAuth2.WinForms/Polhem.OAuth2.WinForms.csproj" />
     <Project Path="src/Polhem.OAuth2/Polhem.OAuth2.csproj" />
   </Folder>
   <Folder Name="/tests/">
