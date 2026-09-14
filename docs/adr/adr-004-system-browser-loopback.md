@@ -59,7 +59,7 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
 | Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<free port>/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
 | Auth0 | Native | `http://127.0.0.1:53682/callback`, `http://localhost:53682/callback` | Not tested yet |
 | Okta | Native | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
-| LINE | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
+| LINE | — | `http://localhost:53682/callback` | Accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port must match: while only `http://localhost/callback` was registered, a redirect to port 53682 was refused as an invalid `redirect_uri`. The user information did not include an email address. `127.0.0.1` has not been tested. |
 | Facebook | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | `localhost:53682` was accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). `127.0.0.1:53682` was refused: the sign-in page reported that the application's connection is not secure. `localhost` with a free port was also accepted, although only port 53682 was registered. The app's mode (development or live) was not recorded, and a live app has not been tested. |
 
 ## Consequences
@@ -68,6 +68,8 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
   provider. `Caption`, `Width`, `Height`, `AuthorizationForm` and the desktop `OAuth2Manager` have no replacement, because
   the provider's page opens in the user's browser.
 - A desktop application cannot keep a client secret confidential: anything distributed with it can be extracted.
+- A redirect URI without a port means port 80. On macOS the probe could not listen on that port without administrator
+  rights, so a redirect URI should name its port.
 - The browser takes the focus during sign-in. The Windows Forms samples bring their window back to the front when the sign-in ends.
 - `tests/Polhem.OAuth2.UnitTests/LoopbackListenerTests.cs` and `LoopbackOAuth2ClientTests.cs` cover port selection, the
   IPv6 port conflict, ignored requests without the state, the timeout, cancellation, and the redirect URI sent with the
