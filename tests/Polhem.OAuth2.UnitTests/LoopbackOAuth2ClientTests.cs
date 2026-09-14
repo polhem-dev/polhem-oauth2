@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Net;
+using System.Net.Sockets;
 
 namespace Polhem.OAuth2.UnitTests
 {
@@ -13,19 +14,34 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("http://example.com/callback")]
         public void Constructor_NonLoopbackRedirectUri_ThrowsArgumentException(string redirectUri)
         {
-            var options = new GoogleOAuth2Options { RedirectUri = redirectUri };
+            var options = new GoogleOAuth2Options { ClientId = "client-id", RedirectUri = redirectUri };
 
             Assert.Throws<ArgumentException>(() => new LoopbackOAuth2Client(options));
         }
 
         [Fact]
-        [DisplayName("SignInAsync exchanges the code with the redirect URI of the bound port, then restores the configured URI")]
+        [DisplayName("The constructor rejects null options")]
+        public void Constructor_NullOptions_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new LoopbackOAuth2Client(null!));
+        }
+
+        [Fact]
+        [DisplayName("SignInAsync exchanges the code with the redirect URI of the bound port and leaves the options unchanged")]
         public async Task SignInAsync_CallbackWithState_ExchangesCodeWithBoundRedirectUri()
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
             var options = CreateOptions();
             var browser = new FakeBrowser("{path}?code=abc&state={state}");
-            var client = new LoopbackOAuth2Client(options, handler.CreateClient()) { OpenBrowser = browser.Open };
+            string? redirectUriWhileSigningIn = null;
+            var client = new LoopbackOAuth2Client(options, handler.CreateClient())
+            {
+                OpenBrowser = url =>
+                {
+                    redirectUriWhileSigningIn = options.RedirectUri;
+                    return browser.Open(url);
+                }
+            };
 
             var result = await client.SignInAsync();
             await browser.Completed;
@@ -38,6 +54,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal(boundRedirectUri, tokenRequest.FormValue("redirect_uri"));
             Assert.Equal("abc", tokenRequest.FormValue("code"));
             Assert.StartsWith("HTTP/1.1 200 OK", browser.Responses[0], StringComparison.Ordinal);
+            Assert.Equal("http://127.0.0.1:0/callback", redirectUriWhileSigningIn);
             Assert.Equal("http://127.0.0.1:0/callback", options.RedirectUri);
         }
 
@@ -59,8 +76,57 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("SignInAsync turns an error redirect into a failed result with OAuth2Exception")]
-        public async Task SignInAsync_ProviderError_ReturnsFailedResultWithOAuth2Exception()
+        [DisplayName("SignInAsync ignores a request whose Host header names another host, even with the state of the sign-in")]
+        public async Task SignInAsync_RequestWithOtherHost_IsIgnored()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
+            var browser = new FakeBrowser("Host=attacker.example {path}?code=forged&state={state}", "{path}?code=genuine&state={state}");
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
+
+            await client.SignInAsync();
+            await browser.Completed;
+
+            Assert.Equal("genuine", Assert.Single(handler.Requests).FormValue("code"));
+            Assert.StartsWith("HTTP/1.1 400", browser.Responses[0], StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("SignInAsync accepts a redirect whose path is percent-encoded")]
+        public async Task SignInAsync_PercentEncodedPath_ReceivesRedirect()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
+            var browser = new FakeBrowser("/call%62ack?code=abc&state={state}");
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
+
+            await client.SignInAsync();
+            await browser.Completed;
+
+            Assert.Equal("abc", Assert.Single(handler.Requests).FormValue("code"));
+        }
+
+        [Fact]
+        [DisplayName("SignInAsync receives the redirect while a connection that sends nothing is still open")]
+        public async Task SignInAsync_IdleConnectionBeforeRedirect_ReceivesRedirect()
+        {
+            // A connection may stay silent for five seconds before it is given up. The timeout is shorter, so the redirect only
+            // arrives in time when it does not wait behind the idle connection.
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
+            var browser = new FakeBrowser("idle", "{path}?code=abc&state={state}");
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient())
+            {
+                OpenBrowser = browser.Open,
+                Timeout = TimeSpan.FromSeconds(3)
+            };
+
+            var result = await client.SignInAsync();
+            await browser.Completed;
+
+            Assert.IsType<HttpRequestException>(result.Exception);
+        }
+
+        [Fact]
+        [DisplayName("SignInAsync turns an error redirect into a failed result with the error code")]
+        public async Task SignInAsync_ProviderError_ReturnsFailedResultWithErrorCode()
         {
             var handler = new StubHttpMessageHandler();
             var browser = new FakeBrowser("{path}?error=access_denied&state={state}");
@@ -70,7 +136,7 @@ namespace Polhem.OAuth2.UnitTests
             await browser.Completed;
 
             Assert.False(result.IsSuccess);
-            Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.Equal("access_denied", Assert.IsType<OAuth2Exception>(result.Exception).Error);
             Assert.Contains("did not complete", browser.Responses[0], StringComparison.Ordinal);
             Assert.Empty(handler.Requests);
         }
@@ -93,13 +159,38 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("SignInAsync turns cancellation into a failed result with OperationCanceledException")]
+        [DisplayName("SignInAsync turns cancellation while waiting into a failed result with OperationCanceledException")]
         public async Task SignInAsync_CanceledWhileWaiting_ReturnsFailedResultWithOperationCanceledException()
         {
             using var cancellation = new CancellationTokenSource();
-            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient()) { OpenBrowser = _ => cancellation.Cancel() };
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
+            {
+                OpenBrowser = _ =>
+                {
+                    cancellation.Cancel();
+                    return Task.CompletedTask;
+                }
+            };
 
             var result = await client.SignInAsync(cancellation.Token);
+
+            Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
+        }
+
+        [Fact]
+        [DisplayName("SignInAsync turns cancellation during the code exchange into a failed result with OperationCanceledException")]
+        public async Task SignInAsync_CanceledDuringExchange_ReturnsFailedResultWithOperationCanceledException()
+        {
+            var handler = new StubHttpMessageHandler().Hang();
+            using var cancellation = new CancellationTokenSource();
+            var browser = new FakeBrowser("{path}?code=abc&state={state}");
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
+
+            var signIn = client.SignInAsync(cancellation.Token);
+            await handler.Hanging;
+            await cancellation.CancelAsync();
+            var result = await signIn;
+            await browser.Completed;
 
             Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
         }
@@ -109,7 +200,14 @@ namespace Polhem.OAuth2.UnitTests
         public async Task SignInAsync_AlreadyCanceled_DoesNotOpenBrowser()
         {
             bool opened = false;
-            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient()) { OpenBrowser = _ => opened = true };
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
+            {
+                OpenBrowser = _ =>
+                {
+                    opened = true;
+                    return Task.CompletedTask;
+                }
+            };
 
             var result = await client.SignInAsync(new CancellationToken(canceled: true));
 
@@ -123,7 +221,14 @@ namespace Polhem.OAuth2.UnitTests
         {
             var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             using var cancellation = new CancellationTokenSource();
-            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient()) { OpenBrowser = _ => opened.TrySetResult() };
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
+            {
+                OpenBrowser = _ =>
+                {
+                    opened.TrySetResult();
+                    return Task.CompletedTask;
+                }
+            };
 
             var first = client.SignInAsync(cancellation.Token);
             await opened.Task;
@@ -158,6 +263,27 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Null(tokenRequest.FormValue("client_secret"));
         }
 
+        [Fact]
+        [DisplayName("RefreshTokenAsync does not send the client secret")]
+        public async Task RefreshTokenAsync_PublicClient_OmitsClientSecret()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"new-access"}""");
+            var options = new LineOAuth2Options
+            {
+                ClientId = "client-id",
+                ClientSecret = "client-secret",
+                RedirectUri = "http://127.0.0.1:0/callback"
+            };
+            var client = new LoopbackOAuth2Client(options, handler.CreateClient());
+
+            var token = await client.RefreshTokenAsync("refresh");
+
+            var request = Assert.Single(handler.Requests);
+            Assert.Equal("refresh", request.FormValue("refresh_token"));
+            Assert.Null(request.FormValue("client_secret"));
+            Assert.Equal("new-access", token.AccessToken);
+        }
+
         private static GoogleOAuth2Options CreateOptions()
         {
             return new GoogleOAuth2Options
@@ -169,7 +295,8 @@ namespace Polhem.OAuth2.UnitTests
 
         /// <summary>
         /// Stands in for the browser. It follows the redirect URI of the authorization URL once for each request template,
-        /// where <c>{path}</c> is the redirect path and <c>{state}</c> is the state of the sign-in.
+        /// where <c>{path}</c> is the redirect path and <c>{state}</c> is the state of the sign-in. A template that starts with
+        /// <c>Host=</c> and a value sends that Host header instead, and the template <c>idle</c> opens a connection that sends nothing.
         /// </summary>
         private sealed class FakeBrowser
         {
@@ -186,21 +313,47 @@ namespace Polhem.OAuth2.UnitTests
 
             public Task Completed { get; private set; } = Task.CompletedTask;
 
-            public void Open(string url)
+            public Task Open(Uri url)
             {
-                AuthorizationUrl = url;
-                var redirectUri = new Uri(LoopbackTestHttp.GetQueryValue(url, "redirect_uri")!);
-                string state = Uri.EscapeDataString(LoopbackTestHttp.GetQueryValue(url, "state")!);
+                AuthorizationUrl = url.AbsoluteUri;
+                var redirectUri = new Uri(LoopbackTestHttp.GetQueryValue(AuthorizationUrl, "redirect_uri")!);
+                string state = Uri.EscapeDataString(LoopbackTestHttp.GetQueryValue(AuthorizationUrl, "state")!);
                 Completed = Task.Run(async () =>
                 {
-                    foreach (string template in _requests)
+                    var idleConnections = new List<TcpClient>();
+                    try
                     {
-                        string pathAndQuery = template
-                            .Replace("{path}", redirectUri.AbsolutePath, StringComparison.Ordinal)
-                            .Replace("{state}", state, StringComparison.Ordinal);
-                        Responses.Add(await LoopbackTestHttp.GetAsync(redirectUri, pathAndQuery));
+                        foreach (string template in _requests)
+                        {
+                            if (template == "idle")
+                            {
+                                var idle = new TcpClient(AddressFamily.InterNetwork);
+                                idleConnections.Add(idle);
+                                await idle.ConnectAsync(IPAddress.Loopback, redirectUri.Port);
+                                continue;
+                            }
+
+                            string? host = null;
+                            string request = template;
+                            if (template.StartsWith("Host=", StringComparison.Ordinal))
+                            {
+                                int space = template.IndexOf(' ', StringComparison.Ordinal);
+                                host = template[5..space];
+                                request = template[(space + 1)..];
+                            }
+
+                            string pathAndQuery = request
+                                .Replace("{path}", redirectUri.AbsolutePath, StringComparison.Ordinal)
+                                .Replace("{state}", state, StringComparison.Ordinal);
+                            Responses.Add(await LoopbackTestHttp.GetAsync(redirectUri, pathAndQuery, host));
+                        }
+                    }
+                    finally
+                    {
+                        idleConnections.ForEach(connection => connection.Dispose());
                     }
                 });
+                return Task.CompletedTask;
             }
         }
     }

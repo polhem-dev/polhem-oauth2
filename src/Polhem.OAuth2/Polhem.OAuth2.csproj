@@ -15,4 +15,9 @@
     <InternalsVisibleTo Include="Polhem.OAuth2.UnitTests" />
   </ItemGroup>
 
+  <!-- net10.0 has the nullable analysis attributes, so only netstandard2.0 compiles the internal copies. -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+    <Compile Remove="Polyfills/**" />
+  </ItemGroup>
+
 </Project>

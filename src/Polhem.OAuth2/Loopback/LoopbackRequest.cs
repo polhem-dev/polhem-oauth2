@@ -6,47 +6,61 @@ using System.Text;
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// A connection accepted by <see cref="LoopbackListener"/>, together with the target of its HTTP request line.
+    /// A connection accepted by <see cref="LoopbackListener"/>, together with the parts of its HTTP request that a sign-in uses.
     /// </summary>
     internal sealed class LoopbackRequest : IDisposable
     {
-        private const int MaxRequestLineBytes = 16 * 1024;
+        private const int MaxRequestHeadBytes = 16 * 1024;
+
+        private static readonly char[] s_lineSeparator = { '\n' };
 
         private readonly TcpClient _client;
 
-        private LoopbackRequest(TcpClient client, string? target)
+        private LoopbackRequest(TcpClient client, string? target, string? host)
         {
             _client = client;
             Target = target;
+            Host = host;
         }
 
         /// <summary>
         /// Gets the target of a <c>GET</c> request, such as <c>/callback?code=abc</c>. It is null when no complete
-        /// <c>GET</c> request line arrived in time.
+        /// <c>GET</c> request head arrived in time.
         /// </summary>
         public string? Target { get; }
 
         /// <summary>
-        /// Reads the request line of an accepted connection. The returned request owns the connection.
+        /// Gets the value of the <c>Host</c> header. It is null when the request has no <c>Host</c> header, has more than one,
+        /// or did not arrive in time.
+        /// </summary>
+        public string? Host { get; }
+
+        /// <summary>
+        /// Reads the request line and headers of an accepted connection. The returned request owns the connection.
         /// </summary>
         /// <param name="client">The accepted connection.</param>
-        /// <param name="readTimeout">How long to wait for the request line.</param>
+        /// <param name="readTimeout">How long to wait for the request line and headers.</param>
         /// <param name="cancellationToken">Cancels the read.</param>
         /// <returns>The request.</returns>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
         public static async Task<LoopbackRequest> ReadAsync(TcpClient client, TimeSpan readTimeout, CancellationToken cancellationToken)
         {
-            string? target;
+            string? head;
             try
             {
-                target = await ReadTargetAsync(client, readTimeout, cancellationToken).ConfigureAwait(false);
+                head = await ReadHeadAsync(client, readTimeout, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 client.Dispose();
                 throw;
             }
-            return new LoopbackRequest(client, target);
+
+            if (head is null)
+                return new LoopbackRequest(client, null, null);
+
+            ParseHead(head, out string? target, out string? host);
+            return new LoopbackRequest(client, target, host);
         }
 
         /// <summary>
@@ -92,7 +106,9 @@ namespace Polhem.OAuth2
             _client.Dispose();
         }
 
-        private static async Task<string?> ReadTargetAsync(TcpClient client, TimeSpan readTimeout, CancellationToken cancellationToken)
+        // Returns the request line and header lines, or null when the connection closed, the read timed out, or the head is
+        // longer than the limit.
+        private static async Task<string?> ReadHeadAsync(TcpClient client, TimeSpan readTimeout, CancellationToken cancellationToken)
         {
             using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
@@ -102,39 +118,78 @@ namespace Polhem.OAuth2
                 // closing the connection. A browser can open a connection in advance and leave it idle.
                 using (timeout.Token.Register(client.Dispose))
                 {
-                    var buffer = new byte[MaxRequestLineBytes];
+                    var buffer = new byte[MaxRequestHeadBytes];
                     int length = 0;
-                    int lineEnd = -1;
+                    int headEnd = -1;
                     try
                     {
                         var stream = client.GetStream();
-                        while (length < buffer.Length && lineEnd < 0)
+                        while (length < buffer.Length && headEnd < 0)
                         {
                             int read = await stream.ReadAsync(buffer, length, buffer.Length - length).ConfigureAwait(false);
                             if (read == 0)
                                 break;
+
+                            int searchStart = Math.Max(0, length - 2);
                             length += read;
-                            lineEnd = Array.IndexOf(buffer, (byte)'\n', 0, length);
+                            headEnd = FindHeadEnd(buffer, searchStart, length);
                         }
                     }
                     catch (IOException)
                     {
-                        lineEnd = -1;
+                        headEnd = -1;
                     }
                     catch (InvalidOperationException)
                     {
-                        lineEnd = -1;
+                        headEnd = -1;
                     }
 
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (lineEnd < 0)
-                        return null;
-
-                    // The request line is "METHOD target HTTP/version". Providers redirect with GET.
-                    string[] parts = Encoding.ASCII.GetString(buffer, 0, lineEnd).TrimEnd('\r').Split(' ');
-                    return parts.Length == 3 && string.Equals(parts[0], "GET", StringComparison.Ordinal) ? parts[1] : null;
+                    return headEnd < 0 ? null : Encoding.ASCII.GetString(buffer, 0, headEnd);
                 }
             }
+        }
+
+        // The head ends with an empty line. Lines end with CRLF, and a bare LF is accepted as well (RFC 9112, section 2.2).
+        // Returns the index of the final line feed, or -1 when the empty line has not arrived.
+        private static int FindHeadEnd(byte[] buffer, int start, int length)
+        {
+            for (int i = start; i < length; i++)
+            {
+                if (buffer[i] != (byte)'\n')
+                    continue;
+                if (i + 1 < length && buffer[i + 1] == (byte)'\n')
+                    return i + 1;
+                if (i + 2 < length && buffer[i + 1] == (byte)'\r' && buffer[i + 2] == (byte)'\n')
+                    return i + 2;
+            }
+            return -1;
+        }
+
+        private static void ParseHead(string head, out string? target, out string? host)
+        {
+            string[] lines = head.Split(s_lineSeparator);
+
+            // The request line is "METHOD target HTTP/version". Providers redirect with GET.
+            string[] parts = lines[0].TrimEnd('\r').Split(' ');
+            target = parts.Length == 3 && string.Equals(parts[0], "GET", StringComparison.Ordinal) ? parts[1] : null;
+
+            host = null;
+            int hostCount = 0;
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string line = lines[i].TrimEnd('\r');
+                int colon = line.IndexOf(':');
+                if (colon > 0 && string.Equals(line.Substring(0, colon), "Host", StringComparison.OrdinalIgnoreCase))
+                {
+                    hostCount++;
+                    host = line.Substring(colon + 1).Trim();
+                }
+            }
+
+            // RFC 9112, section 3.2: a request with more than one Host header is invalid.
+            if (hostCount != 1)
+                host = null;
         }
     }
 }

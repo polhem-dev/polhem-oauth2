@@ -23,13 +23,11 @@ namespace Polhem.OAuth2
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
             // The OpenID Connect user information endpoint returns the standard claims only, so the user is identified by sub.
-            return new UserInfo
-            {
-                UserId = OAuth2Json.GetString(user, "sub"),
-                UserName = OAuth2Json.GetString(user, "name"),
-                Email = OAuth2Json.GetString(user, "email"),
-                RawJson = json
-            };
+            return new UserInfo(
+                OAuth2Json.GetString(user, "sub"),
+                OAuth2Json.GetString(user, "name"),
+                OAuth2Json.GetString(user, "email"),
+                json);
         }
     }
 }

@@ -9,12 +9,12 @@ namespace Polhem.OAuth2.UnitTests
     /// </summary>
     internal static class LoopbackTestHttp
     {
-        public static Task<string> GetAsync(Uri baseUri, string pathAndQuery)
+        public static Task<string> GetAsync(Uri baseUri, string pathAndQuery, string? host = null)
         {
             var address = string.Equals(baseUri.Host, "localhost", StringComparison.OrdinalIgnoreCase)
                 ? IPAddress.Loopback
                 : IPAddress.Parse(baseUri.DnsSafeHost);
-            return SendAsync(address, baseUri.Port, $"GET {pathAndQuery} HTTP/1.1\r\nHost: {baseUri.Authority}\r\n\r\n");
+            return SendAsync(address, baseUri.Port, $"GET {pathAndQuery} HTTP/1.1\r\nHost: {host ?? baseUri.Authority}\r\n\r\n");
         }
 
         public static async Task<string> SendAsync(IPAddress address, int port, string request)

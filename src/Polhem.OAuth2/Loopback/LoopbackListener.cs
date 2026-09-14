@@ -16,13 +16,11 @@ namespace Polhem.OAuth2
 
         private readonly List<TcpListener> _listeners;
         private readonly Task<TcpClient>?[] _pendingAccepts;
-        private readonly TimeSpan _requestReadTimeout;
 
-        private LoopbackListener(List<TcpListener> listeners, Uri redirectUri, TimeSpan requestReadTimeout)
+        private LoopbackListener(List<TcpListener> listeners, Uri redirectUri)
         {
             _listeners = listeners;
             _pendingAccepts = new Task<TcpClient>?[listeners.Count];
-            _requestReadTimeout = requestReadTimeout;
             RedirectUri = redirectUri;
         }
 
@@ -46,11 +44,10 @@ namespace Polhem.OAuth2
         /// Starts listening for a redirect URI. Port 0 picks a free port.
         /// </summary>
         /// <param name="redirectUri">The redirect URI.</param>
-        /// <param name="requestReadTimeout">How long to wait for the request line of each accepted connection.</param>
         /// <returns>The started listener.</returns>
         /// <exception cref="ArgumentException"><paramref name="redirectUri"/> is not an http URI on localhost or a loopback address.</exception>
         /// <exception cref="SocketException">The port cannot be listened on, for example because it is in use.</exception>
-        public static LoopbackListener Start(Uri redirectUri, TimeSpan requestReadTimeout)
+        public static LoopbackListener Start(Uri redirectUri)
         {
             if (!IsLoopbackRedirectUri(redirectUri))
                 throw new ArgumentException("The redirect URI must be an http URI on localhost or a loopback address.", nameof(redirectUri));
@@ -66,12 +63,13 @@ namespace Polhem.OAuth2
                     continue;
 
                 int port = ((IPEndPoint)listeners[0].LocalEndpoint).Port;
-                return new LoopbackListener(listeners, new UriBuilder(redirectUri) { Port = port }.Uri, requestReadTimeout);
+                return new LoopbackListener(listeners, new UriBuilder(redirectUri) { Port = port }.Uri);
             }
         }
 
         /// <summary>
-        /// Checks whether a request target is the redirect path, and gets its query string.
+        /// Checks whether a request target is the redirect path, and gets its query string. Percent-encoded characters in the
+        /// path are decoded before the comparison.
         /// </summary>
         /// <param name="target">The request target, such as <c>/callback?code=abc</c>.</param>
         /// <param name="query">The query string without the question mark, or an empty string.</param>
@@ -81,17 +79,28 @@ namespace Polhem.OAuth2
             int queryStart = target.IndexOf('?');
             string path = queryStart >= 0 ? target.Substring(0, queryStart) : target;
             query = queryStart >= 0 ? target.Substring(queryStart + 1) : string.Empty;
-            return string.Equals(path, RedirectUri.AbsolutePath, StringComparison.Ordinal);
+            return string.Equals(Uri.UnescapeDataString(path), Uri.UnescapeDataString(RedirectUri.AbsolutePath), StringComparison.Ordinal);
         }
 
         /// <summary>
-        /// Waits for the next connection on any bound address and reads its request line.
+        /// Checks whether the <c>Host</c> header of a request names the host and port of <see cref="RedirectUri"/>, as it does
+        /// when a browser follows the redirect.
+        /// </summary>
+        /// <param name="host">The value of the <c>Host</c> header, or null if the request has none.</param>
+        /// <returns><see langword="true"/> if the header names the redirect URI's authority; otherwise, <see langword="false"/>.</returns>
+        public bool IsRedirectHost(string? host)
+        {
+            return host is not null && string.Equals(host, RedirectUri.Authority, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Waits for the next connection on any bound address.
         /// </summary>
         /// <param name="cancellationToken">Cancels the wait.</param>
-        /// <returns>The request, which the caller answers and disposes.</returns>
+        /// <returns>The accepted connection, which the caller disposes.</returns>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
         /// <exception cref="SocketException">A connection could not be accepted.</exception>
-        public async Task<LoopbackRequest> AcceptAsync(CancellationToken cancellationToken)
+        public async Task<TcpClient> AcceptClientAsync(CancellationToken cancellationToken)
         {
             for (int i = 0; i < _listeners.Count; i++)
                 _pendingAccepts[i] ??= _listeners[i].AcceptTcpClientAsync();
@@ -114,8 +123,7 @@ namespace Polhem.OAuth2
                 var accept = _pendingAccepts[index]!;
                 _pendingAccepts[index] = null;
 
-                TcpClient client = await accept.ConfigureAwait(false);
-                return await LoopbackRequest.ReadAsync(client, _requestReadTimeout, cancellationToken).ConfigureAwait(false);
+                return await accept.ConfigureAwait(false);
             }
         }
 

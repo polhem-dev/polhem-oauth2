@@ -22,15 +22,11 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
-            return new UserInfo
-            {
-                UserId = OAuth2Json.GetString(user, "userId"),
-                UserName = OAuth2Json.GetString(user, "displayName"),
-                // The profile response has no email field. LINE puts the address in the ID token, and only when the channel
-                // has permission to read it, the email scope was requested, and the user agreed to share it.
-                Email = token?.IdToken is { } idToken ? LineIdToken.ReadEmail(idToken, Options.ClientId) : null,
-                RawJson = json
-            };
+            // The profile response has no email field. LINE puts the address in the ID token, and only when the channel
+            // has permission to read it, the email scope was requested, and the user agreed to share it.
+            string? email = token?.IdToken is { } idToken ? LineIdToken.ReadEmail(idToken, Options.ClientId) : null;
+
+            return new UserInfo(OAuth2Json.GetString(user, "userId"), OAuth2Json.GetString(user, "displayName"), email, json);
         }
     }
 }

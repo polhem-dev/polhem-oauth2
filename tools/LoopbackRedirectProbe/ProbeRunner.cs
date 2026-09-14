@@ -46,14 +46,15 @@ namespace LoopbackRedirectProbe
                 return Fail(ex.Message, 2);
             }
 
-            // The client calls this after it starts listening, when the redirect URI carries the port that was bound.
+            // The client calls this after it starts listening. The authorization URL carries the redirect URI with the port that was bound.
             client.OpenBrowser = url =>
             {
                 Console.WriteLine($"Provider:     {arguments.Provider}");
-                Console.WriteLine($"Redirect URI: {options.RedirectUri}");
+                Console.WriteLine($"Redirect URI: {GetQueryValue(url, "redirect_uri")}");
                 Console.WriteLine("Opening the system browser. If it does not open, visit this URL:");
-                Console.WriteLine(url);
-                BrowserLauncher.TryOpen(url);
+                Console.WriteLine(url.AbsoluteUri);
+                BrowserLauncher.TryOpen(url.AbsoluteUri);
+                return Task.CompletedTask;
             };
 
             AuthorizationResult result;
@@ -83,6 +84,17 @@ namespace LoopbackRedirectProbe
                 { } ex => Fail($"The sign-in failed: {ex.Message}", 1),
                 null => Fail("The sign-in failed without an exception.", 1)
             };
+        }
+
+        private static string? GetQueryValue(Uri url, string name)
+        {
+            foreach (string pair in url.Query.TrimStart('?').Split('&'))
+            {
+                int equals = pair.IndexOf('=', StringComparison.Ordinal);
+                if (equals > 0 && string.Equals(pair[..equals], name, StringComparison.Ordinal))
+                    return Uri.UnescapeDataString(pair[(equals + 1)..]);
+            }
+            return null;
         }
 
         private static int Fail(string message, int exitCode)

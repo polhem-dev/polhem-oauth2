@@ -11,7 +11,7 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Gets or sets the client ID that identifies the application to the provider.
+        /// Gets or sets the client ID that identifies the application to the provider. It is required.
         /// </summary>
         public string ClientId { get; set; } = string.Empty;
 
@@ -22,8 +22,8 @@ namespace Polhem.OAuth2
         public string ClientSecret { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the URI the provider sends the user back to after sign-in. It must match a redirect URI
-        /// registered with the provider.
+        /// Gets or sets the URI the provider sends the user back to after sign-in. It is required, must be an absolute http or
+        /// https URI, and must match a redirect URI registered with the provider.
         /// </summary>
         public string RedirectUri { get; set; } = string.Empty;
 
@@ -49,9 +49,37 @@ namespace Polhem.OAuth2
         public string UserInfoEndpoint { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets a value indicating whether the flow uses PKCE.
+        /// Gets or sets a value indicating whether the flow uses PKCE. The default is <see langword="true"/>.
         /// </summary>
-        public bool UsePkce { get; set; } = false;
+        /// <remarks><see cref="LoopbackOAuth2Client"/> always uses PKCE, whatever this property is set to.</remarks>
+        public bool UsePkce { get; set; } = true;
+
+        /// <summary>
+        /// Creates a copy that later changes to these options do not affect.
+        /// </summary>
+        /// <returns>The copy.</returns>
+        internal OAuth2Options Clone()
+        {
+            var copy = (OAuth2Options)MemberwiseClone();
+            if (Scopes is not null)
+                copy.Scopes = (string[])Scopes.Clone();
+            return copy;
+        }
+
+        /// <summary>
+        /// Checks the settings that every client needs.
+        /// </summary>
+        /// <returns>A message that describes the first invalid setting, or null if the settings are valid.</returns>
+        internal string? GetValidationError()
+        {
+            if (string.IsNullOrWhiteSpace(ClientId))
+                return $"{nameof(ClientId)} is required.";
+            if (!IsWebUri(RedirectUri))
+                return $"{nameof(RedirectUri)} must be an absolute http or https URI.";
+            if (Scopes is null || Scopes.Any(string.IsNullOrWhiteSpace))
+                return $"{nameof(Scopes)} cannot be null or contain an empty scope.";
+            return FindInsecureEndpoint() is { } endpoint ? $"{endpoint} must be an absolute https URI." : null;
+        }
 
         /// <summary>
         /// Finds an endpoint that is not an absolute https URI. The client secret, authorization codes and tokens travel to
@@ -73,6 +101,14 @@ namespace Polhem.OAuth2
         {
             return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
                 && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal);
+        }
+
+        // On Unix a path such as /callback parses as an absolute file URI, so the scheme is checked as well.
+        private static bool IsWebUri(string value)
+        {
+            return Uri.TryCreate(value, UriKind.Absolute, out var uri)
+                && (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
+                    || string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal));
         }
     }
 }

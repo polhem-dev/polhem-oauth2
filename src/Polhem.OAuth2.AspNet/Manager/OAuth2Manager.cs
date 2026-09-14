@@ -107,11 +107,7 @@ namespace Polhem.OAuth2.AspNet
 
         private static AuthorizationResult Failure(Exception exception)
         {
-            return new AuthorizationResult()
-            {
-                IsSuccess = false,
-                Exception = exception
-            };
+            return AuthorizationResult.Failure(exception);
         }
     }
 }

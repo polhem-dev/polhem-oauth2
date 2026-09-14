@@ -16,6 +16,16 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("FromQuery reads the error code and its description")]
+        public void FromQuery_ErrorWithDescription_ReadsBoth()
+        {
+            var callback = LoopbackCallback.FromQuery("error=access_denied&error_description=The+user+denied+access.&state=s");
+
+            Assert.Equal("access_denied", callback.Error);
+            Assert.Equal("The user denied access.", callback.ErrorDescription);
+        }
+
+        [Fact]
         [DisplayName("FromQuery keeps the first value of a repeated parameter")]
         public void FromQuery_RepeatedName_KeepsFirstValue()
         {
@@ -43,6 +53,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Null(callback.Code);
             Assert.Null(callback.State);
             Assert.Null(callback.Error);
+            Assert.Null(callback.ErrorDescription);
         }
     }
 }

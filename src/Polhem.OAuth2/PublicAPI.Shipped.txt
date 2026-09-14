@@ -3,18 +3,21 @@ Polhem.OAuth2.Auth0OAuth2Options
 Polhem.OAuth2.Auth0OAuth2Options.Auth0OAuth2Options() -> void
 Polhem.OAuth2.Auth0OAuth2Options.Domain.get -> string!
 Polhem.OAuth2.Auth0OAuth2Options.Domain.set -> void
+Polhem.OAuth2.AuthorizationCallback
+Polhem.OAuth2.AuthorizationCallback.AuthorizationCallback(string? code, string? state, string? error, string? errorDescription) -> void
+Polhem.OAuth2.AuthorizationCallback.Code.get -> string?
+Polhem.OAuth2.AuthorizationCallback.Error.get -> string?
+Polhem.OAuth2.AuthorizationCallback.ErrorDescription.get -> string?
+Polhem.OAuth2.AuthorizationCallback.State.get -> string?
+Polhem.OAuth2.AuthorizationRequest
+Polhem.OAuth2.AuthorizationRequest.Pending.get -> Polhem.OAuth2.PendingAuthorization!
+Polhem.OAuth2.AuthorizationRequest.Url.get -> string!
 Polhem.OAuth2.AuthorizationResult
-Polhem.OAuth2.AuthorizationResult.AuthorizationResult() -> void
 Polhem.OAuth2.AuthorizationResult.Exception.get -> System.Exception?
-Polhem.OAuth2.AuthorizationResult.Exception.set -> void
 Polhem.OAuth2.AuthorizationResult.IsSuccess.get -> bool
-Polhem.OAuth2.AuthorizationResult.IsSuccess.set -> void
 Polhem.OAuth2.AuthorizationResult.ProviderName.get -> string?
-Polhem.OAuth2.AuthorizationResult.ProviderName.set -> void
 Polhem.OAuth2.AuthorizationResult.Token.get -> Polhem.OAuth2.TokenResponse?
-Polhem.OAuth2.AuthorizationResult.Token.set -> void
 Polhem.OAuth2.AuthorizationResult.UserInfo.get -> Polhem.OAuth2.UserInfo?
-Polhem.OAuth2.AuthorizationResult.UserInfo.set -> void
 Polhem.OAuth2.AzureOAuth2Options
 Polhem.OAuth2.AzureOAuth2Options.AzureOAuth2Options() -> void
 Polhem.OAuth2.AzureOAuth2Options.Tenant.get -> string!
@@ -40,12 +43,19 @@ Polhem.OAuth2.IStateStorage.SaveState(string! value) -> void
 Polhem.OAuth2.LineOAuth2Options
 Polhem.OAuth2.LineOAuth2Options.LineOAuth2Options() -> void
 Polhem.OAuth2.LoopbackOAuth2Client
-Polhem.OAuth2.LoopbackOAuth2Client.LoopbackOAuth2Client(Polhem.OAuth2.OAuth2Options! options) -> void
-Polhem.OAuth2.LoopbackOAuth2Client.OpenBrowser.get -> System.Action<string!>?
+Polhem.OAuth2.LoopbackOAuth2Client.LoopbackOAuth2Client(Polhem.OAuth2.OAuth2Options! options, System.Net.Http.HttpClient? httpClient = null) -> void
+Polhem.OAuth2.LoopbackOAuth2Client.OpenBrowser.get -> System.Func<System.Uri!, System.Threading.Tasks.Task!>?
 Polhem.OAuth2.LoopbackOAuth2Client.OpenBrowser.set -> void
+Polhem.OAuth2.LoopbackOAuth2Client.RefreshTokenAsync(string! refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.TokenResponse!>!
 Polhem.OAuth2.LoopbackOAuth2Client.SignInAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
 Polhem.OAuth2.LoopbackOAuth2Client.Timeout.get -> System.TimeSpan
 Polhem.OAuth2.LoopbackOAuth2Client.Timeout.set -> void
+Polhem.OAuth2.OAuth2Client
+Polhem.OAuth2.OAuth2Client.CompleteAuthorizationAsync(Polhem.OAuth2.AuthorizationCallback! callback, Polhem.OAuth2.PendingAuthorization! pending, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+Polhem.OAuth2.OAuth2Client.CreateAuthorizationRequest() -> Polhem.OAuth2.AuthorizationRequest!
+Polhem.OAuth2.OAuth2Client.OAuth2Client(Polhem.OAuth2.OAuth2Options! options, System.Net.Http.HttpClient? httpClient = null) -> void
+Polhem.OAuth2.OAuth2Client.ProviderName.get -> string!
+Polhem.OAuth2.OAuth2Client.RefreshTokenAsync(string! refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.TokenResponse!>!
 Polhem.OAuth2.OAuth2Exception
 Polhem.OAuth2.OAuth2Exception.Error.get -> string?
 Polhem.OAuth2.OAuth2Exception.ErrorDescription.get -> string?
@@ -77,6 +87,11 @@ Polhem.OAuth2.OktaOAuth2Options.AuthorizationServerId.set -> void
 Polhem.OAuth2.OktaOAuth2Options.Domain.get -> string!
 Polhem.OAuth2.OktaOAuth2Options.Domain.set -> void
 Polhem.OAuth2.OktaOAuth2Options.OktaOAuth2Options() -> void
+Polhem.OAuth2.PendingAuthorization
+Polhem.OAuth2.PendingAuthorization.CodeVerifier.get -> string?
+Polhem.OAuth2.PendingAuthorization.PendingAuthorization(string! state, string? codeVerifier, string! redirectUri) -> void
+Polhem.OAuth2.PendingAuthorization.RedirectUri.get -> string!
+Polhem.OAuth2.PendingAuthorization.State.get -> string!
 Polhem.OAuth2.TokenResponse
 Polhem.OAuth2.TokenResponse.AccessToken.get -> string!
 Polhem.OAuth2.TokenResponse.ExpiresIn.get -> System.TimeSpan?
@@ -88,15 +103,12 @@ Polhem.OAuth2.TokenResponse.TokenResponse(string! accessToken, string? tokenType
 Polhem.OAuth2.TokenResponse.TokenType.get -> string?
 Polhem.OAuth2.UserInfo
 Polhem.OAuth2.UserInfo.Email.get -> string?
-Polhem.OAuth2.UserInfo.Email.set -> void
 Polhem.OAuth2.UserInfo.RawJson.get -> string!
-Polhem.OAuth2.UserInfo.RawJson.set -> void
 Polhem.OAuth2.UserInfo.UserId.get -> string?
-Polhem.OAuth2.UserInfo.UserId.set -> void
-Polhem.OAuth2.UserInfo.UserInfo() -> void
+Polhem.OAuth2.UserInfo.UserInfo(string? userId, string? userName, string? email, string! rawJson) -> void
 Polhem.OAuth2.UserInfo.UserName.get -> string?
-Polhem.OAuth2.UserInfo.UserName.set -> void
 abstract Polhem.OAuth2.BaseOAuth2Client.StateStorage.get -> Polhem.OAuth2.IStateStorage!
-override Polhem.OAuth2.LoopbackOAuth2Client.StateStorage.get -> Polhem.OAuth2.IStateStorage!
+static Polhem.OAuth2.AuthorizationResult.Failure(System.Exception! exception) -> Polhem.OAuth2.AuthorizationResult!
+static Polhem.OAuth2.AuthorizationResult.Success(string! providerName, Polhem.OAuth2.TokenResponse! token, Polhem.OAuth2.UserInfo! userInfo) -> Polhem.OAuth2.AuthorizationResult!
 static Polhem.OAuth2.OAuth2StateCryptor.DecryptClientName(string! state) -> string!
 static Polhem.OAuth2.OAuth2StateCryptor.EncryptClientName(string! clientName) -> string!

@@ -100,13 +100,7 @@ namespace Polhem.OAuth2
                 TokenResponse token = await ExchangeCodeAsync(code).ConfigureAwait(false);
                 UserInfo userInfo = await Provider.GetUserInfoAsync(token, CancellationToken.None).ConfigureAwait(false);
 
-                return new AuthorizationResult()
-                {
-                    ProviderName = Provider.ProviderName,
-                    IsSuccess = true,
-                    Token = token,
-                    UserInfo = userInfo
-                };
+                return AuthorizationResult.Success(Provider.ProviderName, token, userInfo);
             }
             catch (OAuth2Exception ex)
             {
@@ -142,11 +136,7 @@ namespace Polhem.OAuth2
 
         private static AuthorizationResult Failure(Exception exception)
         {
-            return new AuthorizationResult()
-            {
-                IsSuccess = false,
-                Exception = exception
-            };
+            return AuthorizationResult.Failure(exception);
         }
     }
 }

@@ -42,13 +42,11 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
-            return new UserInfo
-            {
-                UserId = OAuth2Json.GetString(user, "id"),
-                UserName = OAuth2Json.GetString(user, "name"),
-                Email = OAuth2Json.GetString(user, "email"),
-                RawJson = json
-            };
+            return new UserInfo(
+                OAuth2Json.GetString(user, "id"),
+                OAuth2Json.GetString(user, "name"),
+                OAuth2Json.GetString(user, "email"),
+                json);
         }
     }
 }

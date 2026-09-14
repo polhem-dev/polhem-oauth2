@@ -34,7 +34,7 @@ namespace OAuthAspNetCore.Extensions
         {
             if (options != null)
             {
-                manager.RegisterClient(name, new OAuth2Client(options, accessor));
+                manager.RegisterClient(name, new Polhem.OAuth2.AspNetCore.OAuth2Client(options, accessor));
             }
         }
     }

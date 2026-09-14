@@ -1,33 +1,82 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// The outcome of exchanging an authorization code.
+    /// The outcome of a sign-in: the provider name, tokens and user information when it succeeded, or the exception that
+    /// made it fail.
     /// </summary>
-    public class AuthorizationResult
+    public sealed class AuthorizationResult
     {
-        /// <summary>
-        /// Gets or sets the provider name. Set only for a successful result.
-        /// </summary>
-        public string? ProviderName { get; set; }
+        private AuthorizationResult(bool isSuccess, string? providerName, TokenResponse? token, UserInfo? userInfo, Exception? exception)
+        {
+            IsSuccess = isSuccess;
+            ProviderName = providerName;
+            Token = token;
+            UserInfo = userInfo;
+            Exception = exception;
+        }
 
         /// <summary>
-        /// Gets or sets a value indicating whether the exchange succeeded.
+        /// Gets a value indicating whether the sign-in succeeded. When it is <see langword="true"/>, <see cref="ProviderName"/>,
+        /// <see cref="Token"/> and <see cref="UserInfo"/> are set; otherwise <see cref="Exception"/> is set.
         /// </summary>
-        public bool IsSuccess { get; set; }
+        [MemberNotNullWhen(true, nameof(ProviderName), nameof(Token), nameof(UserInfo))]
+        [MemberNotNullWhen(false, nameof(Exception))]
+        public bool IsSuccess { get; }
 
         /// <summary>
-        /// Gets or sets the user information. Set only for a successful result.
+        /// Gets the provider name, or null for a failed result.
         /// </summary>
-        public UserInfo? UserInfo { get; set; }
+        public string? ProviderName { get; }
 
         /// <summary>
-        /// Gets or sets the tokens returned by the token endpoint. Set only for a successful result.
+        /// Gets the tokens returned by the token endpoint, or null for a failed result.
         /// </summary>
-        public TokenResponse? Token { get; set; }
+        public TokenResponse? Token { get; }
 
         /// <summary>
-        /// Gets or sets the exception that made the exchange fail. Set only for a failed result.
+        /// Gets the user information, or null for a failed result.
         /// </summary>
-        public Exception? Exception { get; set; }
+        public UserInfo? UserInfo { get; }
+
+        /// <summary>
+        /// Gets the exception that made the sign-in fail, or null for a successful result.
+        /// </summary>
+        public Exception? Exception { get; }
+
+        /// <summary>
+        /// Creates a successful result.
+        /// </summary>
+        /// <param name="providerName">The provider name.</param>
+        /// <param name="token">The tokens returned by the token endpoint.</param>
+        /// <param name="userInfo">The user information.</param>
+        /// <returns>The result.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="providerName"/>, <paramref name="token"/> or <paramref name="userInfo"/> is null.</exception>
+        public static AuthorizationResult Success(string providerName, TokenResponse token, UserInfo userInfo)
+        {
+            if (providerName is null)
+                throw new ArgumentNullException(nameof(providerName));
+            if (token is null)
+                throw new ArgumentNullException(nameof(token));
+            if (userInfo is null)
+                throw new ArgumentNullException(nameof(userInfo));
+
+            return new AuthorizationResult(true, providerName, token, userInfo, null);
+        }
+
+        /// <summary>
+        /// Creates a failed result.
+        /// </summary>
+        /// <param name="exception">The exception that made the sign-in fail.</param>
+        /// <returns>The result.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="exception"/> is null.</exception>
+        public static AuthorizationResult Failure(Exception exception)
+        {
+            if (exception is null)
+                throw new ArgumentNullException(nameof(exception));
+
+            return new AuthorizationResult(false, null, null, null, exception);
+        }
     }
 }

@@ -25,14 +25,14 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Start rejects a redirect URI that is not on a loopback address")]
         public void Start_NonLoopbackRedirectUri_ThrowsArgumentException()
         {
-            Assert.Throws<ArgumentException>(() => LoopbackListener.Start(new Uri("http://example.com:53682/callback"), s_readTimeout));
+            Assert.Throws<ArgumentException>(() => LoopbackListener.Start(new Uri("http://example.com:53682/callback")));
         }
 
         [Fact]
         [DisplayName("Start with port 0 binds a free port and keeps the path")]
         public void Start_PortZero_BindsFreePort()
         {
-            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"), s_readTimeout);
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
 
             Assert.NotEqual(0, listener.RedirectUri.Port);
             Assert.Equal("/callback", listener.RedirectUri.AbsolutePath);
@@ -46,7 +46,7 @@ namespace Polhem.OAuth2.UnitTests
             blocker.Start();
             int port = ((IPEndPoint)blocker.LocalEndpoint).Port;
 
-            Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback"), s_readTimeout));
+            Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback")));
         }
 
         [Fact]
@@ -62,7 +62,7 @@ namespace Polhem.OAuth2.UnitTests
             blocker.Start();
             int port = ((IPEndPoint)blocker.LocalEndpoint).Port;
 
-            Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback"), s_readTimeout));
+            Assert.Throws<SocketException>(() => LoopbackListener.Start(new Uri($"http://localhost:{port}/callback")));
         }
 
         [Fact]
@@ -72,10 +72,10 @@ namespace Polhem.OAuth2.UnitTests
             if (!Socket.OSSupportsIPv6)
                 return;
 
-            using var listener = LoopbackListener.Start(new Uri("http://localhost:0/callback"), s_readTimeout);
+            using var listener = LoopbackListener.Start(new Uri("http://localhost:0/callback"));
             var send = LoopbackTestHttp.SendAsync(IPAddress.IPv6Loopback, listener.RedirectUri.Port, "GET /callback?code=abc HTTP/1.1\r\n\r\n");
 
-            using (var request = await listener.AcceptAsync(CancellationToken.None))
+            using (var request = await AcceptRequestAsync(listener))
             {
                 Assert.Equal("/callback?code=abc", request.Target);
                 await request.RespondAsync("200 OK", "Done.");
@@ -85,15 +85,16 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("AcceptAsync returns the target of a GET request, and RespondAsync sends an HTML-encoded page")]
-        public async Task AcceptAsync_GetRequest_ReturnsTarget()
+        [DisplayName("ReadAsync returns the target and Host header of a GET request, and RespondAsync sends an HTML-encoded page")]
+        public async Task ReadAsync_GetRequest_ReturnsTargetAndHost()
         {
-            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"), s_readTimeout);
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
             var send = LoopbackTestHttp.GetAsync(listener.RedirectUri, "/callback?code=abc&state=xyz");
 
-            using (var request = await listener.AcceptAsync(CancellationToken.None))
+            using (var request = await AcceptRequestAsync(listener))
             {
                 Assert.Equal("/callback?code=abc&state=xyz", request.Target);
+                Assert.Equal(listener.RedirectUri.Authority, request.Host);
                 await request.RespondAsync("200 OK", "<done>");
             }
 
@@ -102,14 +103,35 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Contains("&lt;done&gt;", response, StringComparison.Ordinal);
         }
 
-        [Fact]
-        [DisplayName("AcceptAsync returns no target for a request that is not GET")]
-        public async Task AcceptAsync_PostRequest_ReturnsNullTarget()
+        [Theory]
+        [DisplayName("ReadAsync reads the Host header only when the request has exactly one")]
+        [InlineData("GET /callback HTTP/1.1\r\nHost: 127.0.0.1:1234\r\nAccept: */*\r\n\r\n", "127.0.0.1:1234")]
+        [InlineData("GET /callback HTTP/1.1\nhost:  127.0.0.1:1234 \n\n", "127.0.0.1:1234")]
+        [InlineData("GET /callback HTTP/1.1\r\nAccept: */*\r\n\r\n", null)]
+        [InlineData("GET /callback HTTP/1.1\r\nHost: a.example\r\nHost: b.example\r\n\r\n", null)]
+        public async Task ReadAsync_HostHeaders_ReadsSingleHost(string rawRequest, string? expectedHost)
         {
-            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"), s_readTimeout);
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
+            var send = LoopbackTestHttp.SendAsync(IPAddress.Loopback, listener.RedirectUri.Port, rawRequest);
+
+            using (var request = await AcceptRequestAsync(listener))
+            {
+                Assert.Equal("/callback", request.Target);
+                Assert.Equal(expectedHost, request.Host);
+                await request.RespondAsync("200 OK", "Done.");
+            }
+
+            await send;
+        }
+
+        [Fact]
+        [DisplayName("ReadAsync returns no target for a request that is not GET")]
+        public async Task ReadAsync_PostRequest_ReturnsNullTarget()
+        {
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
             var send = LoopbackTestHttp.SendAsync(IPAddress.Loopback, listener.RedirectUri.Port, "POST /callback?code=abc HTTP/1.1\r\nContent-Length: 0\r\n\r\n");
 
-            using (var request = await listener.AcceptAsync(CancellationToken.None))
+            using (var request = await AcceptRequestAsync(listener))
             {
                 Assert.Null(request.Target);
             }
@@ -118,42 +140,64 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("AcceptAsync stops waiting for a connection that sends nothing")]
-        public async Task AcceptAsync_IdleConnection_ReturnsNullTarget()
+        [DisplayName("ReadAsync stops waiting for a connection that sends nothing")]
+        public async Task ReadAsync_IdleConnection_ReturnsNullTarget()
         {
-            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"), TimeSpan.FromMilliseconds(200));
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
             using var idle = new TcpClient(AddressFamily.InterNetwork);
             await idle.ConnectAsync(IPAddress.Loopback, listener.RedirectUri.Port);
 
-            using var request = await listener.AcceptAsync(CancellationToken.None);
+            using var request = await AcceptRequestAsync(listener, TimeSpan.FromMilliseconds(200));
 
             Assert.Null(request.Target);
         }
 
         [Fact]
-        [DisplayName("AcceptAsync throws OperationCanceledException when the wait is canceled")]
-        public async Task AcceptAsync_Canceled_ThrowsOperationCanceledException()
+        [DisplayName("AcceptClientAsync throws OperationCanceledException when the wait is canceled")]
+        public async Task AcceptClientAsync_Canceled_ThrowsOperationCanceledException()
         {
-            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"), s_readTimeout);
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
             using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => listener.AcceptAsync(cancellation.Token));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => listener.AcceptClientAsync(cancellation.Token));
         }
 
         [Theory]
-        [DisplayName("TryGetRedirectQuery matches only the redirect path and returns the query string")]
+        [DisplayName("TryGetRedirectQuery matches only the redirect path, decoding percent-encoded characters, and returns the query string")]
         [InlineData("/callback?code=abc", true, "code=abc")]
         [InlineData("/callback", true, "")]
+        [InlineData("/call%62ack?code=abc", true, "code=abc")]
         [InlineData("/favicon.ico", false, "")]
         [InlineData("/callback/other?code=abc", false, "code=abc")]
         public void TryGetRedirectQuery_VariousTargets_MatchesRedirectPath(string target, bool expected, string expectedQuery)
         {
-            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"), s_readTimeout);
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
 
             bool matched = listener.TryGetRedirectQuery(target, out string query);
 
             Assert.Equal(expected, matched);
             Assert.Equal(expectedQuery, query);
+        }
+
+        [Fact]
+        [DisplayName("IsRedirectHost accepts only the host and port of the redirect URI")]
+        public void IsRedirectHost_VariousHosts_AcceptsOnlyRedirectAuthority()
+        {
+            using var listener = LoopbackListener.Start(new Uri("http://localhost:0/callback"));
+            int port = listener.RedirectUri.Port;
+
+            Assert.True(listener.IsRedirectHost($"localhost:{port}"));
+            Assert.True(listener.IsRedirectHost($"LOCALHOST:{port}"));
+            Assert.False(listener.IsRedirectHost($"127.0.0.1:{port}"));
+            Assert.False(listener.IsRedirectHost($"localhost:{port + 1}"));
+            Assert.False(listener.IsRedirectHost("attacker.example"));
+            Assert.False(listener.IsRedirectHost(null));
+        }
+
+        private static async Task<LoopbackRequest> AcceptRequestAsync(LoopbackListener listener, TimeSpan? readTimeout = null)
+        {
+            TcpClient client = await listener.AcceptClientAsync(CancellationToken.None);
+            return await LoopbackRequest.ReadAsync(client, readTimeout ?? s_readTimeout, CancellationToken.None);
         }
     }
 }
