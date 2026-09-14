@@ -6,9 +6,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+string configPath = Path.Combine(builder.Environment.ContentRootPath, "OAuthConfig.json");
+if (!File.Exists(configPath))
+{
+    throw new FileNotFoundException(
+        "OAuthConfig.json was not found. In the sample folder, copy OAuthConfig.example.json to OAuthConfig.json and fill it in.",
+        configPath);
+}
+
 // Register every provider configured in OAuthConfig.json under the name that AuthController uses.
 var config = JsonSerializer.Deserialize<OAuthConfig>(
-    File.ReadAllText(Path.Combine(builder.Environment.ContentRootPath, "OAuthConfig.json")),
+    File.ReadAllText(configPath),
     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new OAuthConfig();
 
 if (config.GoogleOAuth is { } google)

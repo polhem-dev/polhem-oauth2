@@ -366,3 +366,6 @@ FodyWeavers.xsd
 
 # Local credentials for the loopback redirect probe
 tools/LoopbackRedirectProbe/probe.settings.json
+
+# Local credentials for the samples; OAuthConfig.example.json is the committed template
+samples/*/OAuthConfig.json

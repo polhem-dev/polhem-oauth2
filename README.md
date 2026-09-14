@@ -287,7 +287,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 
 ## Samples
 
-Each sample reads its provider settings from `OAuthConfig.json`.
+Each sample reads its provider settings from `OAuthConfig.json` in its folder. Copy `OAuthConfig.example.json` to
+`OAuthConfig.json` and fill it in. `OAuthConfig.json` is ignored by git; keep credentials out of `OAuthConfig.example.json`.
 
 | Sample | Shows |
 |--------|-------|

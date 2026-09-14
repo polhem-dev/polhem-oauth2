@@ -34,7 +34,11 @@ namespace OAuthWinForms
         private static OAuthConfig LoadOAuthConfig(string filePath)
         {
             if (!File.Exists(filePath))
-                throw new FileNotFoundException("Configuration file not found.", filePath);
+            {
+                throw new FileNotFoundException(
+                    "OAuthConfig.json was not found. In the sample folder, copy OAuthConfig.example.json to OAuthConfig.json and fill it in.",
+                    filePath);
+            }
 
             string json = File.ReadAllText(filePath);
             return JsonSerializer.Deserialize<OAuthConfig>(json, s_readOptions) ?? new OAuthConfig();

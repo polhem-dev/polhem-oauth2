@@ -7,6 +7,12 @@ using Polhem.OAuth2;
 string providerName = args.Length > 0 ? args[0] : "Google";
 
 string configPath = Path.Combine(AppContext.BaseDirectory, "OAuthConfig.json");
+if (!File.Exists(configPath))
+{
+    Console.Error.WriteLine("OAuthConfig.json was not found. In the sample folder, copy OAuthConfig.example.json to OAuthConfig.json and fill it in.");
+    return 2;
+}
+
 var config = JsonSerializer.Deserialize<OAuthConfig>(
     File.ReadAllText(configPath), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new OAuthConfig();
 

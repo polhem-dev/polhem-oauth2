@@ -263,7 +263,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 
 ## Samples
 
-每個 sample 都從 `OAuthConfig.json` 讀取 provider 設定。
+每個 sample 都從自己資料夾裡的 `OAuthConfig.json` 讀取 provider 設定。先把 `OAuthConfig.example.json` 複製成
+`OAuthConfig.json` 再填入。`OAuthConfig.json` 已被 git 忽略；不要把憑證填進 `OAuthConfig.example.json`。
 
 | Sample | 示範 |
 |--------|------|
