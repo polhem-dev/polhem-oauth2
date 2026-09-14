@@ -6,7 +6,7 @@ namespace Polhem.OAuth2
     /// <summary>
     /// Generates the values used by PKCE (Proof Key for Code Exchange, RFC 7636).
     /// </summary>
-    public static class Pkce
+    internal static class Pkce
     {
         /// <summary>
         /// Generates a random <c>code_verifier</c>: 32 random bytes encoded as unpadded base64url, which is 43 characters long.
@@ -14,12 +14,12 @@ namespace Polhem.OAuth2
         /// <returns>The code verifier.</returns>
         public static string GenerateCodeVerifier()
         {
+            var bytes = new byte[32];
             using (var rng = RandomNumberGenerator.Create())
             {
-                var bytes = new byte[32];
                 rng.GetBytes(bytes);
-                return ToBase64Url(bytes);
             }
+            return Base64Url.Encode(bytes);
         }
 
         /// <summary>
@@ -31,17 +31,8 @@ namespace Polhem.OAuth2
         {
             using (var sha256 = SHA256.Create())
             {
-                var hash = sha256.ComputeHash(Encoding.ASCII.GetBytes(codeVerifier));
-                return ToBase64Url(hash);
+                return Base64Url.Encode(sha256.ComputeHash(Encoding.ASCII.GetBytes(codeVerifier)));
             }
-        }
-
-        private static string ToBase64Url(byte[] bytes)
-        {
-            return Convert.ToBase64String(bytes)
-                .TrimEnd('=')
-                .Replace('+', '-')
-                .Replace('/', '_');
         }
     }
 }

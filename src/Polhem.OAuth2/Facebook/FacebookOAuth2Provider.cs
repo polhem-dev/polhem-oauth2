@@ -1,68 +1,54 @@
+using System.Text.Json;
+
 namespace Polhem.OAuth2
 {
     /// <summary>
     /// The Facebook OAuth2 provider.
     /// </summary>
-    public class FacebookOAuth2Provider : OAuth2Provider
+    internal sealed class FacebookOAuth2Provider : OAuth2Provider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="FacebookOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The Facebook OAuth2 options.</param>
-        public FacebookOAuth2Provider(FacebookOAuth2Options options) : base(options)
+        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
+        public FacebookOAuth2Provider(FacebookOAuth2Options options, HttpClient? httpClient = null) : base(options, httpClient)
         {
         }
 
         /// <inheritdoc/>
-        public override string ProviderName { get; } = "Facebook";
+        public override string ProviderName => "Facebook";
 
         /// <inheritdoc/>
-        protected override Dictionary<string, string> GetAuthorizationUrlParams(string state, string codeChallenge = "")
+        /// <remarks>Facebook Login does not issue refresh tokens.</remarks>
+        protected override bool SupportsRefreshToken => false;
+
+        /// <inheritdoc/>
+        protected override Dictionary<string, string> GetAuthorizationParameters(string state, string redirectUri, string? codeChallenge)
         {
-            var queryParams = base.GetAuthorizationUrlParams(state, codeChallenge);
+            var parameters = base.GetAuthorizationParameters(state, redirectUri, codeChallenge);
             // Facebook separates scopes with commas rather than spaces.
-            queryParams["scope"] = string.Join(",", Options.Scopes);
-            return queryParams;
+            parameters["scope"] = string.Join(",", Options.Scopes);
+            return parameters;
         }
 
         /// <inheritdoc/>
         protected override string GetUserInfoUrl()
         {
             // The Graph API returns only the fields that are asked for.
-            var fields = "id,name,email,picture";
-            return $"{Options.UserInfoEndpoint}?fields={Uri.EscapeDataString(fields)}";
+            return Options.UserInfoEndpoint + "?fields=" + Uri.EscapeDataString("id,name,email");
         }
 
         /// <inheritdoc/>
-        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
-        /// <exception cref="System.Text.Json.JsonException"><paramref name="json"/> is not a JSON object.</exception>
-        public override UserInfo ParseUserJson(string json)
+        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
-            if (string.IsNullOrEmpty(json))
-                throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");
-
-            using (var document = OAuth2Json.ParseObject(json))
+            return new UserInfo
             {
-                var root = document.RootElement;
-                return new UserInfo
-                {
-                    UserId = OAuth2Json.GetString(root, "id"),
-                    UserName = OAuth2Json.GetString(root, "name"),
-                    Email = OAuth2Json.GetString(root, "email"),
-                    RawJson = json
-                };
-            }
-        }
-
-        /// <summary>
-        /// Not supported, because Facebook Login does not issue refresh tokens.
-        /// </summary>
-        /// <param name="refreshToken">Not used.</param>
-        /// <returns>This method does not return.</returns>
-        /// <exception cref="NotSupportedException">Always thrown.</exception>
-        public override Task<string> RefreshAccessTokenAsync(string refreshToken)
-        {
-            throw new NotSupportedException();
+                UserId = OAuth2Json.GetString(user, "id"),
+                UserName = OAuth2Json.GetString(user, "name"),
+                Email = OAuth2Json.GetString(user, "email"),
+                RawJson = json
+            };
         }
     }
 }

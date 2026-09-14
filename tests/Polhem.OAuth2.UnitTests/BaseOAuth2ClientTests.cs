@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Net;
 
 namespace Polhem.OAuth2.UnitTests
 {
@@ -20,17 +21,65 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("ValidateAuthorization turns an unreachable token endpoint into a failed result")]
-        public async Task ValidateAuthorization_UnreachableTokenEndpoint_ReturnsFailedResultWithHttpRequestException()
+        [DisplayName("ValidateAuthorization turns a network failure into a failed result")]
+        public async Task ValidateAuthorization_NetworkFailure_ReturnsFailedResultWithHttpRequestException()
         {
-            // Port 1 on the loopback interface is normally closed, so the request fails without leaving the machine.
-            var options = new GoogleOAuth2Options { TokenEndpoint = "http://127.0.0.1:1/token" };
-            var client = new TestClient(options, new MemoryStateStorage());
+            var handler = new StubHttpMessageHandler().Fail(new HttpRequestException("Simulated network failure."));
+            var client = new TestClient(new GoogleOAuth2Options(), new MemoryStateStorage(), handler);
 
             var result = await client.ValidateAuthorization("code");
 
             Assert.False(result.IsSuccess);
             Assert.IsType<HttpRequestException>(result.Exception);
+        }
+
+        [Fact]
+        [DisplayName("ValidateAuthorization turns an error from the token endpoint into a failed result with the error code")]
+        public async Task ValidateAuthorization_TokenEndpointError_ReturnsFailedResultWithErrorCode()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
+            var client = new TestClient(new GoogleOAuth2Options(), new MemoryStateStorage(), handler);
+
+            var result = await client.ValidateAuthorization("code");
+
+            Assert.False(result.IsSuccess);
+            Assert.Equal("invalid_grant", Assert.IsType<OAuth2Exception>(result.Exception).Error);
+        }
+
+        [Fact]
+        [DisplayName("ValidateAuthorization returns the tokens and user information of a successful exchange")]
+        public async Task ValidateAuthorization_SuccessfulExchange_ReturnsTokensAndUserInfo()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access","refresh_token":"refresh"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1","name":"Ada","email":"ada@example.com"}""");
+            var client = new TestClient(new GoogleOAuth2Options(), new MemoryStateStorage(), handler);
+
+            var result = await client.ValidateAuthorization("code");
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("Google", result.ProviderName);
+            Assert.Equal("access", result.Token?.AccessToken);
+            Assert.Equal("refresh", result.Token?.RefreshToken);
+            Assert.Equal("1", result.UserInfo?.UserId);
+            Assert.Equal("access", handler.Requests[1].Authorization?.Parameter);
+        }
+
+        [Fact]
+        [DisplayName("With PKCE the token request sends the verifier that matches the challenge of the authorization URL")]
+        public async Task ValidateAuthorization_WithPkce_SendsVerifierMatchingChallenge()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
+            var storage = new MemoryStateStorage();
+            var client = new TestClient(new GoogleOAuth2Options { UsePkce = true }, storage, handler);
+
+            string url = client.GetAuthorizationUrl("state");
+            await client.ValidateAuthorization("code");
+
+            string? verifier = Assert.Single(handler.Requests).FormValue("code_verifier");
+            Assert.NotNull(verifier);
+            Assert.Equal(Pkce.GenerateCodeChallenge(verifier), LoopbackTestHttp.GetQueryValue(url, "code_challenge"));
+            Assert.Null(storage.GetCodeVerifier());
         }
 
         [Fact]
@@ -101,7 +150,8 @@ namespace Polhem.OAuth2.UnitTests
 
         private sealed class TestClient : BaseOAuth2Client
         {
-            public TestClient(OAuth2Options options, IStateStorage stateStorage) : base(options)
+            public TestClient(OAuth2Options options, IStateStorage stateStorage, StubHttpMessageHandler? handler = null)
+                : base(options, handler?.CreateClient())
             {
                 StateStorage = stateStorage;
             }

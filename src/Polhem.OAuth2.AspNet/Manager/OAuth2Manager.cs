@@ -93,7 +93,7 @@ namespace Polhem.OAuth2.AspNet
                 if (!client.ValidateState(returnedState))
                     throw new OAuth2Exception("The state does not match the stored state.");
 
-                return await client.ValidateAuthorization(code);
+                return await client.ValidateAuthorization(code).ConfigureAwait(false);
             }
             catch (OAuth2Exception ex)
             {

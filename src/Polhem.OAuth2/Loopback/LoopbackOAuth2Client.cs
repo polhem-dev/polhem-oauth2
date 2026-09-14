@@ -36,11 +36,17 @@ namespace Polhem.OAuth2
         /// Initializes a new instance of the <see cref="LoopbackOAuth2Client"/> class.
         /// </summary>
         /// <param name="options">The OAuth2 options. Their type selects the provider.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         /// <exception cref="ArgumentException">
-        /// The redirect URI of <paramref name="options"/> is not an absolute http URI on localhost or a loopback address.
+        /// An endpoint of <paramref name="options"/> is not an absolute https URI, or its redirect URI is not an absolute http
+        /// URI on localhost or a loopback address.
         /// </exception>
-        public LoopbackOAuth2Client(OAuth2Options options) : base(options)
+        public LoopbackOAuth2Client(OAuth2Options options) : this(options, null)
+        {
+        }
+
+        internal LoopbackOAuth2Client(OAuth2Options options, HttpClient? httpClient) : base(options, httpClient)
         {
             if (!Uri.TryCreate(options.RedirectUri, UriKind.Absolute, out var redirectUri) || !LoopbackListener.IsLoopbackRedirectUri(redirectUri))
                 throw new ArgumentException("The redirect URI must be an absolute http URI on localhost or a loopback address.", nameof(options));
@@ -51,6 +57,7 @@ namespace Polhem.OAuth2
 
             // RFC 8252 requires PKCE for native applications, because their client secret cannot be kept confidential.
             UsePkce = true;
+            IsPublicClient = true;
         }
 
         /// <inheritdoc/>

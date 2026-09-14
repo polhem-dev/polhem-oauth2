@@ -1,41 +1,36 @@
+using System.Text.Json;
+
 namespace Polhem.OAuth2
 {
     /// <summary>
     /// The LINE Login OAuth2 provider.
     /// </summary>
-    public class LineOAuth2Provider : OAuth2Provider
+    internal sealed class LineOAuth2Provider : OAuth2Provider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="LineOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The LINE OAuth2 options.</param>
-        public LineOAuth2Provider(LineOAuth2Options options) : base(options)
+        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
+        public LineOAuth2Provider(LineOAuth2Options options, HttpClient? httpClient = null) : base(options, httpClient)
         {
         }
 
         /// <inheritdoc/>
-        public override string ProviderName { get; } = "LINE";
+        public override string ProviderName => "LINE";
 
         /// <inheritdoc/>
-        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
-        /// <exception cref="System.Text.Json.JsonException"><paramref name="json"/> is not a JSON object.</exception>
-        public override UserInfo ParseUserJson(string json)
+        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
-            if (string.IsNullOrEmpty(json))
-                throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");
-
-            using (var document = OAuth2Json.ParseObject(json))
+            return new UserInfo
             {
-                var root = document.RootElement;
-                return new UserInfo
-                {
-                    UserId = OAuth2Json.GetString(root, "userId"),
-                    UserName = OAuth2Json.GetString(root, "displayName"),
-                    // The LINE profile response may not include an email address.
-                    Email = OAuth2Json.GetString(root, "email"),
-                    RawJson = json
-                };
-            }
+                UserId = OAuth2Json.GetString(user, "userId"),
+                UserName = OAuth2Json.GetString(user, "displayName"),
+                // The profile response has no email field. LINE puts the address in the ID token, and only when the channel
+                // has permission to read it, the email scope was requested, and the user agreed to share it.
+                Email = token?.IdToken is { } idToken ? LineIdToken.ReadEmail(idToken, Options.ClientId) : null,
+                RawJson = json
+            };
         }
     }
 }

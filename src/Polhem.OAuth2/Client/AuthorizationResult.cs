@@ -21,9 +21,9 @@ namespace Polhem.OAuth2
         public UserInfo? UserInfo { get; set; }
 
         /// <summary>
-        /// Gets or sets the access token. Set only for a successful result.
+        /// Gets or sets the tokens returned by the token endpoint. Set only for a successful result.
         /// </summary>
-        public string? AccessToken { get; set; }
+        public TokenResponse? Token { get; set; }
 
         /// <summary>
         /// Gets or sets the exception that made the exchange fail. Set only for a failed result.

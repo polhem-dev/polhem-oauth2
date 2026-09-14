@@ -1,49 +1,35 @@
+using System.Text.Json;
+
 namespace Polhem.OAuth2
 {
     /// <summary>
     /// The Microsoft Entra ID OAuth2 provider.
     /// </summary>
-    public class AzureOAuth2Provider : OAuth2Provider
+    internal sealed class AzureOAuth2Provider : OAuth2Provider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The Microsoft Entra ID OAuth2 options.</param>
-        public AzureOAuth2Provider(AzureOAuth2Options options) : base(options)
+        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
+        public AzureOAuth2Provider(AzureOAuth2Options options, HttpClient? httpClient = null) : base(options, httpClient)
         {
         }
 
         /// <inheritdoc/>
-        public override string ProviderName { get; } = "Azure";
+        public override string ProviderName => "Azure";
 
         /// <inheritdoc/>
-        protected override Dictionary<string, string> GetAccessTokenParams(string authorizationCode, string codeVerifier = "")
+        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
-            var requestParams = base.GetAccessTokenParams(authorizationCode, codeVerifier);
-            // NOTE: `response_mode` is defined for the authorization request, not for the token request.
-            requestParams["response_mode"] = "query";
-            return requestParams;
-        }
-
-        /// <inheritdoc/>
-        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
-        /// <exception cref="System.Text.Json.JsonException"><paramref name="json"/> is not a JSON object.</exception>
-        public override UserInfo ParseUserJson(string json)
-        {
-            if (string.IsNullOrEmpty(json))
-                throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");
-
-            using (var document = OAuth2Json.ParseObject(json))
+            // The OpenID Connect user information endpoint returns the standard claims only, so the user is identified by sub.
+            return new UserInfo
             {
-                var root = document.RootElement;
-                return new UserInfo
-                {
-                    UserId = OAuth2Json.GetString(root, "oid") ?? OAuth2Json.GetString(root, "sub"),
-                    UserName = OAuth2Json.GetString(root, "name"),
-                    Email = OAuth2Json.GetString(root, "email") ?? OAuth2Json.GetString(root, "userPrincipalName"),
-                    RawJson = json
-                };
-            }
+                UserId = OAuth2Json.GetString(user, "sub"),
+                UserName = OAuth2Json.GetString(user, "name"),
+                Email = OAuth2Json.GetString(user, "email"),
+                RawJson = json
+            };
         }
     }
 }

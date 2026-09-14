@@ -3,7 +3,7 @@ namespace Polhem.OAuth2
     /// <summary>
     /// OAuth2 options preset with the LINE Login endpoints and scopes.
     /// </summary>
-    public class LineOAuth2Options : OAuth2Options
+    public sealed class LineOAuth2Options : OAuth2Options
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="LineOAuth2Options"/> class.

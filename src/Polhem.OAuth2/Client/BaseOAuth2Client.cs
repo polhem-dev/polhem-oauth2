@@ -12,38 +12,18 @@ namespace Polhem.OAuth2
         /// Initializes a new instance of the <see cref="BaseOAuth2Client"/> class.
         /// </summary>
         /// <param name="options">The OAuth2 options. Their type selects the provider.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI.</exception>
         /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
-        public BaseOAuth2Client(OAuth2Options options)
+        public BaseOAuth2Client(OAuth2Options options) : this(options, null)
         {
+        }
+
+        internal BaseOAuth2Client(OAuth2Options options, HttpClient? httpClient)
+        {
+            Provider = OAuth2Provider.Create(options, httpClient);
             UsePkce = options.UsePkce;
-            Provider = CreateProvider(options);
         }
-
-        private static IOAuth2Provider CreateProvider(OAuth2Options options)
-        {
-            switch (options)
-            {
-                case GoogleOAuth2Options googleOptions:
-                    return new GoogleOAuth2Provider(googleOptions);
-                case LineOAuth2Options lineOptions:
-                    return new LineOAuth2Provider(lineOptions);
-                case AzureOAuth2Options azureOptions:
-                    return new AzureOAuth2Provider(azureOptions);
-                case FacebookOAuth2Options facebookOptions:
-                    return new FacebookOAuth2Provider(facebookOptions);
-                case Auth0OAuth2Options auth0Options:
-                    return new Auth0OAuth2Provider(auth0Options);
-                case OktaOAuth2Options oktaOptions:
-                    return new OktaOAuth2Provider(oktaOptions);
-                default:
-                    throw new NotSupportedException("Unsupported OAuth provider.");
-            }
-        }
-
-        /// <summary>
-        /// Gets the OAuth2 provider.
-        /// </summary>
-        public IOAuth2Provider Provider { get; private set; }
 
         /// <summary>
         /// Gets the storage that keeps the state and the PKCE code verifier between the redirect and the callback.
@@ -56,6 +36,17 @@ namespace Polhem.OAuth2
         public bool UsePkce { get; protected set; }
 
         /// <summary>
+        /// Gets the OAuth2 provider.
+        /// </summary>
+        internal OAuth2Provider Provider { get; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the client is a public client, which cannot keep its client secret
+        /// confidential and therefore does not send it.
+        /// </summary>
+        internal bool IsPublicClient { get; set; }
+
+        /// <summary>
         /// Stores the state, and the PKCE code verifier when PKCE is used, then builds the authorization URL.
         /// </summary>
         /// <param name="state">A random value that protects against cross-site request forgery.</param>
@@ -64,14 +55,14 @@ namespace Polhem.OAuth2
         {
             StateStorage.SaveState(state);
 
-            string codeChallenge = string.Empty;
+            string? codeChallenge = null;
             if (UsePkce)
             {
                 string codeVerifier = Pkce.GenerateCodeVerifier();
                 codeChallenge = Pkce.GenerateCodeChallenge(codeVerifier);
                 StateStorage.SaveCodeVerifier(codeVerifier);
             }
-            return Provider.GetAuthorizationUrl(state, codeChallenge);
+            return Provider.GetAuthorizationUrl(state, Provider.Options.RedirectUri, codeChallenge);
         }
 
         /// <summary>
@@ -90,39 +81,14 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Exchanges the authorization code for an access token, sending the stored PKCE code verifier when PKCE is used.
+        /// Exchanges the authorization code for tokens and retrieves the user information.
         /// </summary>
         /// <param name="authorizationCode">The authorization code returned by the provider.</param>
-        /// <returns>The access token.</returns>
-        public async Task<string> GetAccessTokenAsync(string authorizationCode)
-        {
-            string codeVerifier = string.Empty;
-            if (UsePkce)
-            {
-                codeVerifier = StateStorage.GetCodeVerifier() ?? string.Empty;
-                StateStorage.RemoveCodeVerifier();
-            }
-            return await Provider.GetAccessTokenAsync(authorizationCode, codeVerifier);
-        }
-
-        /// <summary>
-        /// Retrieves user information with an access token.
-        /// </summary>
-        /// <param name="accessToken">The access token.</param>
-        /// <returns>The user information as a JSON string.</returns>
-        public Task<string> GetUserInfoAsync(string accessToken)
-        {
-            return Provider.GetUserInfoAsync(accessToken);
-        }
-
-        /// <summary>
-        /// Exchanges the authorization code for an access token and retrieves the user information.
-        /// </summary>
-        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
-        /// <returns>A successful result with the access token and user information, or a failed result that carries the exception.</returns>
+        /// <returns>A successful result with the tokens and user information, or a failed result that carries the exception.</returns>
         /// <remarks>
         /// Only the failures an OAuth2 exchange is expected to produce become a failed result: an <see cref="OAuth2Exception"/>,
-        /// an HTTP failure, a request timeout, or a response that is not valid JSON. Any other exception propagates to the caller.
+        /// which includes an error returned by the token endpoint, an HTTP failure, a request timeout, or a response that is not
+        /// valid JSON. Any other exception propagates to the caller.
         /// </remarks>
         public async Task<AuthorizationResult> ValidateAuthorization(string? authorizationCode)
         {
@@ -131,20 +97,15 @@ namespace Polhem.OAuth2
                 if (authorizationCode is not { } code || string.IsNullOrWhiteSpace(code))
                     throw new OAuth2Exception("The authorization code is empty.");
 
-                string accessToken = await GetAccessTokenAsync(code);
-                if (string.IsNullOrEmpty(accessToken))
-                    throw new OAuth2Exception("The token response does not contain an access token.");
-
-                string userInfo = await GetUserInfoAsync(accessToken);
-                if (string.IsNullOrWhiteSpace(userInfo))
-                    throw new OAuth2Exception("The user information response is empty.");
+                TokenResponse token = await ExchangeCodeAsync(code).ConfigureAwait(false);
+                UserInfo userInfo = await Provider.GetUserInfoAsync(token, CancellationToken.None).ConfigureAwait(false);
 
                 return new AuthorizationResult()
                 {
                     ProviderName = Provider.ProviderName,
                     IsSuccess = true,
-                    AccessToken = accessToken,
-                    UserInfo = Provider.ParseUserJson(userInfo)
+                    Token = token,
+                    UserInfo = userInfo
                 };
             }
             catch (OAuth2Exception ex)
@@ -163,6 +124,20 @@ namespace Polhem.OAuth2
             {
                 return Failure(ex);
             }
+        }
+
+        // WARNING: Every await in this class must use ConfigureAwait(false). Applications on System.Web or Windows Forms that
+        // block on the returned task would otherwise deadlock. The state storage is read before the first await on purpose,
+        // because it can depend on the HTTP context of the current request.
+        private Task<TokenResponse> ExchangeCodeAsync(string authorizationCode)
+        {
+            string? codeVerifier = null;
+            if (UsePkce)
+            {
+                codeVerifier = StateStorage.GetCodeVerifier();
+                StateStorage.RemoveCodeVerifier();
+            }
+            return Provider.ExchangeCodeAsync(authorizationCode, Provider.Options.RedirectUri, codeVerifier, IsPublicClient, CancellationToken.None);
         }
 
         private static AuthorizationResult Failure(Exception exception)

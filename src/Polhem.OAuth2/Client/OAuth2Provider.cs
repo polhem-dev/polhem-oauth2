@@ -1,125 +1,235 @@
 using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace Polhem.OAuth2
 {
     /// <summary>
-    /// The base class for OAuth2 providers. It builds the authorization URL, exchanges the authorization code for an
-    /// access token, and retrieves user information.
+    /// The base class for the supported providers. It builds the authorization URL, requests tokens from the token endpoint,
+    /// and retrieves user information.
     /// </summary>
-    public abstract class OAuth2Provider : IOAuth2Provider
+    internal abstract class OAuth2Provider
     {
-        /// <summary>
-        /// The HTTP client used for requests to the provider.
-        /// </summary>
-        protected readonly HttpClient _httpClient = new HttpClient();
+        // HttpClient is designed to be shared. Creating one for each request can exhaust the available sockets under load.
+        private static readonly HttpClient s_sharedHttpClient = new HttpClient();
+
+        private readonly HttpClient _httpClient;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The OAuth2 options.</param>
+        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
-        public OAuth2Provider(OAuth2Options options)
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI.</exception>
+        protected OAuth2Provider(OAuth2Options options, HttpClient? httpClient)
         {
-            if (options == null)
+            if (options is null)
                 throw new ArgumentNullException(nameof(options));
+            if (options.FindInsecureEndpoint() is { } endpoint)
+                throw new ArgumentException($"{endpoint} must be an absolute https URI.", nameof(options));
+
             Options = options;
+            _httpClient = httpClient ?? s_sharedHttpClient;
         }
 
-        /// <inheritdoc/>
+        /// <summary>
+        /// Gets the provider name.
+        /// </summary>
         public abstract string ProviderName { get; }
 
         /// <summary>
         /// Gets the OAuth2 options.
         /// </summary>
-        public OAuth2Options Options { get; private set; }
+        public OAuth2Options Options { get; }
+
+        /// <summary>
+        /// Gets a value indicating whether the client secret is sent to the token endpoint even from a public client.
+        /// </summary>
+        protected virtual bool RequiresClientSecret => false;
+
+        /// <summary>
+        /// Gets a value indicating whether the provider issues refresh tokens.
+        /// </summary>
+        protected virtual bool SupportsRefreshToken => true;
+
+        /// <summary>
+        /// Creates the provider that matches the type of the options.
+        /// </summary>
+        /// <param name="options">The OAuth2 options.</param>
+        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
+        /// <returns>The provider.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI.</exception>
+        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
+        public static OAuth2Provider Create(OAuth2Options options, HttpClient? httpClient)
+        {
+            switch (options)
+            {
+                case null:
+                    throw new ArgumentNullException(nameof(options));
+                case GoogleOAuth2Options googleOptions:
+                    return new GoogleOAuth2Provider(googleOptions, httpClient);
+                case LineOAuth2Options lineOptions:
+                    return new LineOAuth2Provider(lineOptions, httpClient);
+                case AzureOAuth2Options azureOptions:
+                    return new AzureOAuth2Provider(azureOptions, httpClient);
+                case FacebookOAuth2Options facebookOptions:
+                    return new FacebookOAuth2Provider(facebookOptions, httpClient);
+                case Auth0OAuth2Options auth0Options:
+                    return new Auth0OAuth2Provider(auth0Options, httpClient);
+                case OktaOAuth2Options oktaOptions:
+                    return new OktaOAuth2Provider(oktaOptions, httpClient);
+                default:
+                    throw new NotSupportedException("Unsupported OAuth provider.");
+            }
+        }
+
+        /// <summary>
+        /// Builds the URL that sends the user to the provider to sign in and authorize the application.
+        /// </summary>
+        /// <param name="state">A random value that protects against cross-site request forgery.</param>
+        /// <param name="redirectUri">The URI the provider sends the user back to.</param>
+        /// <param name="codeChallenge">The PKCE <c>code_challenge</c>, or null when PKCE is not used.</param>
+        /// <returns>The authorization URL.</returns>
+        public string GetAuthorizationUrl(string state, string redirectUri, string? codeChallenge)
+        {
+            var parameters = GetAuthorizationParameters(state, redirectUri, codeChallenge);
+            string query = string.Join("&", parameters.Select(parameter => parameter.Key + "=" + Uri.EscapeDataString(parameter.Value)));
+            return Options.AuthorizationEndpoint + "?" + query;
+        }
+
+        /// <summary>
+        /// Exchanges an authorization code for tokens.
+        /// </summary>
+        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
+        /// <param name="redirectUri">The redirect URI sent with the authorization request.</param>
+        /// <param name="codeVerifier">The PKCE <c>code_verifier</c>, or null when PKCE is not used.</param>
+        /// <param name="publicClient">
+        /// Whether the client is a public client, which cannot keep a client secret confidential and does not send it.
+        /// </param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>The tokens.</returns>
+        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token.</exception>
+        /// <exception cref="HttpRequestException">The request failed, or the token endpoint returned an unsuccessful status code without an error code.</exception>
+        /// <exception cref="JsonException">A successful response is not a JSON object.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        public Task<TokenResponse> ExchangeCodeAsync(
+            string authorizationCode, string redirectUri, string? codeVerifier, bool publicClient, CancellationToken cancellationToken)
+        {
+            var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = authorizationCode,
+                ["redirect_uri"] = redirectUri,
+                ["client_id"] = Options.ClientId
+            };
+            if (codeVerifier is { Length: > 0 } verifier)
+                parameters["code_verifier"] = verifier;
+            AddClientSecret(parameters, publicClient);
+            return RequestTokenAsync(parameters, cancellationToken);
+        }
+
+        /// <summary>
+        /// Obtains new tokens with a refresh token.
+        /// </summary>
+        /// <param name="refreshToken">The refresh token.</param>
+        /// <param name="publicClient">
+        /// Whether the client is a public client, which cannot keep a client secret confidential and does not send it.
+        /// </param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>The new tokens.</returns>
+        /// <exception cref="NotSupportedException">The provider does not issue refresh tokens.</exception>
+        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token.</exception>
+        /// <exception cref="HttpRequestException">The request failed, or the token endpoint returned an unsuccessful status code without an error code.</exception>
+        /// <exception cref="JsonException">A successful response is not a JSON object.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        public Task<TokenResponse> RefreshTokenAsync(string refreshToken, bool publicClient, CancellationToken cancellationToken)
+        {
+            if (!SupportsRefreshToken)
+                throw new NotSupportedException($"{ProviderName} does not issue refresh tokens.");
+
+            var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = refreshToken,
+                ["client_id"] = Options.ClientId
+            };
+            AddClientSecret(parameters, publicClient);
+            return RequestTokenAsync(parameters, cancellationToken);
+        }
+
+        /// <summary>
+        /// Retrieves and parses the user information with the access token.
+        /// </summary>
+        /// <param name="token">The tokens returned by the token endpoint.</param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>The user information.</returns>
+        /// <exception cref="HttpRequestException">The request failed, or the endpoint returned an unsuccessful status code.</exception>
+        /// <exception cref="OAuth2Exception">The response is empty.</exception>
+        /// <exception cref="JsonException">The response is not a JSON object.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        public async Task<UserInfo> GetUserInfoAsync(TokenResponse token, CancellationToken cancellationToken)
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Get, GetUserInfoUrl()))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
+
+                using (var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false))
+                {
+                    if (!response.IsSuccessStatusCode)
+                        throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
+
+                    string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (string.IsNullOrWhiteSpace(json))
+                        throw new OAuth2Exception("The user information response is empty.");
+
+                    return ParseUserJson(json, token);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Parses the JSON returned by the user information endpoint.
+        /// </summary>
+        /// <param name="json">The user information as a JSON string.</param>
+        /// <param name="token">The tokens of the sign-in, for providers that put some user details in the ID token.</param>
+        /// <returns>The parsed user information.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
+        /// <exception cref="JsonException"><paramref name="json"/> is not a JSON object.</exception>
+        public UserInfo ParseUserJson(string json, TokenResponse? token = null)
+        {
+            if (string.IsNullOrEmpty(json))
+                throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");
+
+            using (var document = OAuth2Json.ParseObject(json))
+            {
+                return CreateUserInfo(document.RootElement, json, token);
+            }
+        }
 
         /// <summary>
         /// Builds the query parameters of the authorization URL.
         /// </summary>
         /// <param name="state">A random value that protects against cross-site request forgery.</param>
-        /// <param name="codeChallenge">The PKCE <c>code_challenge</c>, or an empty string when PKCE is not used.</param>
+        /// <param name="redirectUri">The URI the provider sends the user back to.</param>
+        /// <param name="codeChallenge">The PKCE <c>code_challenge</c>, or null when PKCE is not used.</param>
         /// <returns>The query parameters keyed by name.</returns>
-        protected virtual Dictionary<string, string> GetAuthorizationUrlParams(string state, string codeChallenge = "")
+        protected virtual Dictionary<string, string> GetAuthorizationParameters(string state, string redirectUri, string? codeChallenge)
         {
-            var queryParams = new Dictionary<string, string>
+            var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                { "client_id", Options.ClientId },
-                { "redirect_uri", Options.RedirectUri },
-                { "response_type", "code" },
-                { "scope", string.Join(" ", Options.Scopes) },
-                { "state", state }
+                ["client_id"] = Options.ClientId,
+                ["redirect_uri"] = redirectUri,
+                ["response_type"] = "code",
+                ["scope"] = string.Join(" ", Options.Scopes),
+                ["state"] = state
             };
-
-            if (!string.IsNullOrWhiteSpace(codeChallenge))
+            if (codeChallenge is { Length: > 0 } challenge)
             {
-                queryParams["code_challenge"] = codeChallenge;
-                queryParams["code_challenge_method"] = "S256";
+                parameters["code_challenge"] = challenge;
+                parameters["code_challenge_method"] = "S256";
             }
-            return queryParams;
-        }
-
-        /// <inheritdoc/>
-        public virtual string GetAuthorizationUrl(string state, string codeChallenge = "")
-        {
-            var queryParams = GetAuthorizationUrlParams(state, codeChallenge);
-            string queryString = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={Uri.EscapeDataString(kvp.Value)}"));
-            return $"{Options.AuthorizationEndpoint}?{queryString}";
-        }
-
-        /// <inheritdoc/>
-        public virtual string GetRedirectUrl()
-        {
-            return Options.RedirectUri;
-        }
-
-        /// <summary>
-        /// Builds the form parameters of the token request.
-        /// </summary>
-        /// <param name="authorizationCode">The authorization code returned by the provider.</param>
-        /// <param name="codeVerifier">The PKCE <c>code_verifier</c>, or an empty string when PKCE is not used.</param>
-        /// <returns>The form parameters keyed by name.</returns>
-        protected virtual Dictionary<string, string> GetAccessTokenParams(string authorizationCode, string codeVerifier = "")
-        {
-            var requestParams = new Dictionary<string, string>
-            {
-                { "client_id", Options.ClientId },
-                { "redirect_uri", Options.RedirectUri },
-                { "code", authorizationCode },
-                { "grant_type", "authorization_code" }
-            };
-
-            if (!string.IsNullOrWhiteSpace(codeVerifier))
-            {
-                requestParams["code_verifier"] = codeVerifier;
-            }
-            else
-            {
-                requestParams["client_secret"] = Options.ClientSecret;
-            }
-            return requestParams;
-        }
-
-        /// <inheritdoc/>
-        /// <exception cref="HttpRequestException">The token endpoint returned an unsuccessful status code.</exception>
-        /// <exception cref="OAuth2Exception">The token response does not contain an access token.</exception>
-        /// <exception cref="System.Text.Json.JsonException">The token response is not a JSON object.</exception>
-        public virtual async Task<string> GetAccessTokenAsync(string authorizationCode, string codeVerifier = "")
-        {
-            var requestParams = GetAccessTokenParams(authorizationCode, codeVerifier);
-
-            using (var requestBody = new FormUrlEncodedContent(requestParams))
-            using (var response = await _httpClient.PostAsync(Options.TokenEndpoint, requestBody).ConfigureAwait(false))
-            {
-                if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"Failed to obtain an access token. Status code: {(int)response.StatusCode}.");
-
-                var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using (var tokenData = OAuth2Json.ParseObject(responseContent))
-                {
-                    return OAuth2Json.GetString(tokenData.RootElement, "access_token")
-                        ?? throw new OAuth2Exception("The token response does not contain an access token.");
-                }
-            }
+            return parameters;
         }
 
         /// <summary>
@@ -131,66 +241,73 @@ namespace Polhem.OAuth2
             return Options.UserInfoEndpoint;
         }
 
-        /// <inheritdoc/>
-        /// <exception cref="HttpRequestException">The user information endpoint returned an unsuccessful status code.</exception>
-        public virtual async Task<string> GetUserInfoAsync(string accessToken)
+        /// <summary>
+        /// Maps the fields of the user information object.
+        /// </summary>
+        /// <param name="user">The root object of the user information response.</param>
+        /// <param name="json">The raw JSON of the response.</param>
+        /// <param name="token">The tokens of the sign-in, or null when they are not available.</param>
+        /// <returns>The user information.</returns>
+        protected abstract UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token);
+
+        private void AddClientSecret(Dictionary<string, string> parameters, bool publicClient)
         {
-            string url = GetUserInfoUrl();
-            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            // A public client authenticates the code exchange with PKCE, because its client secret cannot be kept confidential (ADR-004).
+            if (Options.ClientSecret is { Length: > 0 } clientSecret && (!publicClient || RequiresClientSecret))
+                parameters["client_secret"] = clientSecret;
+        }
+
+        private async Task<TokenResponse> RequestTokenAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
+        {
+            using (var content = new FormUrlEncodedContent(parameters))
+            using (var response = await _httpClient.PostAsync(Options.TokenEndpoint, content, cancellationToken).ConfigureAwait(false))
             {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-                using (var response = await _httpClient.SendAsync(request).ConfigureAwait(false))
+                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
                 {
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
-
-                    return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    throw (Exception?)ReadErrorResponse(body)
+                        ?? new HttpRequestException($"The token endpoint returned status code {(int)response.StatusCode}.");
                 }
+                return ReadTokenResponse(body);
             }
         }
 
-        /// <inheritdoc/>
-        public abstract UserInfo ParseUserJson(string json);
-
-        /// <summary>
-        /// Builds the form parameters of the refresh token request.
-        /// </summary>
-        /// <param name="refreshToken">The refresh token issued together with the original access token.</param>
-        /// <returns>The form parameters keyed by name.</returns>
-        protected virtual Dictionary<string, string> GetRefreshAccessTokenParams(string refreshToken)
+        // RFC 6749, section 5.2: an error response is a JSON object whose error field holds a code such as invalid_grant.
+        private static OAuth2Exception? ReadErrorResponse(string body)
         {
-            return new Dictionary<string, string>
+            try
             {
-                { "client_id", Options.ClientId },
-                { "client_secret", Options.ClientSecret },
-                { "refresh_token", refreshToken },
-                { "grant_type", "refresh_token" }
-            };
+                using (var document = OAuth2Json.ParseObject(body))
+                {
+                    var root = document.RootElement;
+                    return OAuth2Json.GetProtocolString(root, "error") is { Length: > 0 } error
+                        ? OAuth2Exception.FromProviderError(error, OAuth2Json.GetProtocolString(root, "error_description"))
+                        : null;
+                }
+            }
+            catch (JsonException)
+            {
+                // A body that is not a JSON object, such as an HTML error page, carries no error code.
+                return null;
+            }
         }
 
-        /// <inheritdoc/>
-        /// <exception cref="HttpRequestException">The token endpoint returned an unsuccessful status code.</exception>
-        /// <exception cref="OAuth2Exception">The token response does not contain an access token.</exception>
-        /// <exception cref="System.Text.Json.JsonException">The token response is not a JSON object.</exception>
-        public virtual async Task<string> RefreshAccessTokenAsync(string refreshToken)
+        private static TokenResponse ReadTokenResponse(string json)
         {
-            var parameters = GetRefreshAccessTokenParams(refreshToken);
-
-            using (var requestBody = new FormUrlEncodedContent(parameters))
-            using (var response = await _httpClient.PostAsync(Options.TokenEndpoint, requestBody).ConfigureAwait(false))
+            using (var document = OAuth2Json.ParseObject(json))
             {
-                if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"Failed to refresh the access token. Status code: {(int)response.StatusCode}.");
+                var root = document.RootElement;
+                if (OAuth2Json.GetProtocolString(root, "access_token") is not { Length: > 0 } accessToken)
+                    throw new OAuth2Exception("The token response does not contain an access token.");
 
-                var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                using (var tokenData = OAuth2Json.ParseObject(content))
-                {
-                    if (OAuth2Json.GetString(tokenData.RootElement, "access_token") is not { Length: > 0 } accessToken)
-                        throw new OAuth2Exception("The token response does not contain an access token.");
-
-                    return accessToken;
-                }
+                return new TokenResponse(
+                    accessToken,
+                    OAuth2Json.GetProtocolString(root, "token_type"),
+                    OAuth2Json.GetSeconds(root, "expires_in"),
+                    OAuth2Json.GetProtocolString(root, "refresh_token"),
+                    OAuth2Json.GetProtocolString(root, "id_token"),
+                    OAuth2Json.GetProtocolString(root, "scope"),
+                    json);
             }
         }
     }

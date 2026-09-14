@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Polhem.OAuth2
@@ -25,7 +26,7 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Gets a field of a JSON object as text.
+        /// Gets a field of a JSON object as text. Use it for user information, where providers differ in how they write values.
         /// </summary>
         /// <param name="obj">The JSON object.</param>
         /// <param name="propertyName">The field name, matched case-sensitively.</param>
@@ -48,6 +49,52 @@ namespace Polhem.OAuth2
                 default:
                     return value.GetRawText();
             }
+        }
+
+        /// <summary>
+        /// Gets a protocol field whose value the specification defines as a string, such as <c>access_token</c> or <c>error</c>.
+        /// </summary>
+        /// <param name="obj">The JSON object.</param>
+        /// <param name="propertyName">The field name, matched case-sensitively.</param>
+        /// <returns>The string, or null when the field is missing or its value is not a JSON string.</returns>
+        public static string? GetProtocolString(JsonElement obj, string propertyName)
+        {
+            return obj.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString()
+                : null;
+        }
+
+        /// <summary>
+        /// Gets a field that holds a number of seconds, such as <c>expires_in</c>. Some providers write the number as a string.
+        /// </summary>
+        /// <param name="obj">The JSON object.</param>
+        /// <param name="propertyName">The field name, matched case-sensitively.</param>
+        /// <returns>
+        /// The duration, or null when the field is missing or is not a whole number of seconds between 0 and
+        /// <see cref="int.MaxValue"/>.
+        /// </returns>
+        public static TimeSpan? GetSeconds(JsonElement obj, string propertyName)
+        {
+            if (!obj.TryGetProperty(propertyName, out var value))
+                return null;
+
+            long seconds;
+            if (value.ValueKind == JsonValueKind.Number)
+            {
+                if (!value.TryGetInt64(out seconds))
+                    return null;
+            }
+            else if (value.ValueKind == JsonValueKind.String)
+            {
+                if (!long.TryParse(value.GetString(), NumberStyles.None, CultureInfo.InvariantCulture, out seconds))
+                    return null;
+            }
+            else
+            {
+                return null;
+            }
+
+            return seconds >= 0 && seconds <= int.MaxValue ? TimeSpan.FromSeconds(seconds) : null;
         }
     }
 }

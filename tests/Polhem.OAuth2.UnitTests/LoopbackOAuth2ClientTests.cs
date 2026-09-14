@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Net;
 
 namespace Polhem.OAuth2.UnitTests
 {
@@ -21,21 +22,21 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("SignInAsync exchanges the code with the redirect URI of the bound port, then restores the configured URI")]
         public async Task SignInAsync_CallbackWithState_ExchangesCodeWithBoundRedirectUri()
         {
-            using var tokenEndpoint = new FakeTokenEndpoint();
-            var options = CreateOptions(tokenEndpoint.Url);
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
+            var options = CreateOptions();
             var browser = new FakeBrowser("{path}?code=abc&state={state}");
-            var client = new LoopbackOAuth2Client(options) { OpenBrowser = browser.Open };
+            var client = new LoopbackOAuth2Client(options, handler.CreateClient()) { OpenBrowser = browser.Open };
 
             var result = await client.SignInAsync();
             await browser.Completed;
 
-            // The fake token endpoint rejects the request, so the exchange ends as an HTTP failure.
+            // The stub token endpoint rejects the request without an error code, so the exchange ends as an HTTP failure.
             Assert.IsType<HttpRequestException>(result.Exception);
-            string tokenRequest = await tokenEndpoint.RequestBody;
+            var tokenRequest = Assert.Single(handler.Requests);
             string boundRedirectUri = LoopbackTestHttp.GetQueryValue(browser.AuthorizationUrl!, "redirect_uri")!;
             Assert.NotEqual(0, new Uri(boundRedirectUri).Port);
-            Assert.Equal(boundRedirectUri, LoopbackTestHttp.GetParameter(tokenRequest, "redirect_uri"));
-            Assert.Equal("abc", LoopbackTestHttp.GetParameter(tokenRequest, "code"));
+            Assert.Equal(boundRedirectUri, tokenRequest.FormValue("redirect_uri"));
+            Assert.Equal("abc", tokenRequest.FormValue("code"));
             Assert.StartsWith("HTTP/1.1 200 OK", browser.Responses[0], StringComparison.Ordinal);
             Assert.Equal("http://127.0.0.1:0/callback", options.RedirectUri);
         }
@@ -44,14 +45,14 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("SignInAsync ignores requests without the state of the sign-in and uses the genuine redirect")]
         public async Task SignInAsync_OtherRequestsBeforeRedirect_UsesGenuineRedirect()
         {
-            using var tokenEndpoint = new FakeTokenEndpoint();
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
             var browser = new FakeBrowser("/favicon.ico", "{path}?code=forged&state=forged", "{path}?code=genuine&state={state}");
-            var client = new LoopbackOAuth2Client(CreateOptions(tokenEndpoint.Url)) { OpenBrowser = browser.Open };
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
             await client.SignInAsync();
             await browser.Completed;
 
-            Assert.Equal("genuine", LoopbackTestHttp.GetParameter(await tokenEndpoint.RequestBody, "code"));
+            Assert.Equal("genuine", Assert.Single(handler.Requests).FormValue("code"));
             Assert.StartsWith("HTTP/1.1 404", browser.Responses[0], StringComparison.Ordinal);
             Assert.StartsWith("HTTP/1.1 400", browser.Responses[1], StringComparison.Ordinal);
             Assert.StartsWith("HTTP/1.1 200", browser.Responses[2], StringComparison.Ordinal);
@@ -61,8 +62,9 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("SignInAsync turns an error redirect into a failed result with OAuth2Exception")]
         public async Task SignInAsync_ProviderError_ReturnsFailedResultWithOAuth2Exception()
         {
+            var handler = new StubHttpMessageHandler();
             var browser = new FakeBrowser("{path}?error=access_denied&state={state}");
-            var client = new LoopbackOAuth2Client(CreateOptions("http://127.0.0.1:1/token")) { OpenBrowser = browser.Open };
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
 
             var result = await client.SignInAsync();
             await browser.Completed;
@@ -70,6 +72,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.False(result.IsSuccess);
             Assert.IsType<OAuth2Exception>(result.Exception);
             Assert.Contains("did not complete", browser.Responses[0], StringComparison.Ordinal);
+            Assert.Empty(handler.Requests);
         }
 
         [Fact]
@@ -77,7 +80,7 @@ namespace Polhem.OAuth2.UnitTests
         public async Task SignInAsync_OnlyForgedRequest_ReturnsFailedResultWithTimeoutException()
         {
             var browser = new FakeBrowser("{path}?code=forged&state=forged");
-            var client = new LoopbackOAuth2Client(CreateOptions("http://127.0.0.1:1/token"))
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
             {
                 OpenBrowser = browser.Open,
                 Timeout = TimeSpan.FromSeconds(1)
@@ -94,7 +97,7 @@ namespace Polhem.OAuth2.UnitTests
         public async Task SignInAsync_CanceledWhileWaiting_ReturnsFailedResultWithOperationCanceledException()
         {
             using var cancellation = new CancellationTokenSource();
-            var client = new LoopbackOAuth2Client(CreateOptions("http://127.0.0.1:1/token")) { OpenBrowser = _ => cancellation.Cancel() };
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient()) { OpenBrowser = _ => cancellation.Cancel() };
 
             var result = await client.SignInAsync(cancellation.Token);
 
@@ -106,7 +109,7 @@ namespace Polhem.OAuth2.UnitTests
         public async Task SignInAsync_AlreadyCanceled_DoesNotOpenBrowser()
         {
             bool opened = false;
-            var client = new LoopbackOAuth2Client(CreateOptions("http://127.0.0.1:1/token")) { OpenBrowser = _ => opened = true };
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient()) { OpenBrowser = _ => opened = true };
 
             var result = await client.SignInAsync(new CancellationToken(canceled: true));
 
@@ -120,7 +123,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             using var cancellation = new CancellationTokenSource();
-            var client = new LoopbackOAuth2Client(CreateOptions("http://127.0.0.1:1/token")) { OpenBrowser = _ => opened.TrySetResult() };
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient()) { OpenBrowser = _ => opened.TrySetResult() };
 
             var first = client.SignInAsync(cancellation.Token);
             await opened.Task;
@@ -134,34 +137,33 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("SignInAsync uses PKCE even when the options turn it off, and sends no client secret")]
         public async Task SignInAsync_UsePkceFalse_SendsCodeVerifierWithoutClientSecret()
         {
-            using var tokenEndpoint = new FakeTokenEndpoint();
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, string.Empty);
             var options = new FacebookOAuth2Options
             {
                 ClientId = "client-id",
                 ClientSecret = "client-secret",
                 RedirectUri = "http://127.0.0.1:0/callback",
-                TokenEndpoint = tokenEndpoint.Url,
                 UsePkce = false
             };
             var browser = new FakeBrowser("{path}?code=abc&state={state}");
-            var client = new LoopbackOAuth2Client(options) { OpenBrowser = browser.Open };
+            var client = new LoopbackOAuth2Client(options, handler.CreateClient()) { OpenBrowser = browser.Open };
 
             await client.SignInAsync();
             await browser.Completed;
 
-            string tokenRequest = await tokenEndpoint.RequestBody;
-            Assert.NotNull(LoopbackTestHttp.GetQueryValue(browser.AuthorizationUrl!, "code_challenge"));
-            Assert.NotNull(LoopbackTestHttp.GetParameter(tokenRequest, "code_verifier"));
-            Assert.Null(LoopbackTestHttp.GetParameter(tokenRequest, "client_secret"));
+            var tokenRequest = Assert.Single(handler.Requests);
+            string? verifier = tokenRequest.FormValue("code_verifier");
+            Assert.NotNull(verifier);
+            Assert.Equal(Pkce.GenerateCodeChallenge(verifier), LoopbackTestHttp.GetQueryValue(browser.AuthorizationUrl!, "code_challenge"));
+            Assert.Null(tokenRequest.FormValue("client_secret"));
         }
 
-        private static GoogleOAuth2Options CreateOptions(string tokenEndpoint)
+        private static GoogleOAuth2Options CreateOptions()
         {
             return new GoogleOAuth2Options
             {
                 ClientId = "client-id",
-                RedirectUri = "http://127.0.0.1:0/callback",
-                TokenEndpoint = tokenEndpoint
+                RedirectUri = "http://127.0.0.1:0/callback"
             };
         }
 
