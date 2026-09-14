@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
-    <Description>Polhem.OAuth2.AspNet is an OAuth2 authentication library designed for ASP.NET WebForms / MVC, supporting Google, Facebook, LINE, Azure, and Auth0.</Description>
-    <PackageTags>OAuth2 ASP.NET WebForms/MVC</PackageTags>
+    <Description>OAuth2 sign-in for ASP.NET Web Forms and MVC applications on System.Web, with Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.</Description>
+    <PackageTags>oauth2 openid-connect pkce aspnet webforms mvc google facebook line entra-id azure-ad auth0 okta</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

@@ -8,7 +8,6 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSession();
 builder.Services.AddHttpContextAccessor();
 
-// Register TOAuth2Manager as a singleton service using the custom factory method: OAuth2RegistrationHelper.CreateOAuth2Manager
 builder.Services.AddSingleton<OAuth2Manager>(OAuth2RegistrationHelper.CreateOAuth2Manager);
 
 var app = builder.Build();

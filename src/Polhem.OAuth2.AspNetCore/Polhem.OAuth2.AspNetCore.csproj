@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <Description>Polhem.OAuth2.AspNetCore is an OAuth2 authentication library designed for ASP.NET Core, supporting Google, Facebook, LINE, Azure, and Auth0.</Description>
-    <PackageTags>OAuth2 WinForms</PackageTags>
+    <Description>OAuth2 sign-in for ASP.NET Core applications, with Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.</Description>
+    <PackageTags>oauth2 openid-connect pkce aspnetcore google facebook line entra-id azure-ad auth0 okta</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

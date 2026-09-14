@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net10.0</TargetFrameworks>
-    <Description>Polhem.OAuth2 is a lightweight .NET OAuth2 authentication library that supports multiple providers, including Google, Facebook, LINE, Azure, Auth0, and Okta.</Description>
-    <PackageTags>OAuth2</PackageTags>
+    <Description>Lightweight OAuth2 sign-in for .NET with Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta. Desktop and console applications sign in through the system browser with a loopback redirect and PKCE.</Description>
+    <PackageTags>oauth2 openid-connect pkce loopback desktop google facebook line entra-id azure-ad auth0 okta</PackageTags>
   </PropertyGroup>
 
   <!-- System.Text.Json is part of the net10.0 framework, so only the netstandard2.0 build needs the package. -->
