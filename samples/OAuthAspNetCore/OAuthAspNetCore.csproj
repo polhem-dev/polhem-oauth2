@@ -10,8 +10,4 @@
     <ProjectReference Include="..\..\src\Polhem.OAuth2.AspNetCore\Polhem.OAuth2.AspNetCore.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-  </ItemGroup>
-
 </Project>
