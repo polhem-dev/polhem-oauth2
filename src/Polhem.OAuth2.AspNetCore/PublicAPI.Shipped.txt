@@ -1,0 +1,19 @@
+#nullable enable
+Polhem.OAuth2.AspNetCore.OAuth2Client
+Polhem.OAuth2.AspNetCore.OAuth2Client.OAuth2Client(Polhem.OAuth2.OAuth2Options! options, Microsoft.AspNetCore.Http.IHttpContextAccessor! httpContextAccessor) -> void
+Polhem.OAuth2.AspNetCore.OAuth2Manager
+Polhem.OAuth2.AspNetCore.OAuth2Manager.GetAuthorizationUrl(string! clientName) -> string!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.AspNetCore.OAuth2Client?
+Polhem.OAuth2.AspNetCore.OAuth2Manager.OAuth2Manager(Microsoft.AspNetCore.Http.IHttpContextAccessor! httpContextAccessor) -> void
+Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAuthorization(string! clientName) -> void
+Polhem.OAuth2.AspNetCore.OAuth2Manager.RegisterClient(string! clientName, Polhem.OAuth2.AspNetCore.OAuth2Client! client) -> void
+Polhem.OAuth2.AspNetCore.OAuth2Manager.ValidateAuthorization() -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+Polhem.OAuth2.AspNetCore.StateStorage
+Polhem.OAuth2.AspNetCore.StateStorage.GetCodeVerifier() -> string?
+Polhem.OAuth2.AspNetCore.StateStorage.GetState() -> string?
+Polhem.OAuth2.AspNetCore.StateStorage.RemoveCodeVerifier() -> void
+Polhem.OAuth2.AspNetCore.StateStorage.RemoveState() -> void
+Polhem.OAuth2.AspNetCore.StateStorage.SaveCodeVerifier(string! codeVerifier) -> void
+Polhem.OAuth2.AspNetCore.StateStorage.SaveState(string! value) -> void
+Polhem.OAuth2.AspNetCore.StateStorage.StateStorage(Microsoft.AspNetCore.Http.IHttpContextAccessor! httpContextAccessor) -> void
+override Polhem.OAuth2.AspNetCore.OAuth2Client.StateStorage.get -> Polhem.OAuth2.IStateStorage!

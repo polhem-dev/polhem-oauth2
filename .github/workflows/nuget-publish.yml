@@ -69,4 +69,4 @@ jobs:
             - Polhem.OAuth2.AspNet
             - Polhem.OAuth2.AspNetCore
 
-            See NuGet.org for installation details.
+            Changes: https://github.com/polhem-dev/polhem-oauth2/blob/${{ github.ref_name }}/CHANGELOG.md
