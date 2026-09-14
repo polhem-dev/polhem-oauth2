@@ -12,6 +12,8 @@ namespace Polhem.OAuth2
     /// </para>
     /// <para>
     /// A client secret distributed with a desktop application can be extracted from it, so it cannot be kept confidential.
+    /// For that reason the client always uses PKCE, whatever <see cref="OAuth2Options.UsePkce"/> is set to, and the client
+    /// secret is not sent with the token request unless the provider requires it, as Google does.
     /// </para>
     /// </remarks>
     public class LoopbackOAuth2Client : BaseOAuth2Client
@@ -46,6 +48,9 @@ namespace Polhem.OAuth2
             _options = options;
             _configuredRedirectUri = options.RedirectUri;
             _redirectUri = redirectUri;
+
+            // RFC 8252 requires PKCE for native applications, because their client secret cannot be kept confidential.
+            UsePkce = true;
         }
 
         /// <inheritdoc/>

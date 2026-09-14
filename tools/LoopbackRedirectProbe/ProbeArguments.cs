@@ -10,15 +10,14 @@ namespace LoopbackRedirectProbe
     {
         public const string Usage =
             "Usage: LoopbackRedirectProbe --provider <Google|Facebook|Line|Azure|Auth0|Okta> [--redirect <loopback URI>]" +
-            " [--pkce <on|off>] [--settings <path>] [--timeout <seconds>]";
+            " [--settings <path>] [--timeout <seconds>]";
 
         private static readonly string[] s_providers = { "Google", "Facebook", "Line", "Azure", "Auth0", "Okta" };
 
-        private ProbeArguments(string provider, Uri? redirectUri, bool usePkce, string settingsPath, int timeoutSeconds)
+        private ProbeArguments(string provider, Uri? redirectUri, string settingsPath, int timeoutSeconds)
         {
             Provider = provider;
             RedirectUri = redirectUri;
-            UsePkce = usePkce;
             SettingsPath = settingsPath;
             TimeoutSeconds = timeoutSeconds;
         }
@@ -29,8 +28,6 @@ namespace LoopbackRedirectProbe
         /// Gets the redirect URI that replaces the one in the settings file, or null to use the settings file.
         /// </summary>
         public Uri? RedirectUri { get; }
-
-        public bool UsePkce { get; }
 
         public string SettingsPath { get; }
 
@@ -67,20 +64,6 @@ namespace LoopbackRedirectProbe
                 return false;
             }
 
-            bool usePkce = true;
-            if (values.TryGetValue("pkce", out var pkce))
-            {
-                if (string.Equals(pkce, "off", StringComparison.OrdinalIgnoreCase))
-                {
-                    usePkce = false;
-                }
-                else if (!string.Equals(pkce, "on", StringComparison.OrdinalIgnoreCase))
-                {
-                    error = "--pkce must be on or off.";
-                    return false;
-                }
-            }
-
             int timeoutSeconds = 180;
             if (values.TryGetValue("timeout", out var timeout)
                 && (!int.TryParse(timeout, NumberStyles.None, CultureInfo.InvariantCulture, out timeoutSeconds) || timeoutSeconds <= 0))
@@ -91,7 +74,7 @@ namespace LoopbackRedirectProbe
 
             string settingsPath = values.TryGetValue("settings", out var settings) ? settings : "probe.settings.json";
 
-            arguments = new ProbeArguments(provider, redirectUri, usePkce, settingsPath, timeoutSeconds);
+            arguments = new ProbeArguments(provider, redirectUri, settingsPath, timeoutSeconds);
             error = string.Empty;
             return true;
         }

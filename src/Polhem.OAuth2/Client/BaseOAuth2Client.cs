@@ -53,7 +53,7 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Gets a value indicating whether the flow uses PKCE.
         /// </summary>
-        public bool UsePkce { get; private set; }
+        public bool UsePkce { get; protected set; }
 
         /// <summary>
         /// Stores the state, and the PKCE code verifier when PKCE is used, then builds the authorization URL.

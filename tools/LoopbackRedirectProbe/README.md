@@ -28,7 +28,6 @@ dotnet run -- --provider Google
 |--------|---------|
 | `--provider` | `Google`, `Facebook`, `Line`, `Azure`, `Auth0` or `Okta` |
 | `--redirect` | Optional. A loopback redirect URI that replaces the provider's `RedirectUri` from the settings file for this run. |
-| `--pkce` | `on` (default) or `off`. With PKCE on, the client secret is only sent to providers that require it anyway. |
 | `--settings` | The settings file. The default is `probe.settings.json` in the current folder. |
 | `--timeout` | Seconds to wait for the redirect. The default is 180. |
 

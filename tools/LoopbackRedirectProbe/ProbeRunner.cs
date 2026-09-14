@@ -27,7 +27,6 @@ namespace LoopbackRedirectProbe
                     options.RedirectUri = arguments.RedirectUri.OriginalString;
                 if (string.IsNullOrWhiteSpace(options.RedirectUri))
                     return Fail($"Set RedirectUri in the '{arguments.Provider}' section of the settings file, or pass --redirect.", 2);
-                options.UsePkce = arguments.UsePkce;
                 client = new LoopbackOAuth2Client(options) { Timeout = TimeSpan.FromSeconds(arguments.TimeoutSeconds) };
             }
             catch (FileNotFoundException ex)
@@ -52,7 +51,6 @@ namespace LoopbackRedirectProbe
             {
                 Console.WriteLine($"Provider:     {arguments.Provider}");
                 Console.WriteLine($"Redirect URI: {options.RedirectUri}");
-                Console.WriteLine($"PKCE:         {(arguments.UsePkce ? "on" : "off")}");
                 Console.WriteLine("Opening the system browser. If it does not open, visit this URL:");
                 Console.WriteLine(url);
                 BrowserLauncher.TryOpen(url);

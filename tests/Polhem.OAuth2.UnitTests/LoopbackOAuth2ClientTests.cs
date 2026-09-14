@@ -130,6 +130,31 @@ namespace Polhem.OAuth2.UnitTests
             Assert.IsAssignableFrom<OperationCanceledException>((await first).Exception);
         }
 
+        [Fact]
+        [DisplayName("SignInAsync uses PKCE even when the options turn it off, and sends no client secret")]
+        public async Task SignInAsync_UsePkceFalse_SendsCodeVerifierWithoutClientSecret()
+        {
+            using var tokenEndpoint = new FakeTokenEndpoint();
+            var options = new FacebookOAuth2Options
+            {
+                ClientId = "client-id",
+                ClientSecret = "client-secret",
+                RedirectUri = "http://127.0.0.1:0/callback",
+                TokenEndpoint = tokenEndpoint.Url,
+                UsePkce = false
+            };
+            var browser = new FakeBrowser("{path}?code=abc&state={state}");
+            var client = new LoopbackOAuth2Client(options) { OpenBrowser = browser.Open };
+
+            await client.SignInAsync();
+            await browser.Completed;
+
+            string tokenRequest = await tokenEndpoint.RequestBody;
+            Assert.NotNull(LoopbackTestHttp.GetQueryValue(browser.AuthorizationUrl!, "code_challenge"));
+            Assert.NotNull(LoopbackTestHttp.GetParameter(tokenRequest, "code_verifier"));
+            Assert.Null(LoopbackTestHttp.GetParameter(tokenRequest, "client_secret"));
+        }
+
         private static GoogleOAuth2Options CreateOptions(string tokenEndpoint)
         {
             return new GoogleOAuth2Options

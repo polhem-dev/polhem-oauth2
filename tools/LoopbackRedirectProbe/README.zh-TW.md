@@ -26,7 +26,6 @@ dotnet run -- --provider Google
 |------|------|
 | `--provider` | `Google`、`Facebook`、`Line`、`Azure`、`Auth0` 或 `Okta` |
 | `--redirect` | 選填。這次執行改用這個 loopback 回呼網址，取代設定檔裡該 provider 的 `RedirectUri`。 |
-| `--pkce` | `on`（預設）或 `off`。開啟 PKCE 時，只有本來就要求 client secret 的 provider 才會收到它。 |
 | `--settings` | 設定檔路徑，預設是目前資料夾的 `probe.settings.json`。 |
 | `--timeout` | 等待導回的秒數，預設 180。 |
 
