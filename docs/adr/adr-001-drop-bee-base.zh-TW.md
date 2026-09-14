@@ -4,7 +4,13 @@
 
 ## 狀態
 
-已採納（2026-09-13）
+已採納（2026-09-13）。2026-09-14 首發前部分被取代：
+
+- state 加密與它的位元組格式，已由 [ADR-005](adr-005-web-sign-in-cookie.zh-TW.md) 取代。網頁套件不再使用 `OAUTH2_STATE_KEY`，
+  AES-CBC-HMAC 程式碼與它的測試已移除。
+- JSON 改用 System.Text.Json 解析，直接參照 Newtonsoft.Json 的決定也一併移除。
+
+以 `string.IsNullOrWhiteSpace` 取代 `StrFunc` 的決定仍然有效。本紀錄其餘內容描述的是當時做出的決策。
 
 ## 背景
 

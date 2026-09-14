@@ -4,7 +4,13 @@
 
 ## Status
 
-Accepted (2026-09-13)
+Accepted (2026-09-13). Partly superseded on 2026-09-14, before the first release:
+
+- The state encryption and its byte layout are superseded by [ADR-005](adr-005-web-sign-in-cookie.md). The web packages
+  no longer use `OAUTH2_STATE_KEY`, and the AES-CBC-HMAC code and its tests are removed.
+- JSON is parsed with System.Text.Json, so the direct Newtonsoft.Json reference is removed as well.
+
+The replacement of `StrFunc` still applies. The rest of this record describes the decision as it was made.
 
 ## Context
 

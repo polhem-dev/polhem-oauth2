@@ -5,7 +5,7 @@
 [![Build CI](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml/badge.svg)](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml)
 
 輕量的 .NET OAuth2 登入套件。桌面與主控台應用程式透過系統瀏覽器、loopback 回呼與 PKCE 登入，可在 Windows、macOS、Linux 上使用。
-ASP.NET Core 與 ASP.NET（System.Web）應用程式使用授權碼流程，state 存放在 cookie。
+ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權碼流程，每次登入各自保存在一個加密的 cookie。
 
 支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta。
 
@@ -13,17 +13,25 @@ ASP.NET Core 與 ASP.NET（System.Web）應用程式使用授權碼流程，stat
 
 | 套件 | 目標框架 | 用途 |
 |------|----------|------|
-| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0、net10.0 | 各 provider，以及桌面與主控台應用程式的登入 |
+| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0、net10.0 | 各 provider、桌面與主控台應用程式的登入，以及其他伺服器端框架 |
 | [Polhem.OAuth2.AspNetCore](https://www.nuget.org/packages/Polhem.OAuth2.AspNetCore) | net10.0 | ASP.NET Core 應用程式 |
-| [Polhem.OAuth2.AspNet](https://www.nuget.org/packages/Polhem.OAuth2.AspNet) | net48 | System.Web 上的 ASP.NET Web Forms 與 MVC 應用程式 |
+| [Polhem.OAuth2.AspNet](https://www.nuget.org/packages/Polhem.OAuth2.AspNet) | net472 | System.Web 上的 ASP.NET Web Forms 與 MVC 應用程式 |
 
 ```sh
 dotnet add package Polhem.OAuth2
 ```
 
+## Options
+
 每個 provider 各有自己的 options 型別：`GoogleOAuth2Options`、`FacebookOAuth2Options`、`LineOAuth2Options`、
-`AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`。Auth0 與 Okta 另外需要 `Domain`，
-Okta 可以再指定 `AuthorizationServerId`。
+`AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`。
+
+- `ClientId` 與 `RedirectUri` 為必填。client 建立時會複製並檢查 options，之後再修改原物件不會有影響；options 不合法時當場擲出 `ArgumentException`。
+- Auth0 與 Okta 需要 `Domain`，例如 `your-tenant.auth0.com`。Okta 預設使用 `default` 授權伺服器，
+  可用 `AuthorizationServerId` 指定其他伺服器；設為空值時改用 org 授權伺服器。
+- Microsoft Entra ID 預設使用 `common` tenant。只註冊在單一 tenant 的應用程式，要把 `Tenant` 設成該 tenant 的 ID 或網域名稱。
+- 所有端點都必須是絕對的 `https` URI。
+- `UsePkce` 預設為 `true`。
 
 ## 桌面與主控台應用程式
 
@@ -42,17 +50,19 @@ var options = new GoogleOAuth2Options
 var client = new LoopbackOAuth2Client(options);
 AuthorizationResult result = await client.SignInAsync();
 
-if (result.IsSuccess && result.UserInfo is { } user)
-    Console.WriteLine($"{user.UserId} {user.UserName} {user.Email}");
+if (result.IsSuccess)
+    Console.WriteLine($"{result.UserInfo.UserId} {result.UserInfo.UserName} {result.UserInfo.Email}");
 else
-    Console.WriteLine($"The sign-in failed: {result.Exception?.Message}");
+    Console.WriteLine($"The sign-in failed: {result.Exception.Message}");
 ```
 
 - 回呼網址必須是 `http`，主機必須是 `localhost` 或 loopback 位址，而且要在 provider 後台登記。
   port 寫 0 時每次登入都會挑一個可用的 port，只適用於接受任意 loopback port 的 provider。
-- client 一律使用 PKCE。隨桌面應用程式散佈的 client secret 可以被取出，所以只會送給要求它的 Google。
-- 逾時（`Timeout`，預設 5 分鐘）、取消、provider 回傳錯誤，都會成為失敗結果。port 無法監聽時會擲出 `SocketException`。
-- 要用其他方式開啟網址時設定 `OpenBrowser`，例如透過 UI 框架提供的啟動器。
+- client 一律使用 PKCE。隨桌面應用程式散佈的 client secret 可以被取出，所以不會送出，只有 Google 例外。
+- 逾時（`Timeout`，預設 5 分鐘）、取消、provider 回傳錯誤，都會成為失敗結果。port 無法監聽時擲出 `SocketException`，
+  找不到預設瀏覽器時擲出 `Win32Exception`。
+- 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 UI 框架的啟動器寫成 `uri => launcher.LaunchUriAsync(uri)`。
+- 這段範例使用最上層陳述式。在 .NET Framework 的 Windows Forms 應用程式裡怎麼登入，見 [OAuthWinForms](samples/OAuthWinForms) sample。
 
 這個設計的理由，以及各 provider 對 loopback 回呼的實測結果，記錄在
 [ADR-004](docs/adr/adr-004-system-browser-loopback.zh-TW.md)。
@@ -70,58 +80,55 @@ else
 | LINE | LINE Login channel 的 Callback URL | `http://localhost:53682/callback` | 必須一致 |
 | Facebook | Facebook Login 的 Valid OAuth Redirect URIs | `http://localhost:53682/callback` | 登記實際使用的 port |
 
+- Google：實測的 client 有登記回呼網址。Google 的文件對 Desktop app 是否需要登記說法不一，並把 client secret 列為已安裝應用程式的選填參數。
 - Okta：授權伺服器需要一個存取政策，並有允許 authorization code 的規則。沒有的話，登入會因政策評估失敗而被拒。
-- Facebook 拒絕 `127.0.0.1`，請改用 `localhost`。
+- Facebook 拒絕 `127.0.0.1`，請改用 `localhost`。實測時 app 是開發模式還是上線模式，沒有記錄。
 - 沒寫 port 的回呼網址等於 port 80，監聽它通常需要管理員權限，所以請寫出 port。
 
 ## ASP.NET Core
 
 ```csharp
 using Polhem.OAuth2;
-using Polhem.OAuth2.AspNetCore;
 
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddSession();
-builder.Services.AddSingleton(provider =>
+builder.Services.AddControllers();
+builder.Services.AddOAuth2Client("Google", new GoogleOAuth2Options
 {
-    var accessor = provider.GetRequiredService<IHttpContextAccessor>();
-    var options = new GoogleOAuth2Options
-    {
-        ClientId = "your-client-id",
-        ClientSecret = "your-client-secret",
-        RedirectUri = "https://localhost:7032/auth/callback",
-        UsePkce = true
-    };
-
-    var manager = new OAuth2Manager(accessor);
-    manager.RegisterClient("Google", new OAuth2Client(options, accessor));
-    return manager;
+    ClientId = "your-client-id",
+    ClientSecret = "your-client-secret",
+    RedirectUri = "https://localhost:7032/auth/callback"
 });
 
 var app = builder.Build();
-app.UseSession();
+app.MapControllers();
 ```
 
 ```csharp
-public class AuthController(OAuth2Manager oauth2Manager) : Controller
+using Microsoft.AspNetCore.Mvc;
+using Polhem.OAuth2;
+using Polhem.OAuth2.AspNetCore;
+
+public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 {
     [HttpGet("/auth/login")]
     public IActionResult Login()
     {
-        oauth2Manager.RedirectToAuthorization("Google");
-        return new EmptyResult();
+        return Redirect(oauth2Manager.CreateAuthorizationUrl(HttpContext, "Google"));
     }
 
     [HttpGet("/auth/callback")]
     public async Task<IActionResult> Callback()
     {
-        AuthorizationResult result = await oauth2Manager.ValidateAuthorization();
-        return result.IsSuccess && result.UserInfo is { } user
-            ? Content($"{user.UserId} {user.UserName} {user.Email}")
-            : Content($"The sign-in failed: {result.Exception?.Message}");
+        AuthorizationResult result = await oauth2Manager.CompleteAuthorizationAsync(HttpContext, HttpContext.RequestAborted);
+        return result.IsSuccess
+            ? Content($"{result.UserInfo.UserId} {result.UserInfo.UserName} {result.UserInfo.Email}")
+            : Content($"The sign-in failed: {result.Exception.Message}");
     }
 }
 ```
+
+- `AddOAuth2Client` 會註冊 client、`OAuth2Manager` 與 ASP.NET Core 的 data protection。client 在呼叫當下就建立，
+  所以 options 不合法時應用程式在啟動時就會停下來。另外可以傳入選填的 `HttpClient`。
+- `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
 
 ## ASP.NET（System.Web）
 
@@ -134,60 +141,89 @@ using Polhem.OAuth2.AspNet;
 // Global.asax.cs
 protected void Application_Start()
 {
-    var options = new GoogleOAuth2Options
+    OAuth2Manager.RegisterClient("Google", new GoogleOAuth2Options
     {
         ClientId = "your-client-id",
         ClientSecret = "your-client-secret",
-        RedirectUri = "https://localhost:44300/auth/callback",
-        UsePkce = true
-    };
-    OAuth2Manager.RegisterClient("Google", new OAuth2Client(options));
+        RedirectUri = "https://localhost:44300/auth/callback"
+    });
 }
 ```
 
 ```csharp
-// An MVC controller. In Web Forms, call OAuth2Manager.RedirectToAuthorization("Google") from the sign-in page,
-// and await OAuth2Manager.ValidateAuthorization() on the callback page, which needs Async="true".
+// An MVC controller. In Web Forms, call OAuth2Manager.RedirectToAuthorization("Google") from the sign-in page and return,
+// and await OAuth2Manager.CompleteAuthorizationAsync() on the callback page, which needs Async="true".
 public class AuthController : Controller
 {
     public ActionResult Login()
     {
-        return Redirect(OAuth2Manager.GetAuthorizationUrl("Google"));
+        return Redirect(OAuth2Manager.CreateAuthorizationUrl(HttpContext, "Google"));
     }
 
     public async Task<ActionResult> Callback()
     {
-        AuthorizationResult result = await OAuth2Manager.ValidateAuthorization();
-        if (result.IsSuccess && result.UserInfo != null)
-            return Content($"{result.UserInfo.UserId} {result.UserInfo.UserName} {result.UserInfo.Email}");
+        AuthorizationResult result = await OAuth2Manager.CompleteAuthorizationAsync(HttpContext);
+        if (result.IsSuccess)
+            return Content(result.UserInfo.UserId + " " + result.UserInfo.UserName + " " + result.UserInfo.Email);
 
-        return Content($"The sign-in failed: {result.Exception?.Message}");
+        return Content("The sign-in failed: " + result.Exception.Message);
     }
 }
 ```
 
-## 網頁應用程式：state cookie、session 與金鑰
+部署前確認：
 
-- state 存放在標記為 `Secure` 的 cookie，所以回呼頁面必須走 HTTPS。
-- 開啟 `UsePkce` 時，code verifier 存放在 session，所以必須啟用 session。
-- state 裡帶著 client 註冊時的名稱。設定 `OAUTH2_STATE_KEY` 環境變數後，名稱會以 AES-CBC 加密、以 HMAC-SHA256 驗證。
-  沒有金鑰時名稱只做 base64 編碼，既藏不住內容，也察覺不到竄改。
+- 目標框架為 .NET Framework 4.7.2 或更新的版本，並在 `web.config` 設定 `<httpRuntime targetFramework="4.7.2" />`（或你使用的更新版本）。
+  非同步頁面與作業系統的 TLS 預設值都取決於這個設定。
+- 在 .NET Framework 上，核心套件相依於 System.Text.Json。NuGet 為它及其相依套件加入 `web.config` 的 binding redirect 要保留。
+- 有多台伺服器可能收到回呼時，每一台的 `web.config` 都要設定相同的 `<machineKey>`。
 
-`OAUTH2_STATE_KEY` 是 64 位元組的亂數金鑰，以 base64 表示。每個行程只讀取一次，所以要在應用程式啟動前設定；
-所有可能收到回呼的伺服器都要使用同一把金鑰。產生方式：
+## 網頁應用程式：登入狀態怎麼保存
 
-```sh
-openssl rand 64 | openssl base64 -A
-```
+- 每次登入都把 state、PKCE code verifier、回呼網址與 client 名稱，放在一個專屬的 cookie 裡，
+  以 ASP.NET Core 的 data protection 或 `MachineKey` 加密並驗證。不需要 session，在多個分頁同時登入也不會互相覆蓋。
+  見 [ADR-005](docs/adr/adr-005-web-sign-in-cookie.zh-TW.md)。
+- cookie 名稱以 `__Host-` 開頭，並設為 `Secure`、HTTP-only、`SameSite=Lax`，所以登入的起點與回呼頁面都必須走 HTTPS。
+- 登入必須在 10 分鐘內完成。回呼時會先刪除 cookie，再用授權碼換 token。
+- 所有可能收到回呼的伺服器都必須能解開 cookie：ASP.NET Core 要共用 data protection 的金鑰環，System.Web 要使用相同的 machine key。
+
+## 其他伺服器端框架
+
+核心套件的 `OAuth2Client` 不依賴任何 HTTP 框架，走的是同一套流程。待完成的值要存放在只有發起登入的瀏覽器才拿得出來的地方，
+例如加密的 HTTP-only cookie，並在處理完回呼後刪除。
 
 ```csharp
-Console.WriteLine(Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(64)));
+var client = new OAuth2Client(options);
+
+// Start the sign-in. Keep and Redirect stand for code of your framework.
+AuthorizationRequest request = client.CreateAuthorizationRequest();
+Keep(request.Pending.State, request.Pending.CodeVerifier, request.Pending.RedirectUri);
+Redirect(request.Url);
+
+// Complete it in the callback.
+var pending = new PendingAuthorization(keptState, keptCodeVerifier, keptRedirectUri);
+var callback = new AuthorizationCallback(query["code"], query["state"], query["error"], query["error_description"]);
+AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, pending, cancellationToken);
 ```
 
-## 結果與錯誤
+## 結果、token 與錯誤
 
-`AuthorizationResult.Exception` 只收納 OAuth2 登入預期會發生的失敗，例如 HTTP 請求失敗、state 無效、provider 回傳錯誤。
-設定或程式錯誤（例如 client 名稱沒有註冊）會往外拋。見 [ADR-003](docs/adr/adr-003-exception-semantics.zh-TW.md)。
+- 成功的結果有 `ProviderName`、`UserInfo` 與 `Token`；失敗的結果有 `Exception`。
+- `Token` 帶著 access token，以及 provider 有回傳時的 refresh token、ID token、有效期限與 scope。
+  用 client 的 `RefreshTokenAsync` 取得新的 token。有些 provider 每次都會發新的 refresh token，所以要保留最新一次回應裡的那個。
+  Facebook 不發 refresh token。
+- `Exception` 只收納登入預期會發生的失敗，例如 HTTP 請求失敗、state 不相符、provider 回傳錯誤。
+  設定或程式錯誤（例如 client 名稱沒有註冊）會往外拋。見 [ADR-003](docs/adr/adr-003-exception-semantics.zh-TW.md)。
+- provider 回傳的錯誤是 `OAuth2Exception`：`Error` 是錯誤代碼，例如 `access_denied`；`ErrorDescription` 是 provider 提供的說明。
+  導回網址裡的錯誤，任何送連結給使用者的人都能設定，所以顯示前要先編碼。
+
+## 識別使用者
+
+- 以 provider 名稱加上 `UserInfo.UserId` 識別使用者，不要用 `Email`：email 可能變更，而且各 provider 是否驗證過 email 並不一致。
+- Microsoft Entra ID 的 `UserId` 是 `sub` claim，同一個使用者登入不同的應用程式時，這個值也不同。
+- LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token 讀出 email，
+  會檢查這個 token 是發給這個 client 的，但不檢查簽章。
+- 函式庫不驗證 ID token。`Token.IdToken` 是 provider 原樣回傳的內容，要依賴其中的 claim 前請先自行驗證。
 
 ## 從 Bee.OAuth2 遷移
 
@@ -199,17 +235,24 @@ Console.WriteLine(Convert.ToBase64String(System.Security.Cryptography.RandomNumb
 | `Bee.OAuth2.WinForms`、`Bee.OAuth2.Desktop` | `Polhem.OAuth2` 的 `LoopbackOAuth2Client` |
 
 - **命名空間**：`Bee.OAuth2` 改為 `Polhem.OAuth2`，其他套件依此類推。
+- **網頁端的註冊**：ASP.NET Core 以 `AddOAuth2Client` 註冊每個 client，System.Web 用 `OAuth2Manager.RegisterClient(name, options)`。
+  不再使用 session 與 `OAUTH2_STATE_KEY`。
+- **網頁端的方法**：`GetAuthorizationUrl` 改為 `CreateAuthorizationUrl`，`ValidateAuthorization` 改為 `CompleteAuthorizationAsync`；
+  ASP.NET Core 版要傳入 `HttpContext`。升級前已開始的登入，升級後無法完成，使用者要重新登入。
 - **桌面登入**從內嵌的 WebView2 視窗改為系統瀏覽器。同步的 `Authorization()`、`Caption`、`Width`、`Height`、`AuthorizationForm`，
   以及桌面版的 `OAuth2Client`、`OAuth2Manager`、`StateStorage` 都已移除，改呼叫 `LoopbackOAuth2Client.SignInAsync`。
 - **回呼網址**：桌面應用程式要重新登記 loopback 回呼網址（見上表）。只在內嵌瀏覽器裡才能運作的網址，
   例如 `https://login.microsoftonline.com/common/oauth2/nativeclient`，已經無法使用。
+- **結果與 token**：`AuthorizationResult` 改為唯讀。`AccessToken` 改為 `Token.AccessToken`；更新 token 改用 client 的 `RefreshTokenAsync`，回傳 `TokenResponse`。
+- **不再公開的型別**：各 provider 類別、`IOAuth2Provider`、`BaseOAuth2Client`、`IStateStorage`、`PkceHelper`、`OAuth2StateCryptor`。
+  應用程式改用 options 型別搭配 client 或 manager。
+- **PKCE 與 client secret**：`UsePkce` 預設為 `true`。網頁端的 client 只要設了 client secret 就一律送出，開啟 PKCE 時也一樣。
+- **端點**必須是 `https`。Auth0 與 Okta 的 `Domain` 接受主機名稱，可以帶 `https://`，也可以不帶。
 - **例外**：`AuthorizationResult.Exception` 不再收納非預期的例外，它們會往外拋。
 - **JSON null**：使用者資訊裡值為 JSON null 的欄位，現在是 `null`；Bee.OAuth2 回傳的是空字串。
-  備援欄位因此會生效，例如 Entra ID 的 `oid` 為 JSON null 時改用 `sub`。
-- **目標框架**：`Polhem.OAuth2.AspNetCore` 的目標框架是 net10.0（Bee.OAuth2.AspNetCore 是 net8.0）。
-- **相依套件**：不再相依 `Bee.Base` 與 `Newtonsoft.Json`，JSON 改用 System.Text.Json 解析。
-- **state 金鑰**：加密後的 state 格式不變，既有的 `OAUTH2_STATE_KEY` 可以繼續使用。見
-  [ADR-001](docs/adr/adr-001-drop-bee-base.zh-TW.md)。
+  備援欄位因此會生效，例如 Auth0 的 `name` 為 JSON null 時改用 `nickname`。
+- **目標框架**：`Polhem.OAuth2.AspNet` 的目標框架是 .NET Framework 4.7.2，`Polhem.OAuth2.AspNetCore` 是 net10.0。
+- **相依套件**：不再相依 `Bee.Base` 與 `Newtonsoft.Json`。JSON 改用 System.Text.Json 解析，netstandard2.0 組建以套件參照它。
 
 ## Samples
 

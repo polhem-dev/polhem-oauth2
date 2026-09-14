@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-14）
+已採納（2026-09-14）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client`、client secret 的規則與監聽程式。
 
 ## 背景
 
@@ -23,7 +23,7 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 ## 決策
 
 - 核心套件提供 `LoopbackOAuth2Client`。它的 `SignInAsync` 會在回呼網址的 loopback 位址上監聽、用預設瀏覽器開啟授權網址、
-  等待導回，再用授權碼換 token。這就是 RFC 8252 第 7.3 節描述的 loopback 介面導回。
+  等待導回，再用授權碼換 token。這就是 RFC 8252 第 7.3 節描述的 loopback 介面導回。它與網頁套件共用同一套 `OAuth2Client` 流程。
 - 移除 `Polhem.OAuth2.WinForms` 與 `Polhem.OAuth2.Desktop`。這個流程只需要基底類別庫的型別，所以放在 netstandard2.0 的核心裡，
   可以在 Windows、macOS、Linux 上執行，包括主控台與 Avalonia 應用程式。套件數量由五個減為三個。
 - 監聽程式自己接受 TCP 連線，不使用 `HttpListener`。Windows 上的 `HttpListener` 建在 http.sys 之上，
@@ -33,15 +33,21 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
   - `localhost` 會同時綁定 IPv4 與 IPv6 的 loopback 位址，因為瀏覽器可能把這個名稱解析成其中任何一個。
     只有在機器不支援 IPv6 時才略過 IPv6；如果另一個程式已經在那裡使用同一個 port，就直接啟動失敗，
     否則授權碼可能被送到那個程式手上。
-  - port 寫 0 時，每次登入都會挑一個可用的 port，適用於接受任意 loopback port 的 provider。
-- 只有帶著本次登入 state 的請求才會結束等待。瀏覽器裡開著的任何網頁都能對 loopback 位址發出請求，
-  所以其他請求會收到回應但被忽略，既不能結束這次登入，也不能塞進授權碼。
+  - port 寫 0 時，每次登入都會挑一個可用的 port，適用於接受任意 loopback port 的 provider。每次登入都送出帶著實際 port 的回呼網址；
+    options 在建立 client 時就複製，之後不會被修改。
+  - 同時讀取多條連線，所以瀏覽器預先建立卻閒置的連線，不會拖慢導回。
+- 只有路徑是回呼路徑、`Host` 標頭是回呼網址的主機與 port、而且帶著本次登入 state 的請求，才會結束等待。
+  瀏覽器裡開著的任何網頁都能對 loopback 位址發出請求，透過 DNS rebinding 還能使用自己的主機名稱，
+  所以其他請求會收到回應但被忽略，既不能結束這次登入，也不能塞進授權碼。路徑會先解開百分比編碼再比對。
 - 導回後瀏覽器顯示的頁面只說「已收到回應」，因為換 token 是之後才進行的。
-- 失敗的處理，補充 ADR-003：在 `Timeout` 內沒有導回，轉成帶 `TimeoutException` 的失敗結果；取消轉成帶
-  `OperationCanceledException` 的失敗結果；導回時帶著錯誤，轉成帶 `OAuth2Exception` 的失敗結果。
-  port 無法監聽（`SocketException`）、同一個 client 同時登入第二次、授權網址不是 http 或 https（`InvalidOperationException`）則往外拋。
-- loopback client 一律使用 PKCE，不看 `OAuth2Options.UsePkce` 的設定，這是 RFC 8252 對原生應用程式的要求。
-  使用 PKCE 時不送 client secret，只有要求它的 Google 例外。下方實測的每個 provider 都以這種方式換到 token。
+- `OpenBrowser` 讓應用程式用其他方式開啟網址，例如透過 UI 框架的啟動器。它接收跳脫過的絕對 URI，並回傳一個 task。
+- 失敗的處理，補充 ADR-003：在 `Timeout` 內沒有導回，轉成帶 `TimeoutException` 的失敗結果；等待期間或換 token 期間的取消，
+  轉成帶 `OperationCanceledException` 的失敗結果。port 無法監聽（`SocketException`）、同一個 client 同時登入第二次
+  （`InvalidOperationException`）、`OpenBrowser` 為 null 而找不到預設瀏覽器（`Win32Exception`），則往外拋。
+- loopback client 是 public client。它一律使用 PKCE，不看 `OAuth2Options.UsePkce` 的設定，這是 RFC 8252 對原生應用程式的要求；
+  它也不送 client secret，只有 Google 例外。Google 的文件把 client secret 列為已安裝應用程式的選填參數，
+  這個例外尚未在不送 secret 的情況下測試。下方實測的其他 provider 都在沒有 secret 的情況下換到 token。
+  能夠保密 secret 的網頁 client，只要設了就一律送出。
 
 ## 各 provider 實測結果
 
@@ -56,6 +62,8 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | LINE | — | `http://localhost:53682/callback` | 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。port 必須一致：後台只登記 `http://localhost/callback` 時，導回 port 53682 被當成無效的 `redirect_uri` 拒絕。使用者資訊沒有 email。`127.0.0.1` 尚未測試。 |
 | Facebook | — | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | `localhost:53682` 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。`127.0.0.1:53682` 被拒：登入頁顯示應用程式的網路連線不安全。`localhost` 以可用 port 導回也被接受，雖然只登記了 port 53682。app 的模式（開發或上線）沒有記錄，上線狀態的 app 尚未測試。 |
 
+以上結果記錄於 2026-09-14 修訂之前。LINE provider 現在會從 ID token 讀取 email，channel 有權限讀取時，之後的實測可以取得 email。
+
 ## 影響
 
 - 原本使用桌面套件的應用程式改用 `LoopbackOAuth2Client`，並在每個 provider 登記 loopback 回呼網址。
@@ -64,5 +72,5 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 - 沒寫 port 的回呼網址等於 port 80。在 macOS 上，實測工具沒有管理員權限時無法監聽這個 port，所以回呼網址應該寫出 port。
 - 登入期間焦點會在瀏覽器上。Windows Forms 的 sample 在登入結束後會把視窗帶回前景。
 - `tests/Polhem.OAuth2.UnitTests/LoopbackListenerTests.cs` 與 `LoopbackOAuth2ClientTests.cs` 涵蓋 port 的挑選、IPv6 的 port 衝突、
-  忽略沒有 state 的請求、逾時、取消，以及換 token 時送出的回呼網址。測試的目標框架是 net10.0，
-  監聽程式的 netstandard2.0 組建不會被這些測試執行到。
+  忽略沒有 state 或 `Host` 標頭不符的請求、閒置的連線、逾時、取消，以及換 token 時送出的回呼網址。
+  在 Windows 上，這些測試也會在 .NET Framework 執行，那裡用的是監聽程式的 netstandard2.0 組建。

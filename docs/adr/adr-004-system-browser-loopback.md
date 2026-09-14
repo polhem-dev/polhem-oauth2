@@ -4,7 +4,8 @@
 
 ## Status
 
-Accepted (2026-09-14)
+Accepted (2026-09-14). Revised on 2026-09-14, before the first release, for `OAuth2Client`, the client secret rule, and the
+listener.
 
 ## Context
 
@@ -26,7 +27,8 @@ That approach has several problems:
 
 - The core package provides `LoopbackOAuth2Client`. Its `SignInAsync` method listens on the loopback address of the
   redirect URI, opens the authorization URL in the default browser, waits for the redirect, and exchanges the code. This is
-  the loopback interface redirection described in RFC 8252, section 7.3.
+  the loopback interface redirection described in RFC 8252, section 7.3. It builds on the same `OAuth2Client` flow as the
+  web packages.
 - `Polhem.OAuth2.WinForms` and `Polhem.OAuth2.Desktop` are removed. The flow needs only base class library types, so it
   lives in the netstandard2.0 core and runs on Windows, macOS and Linux, including console and Avalonia applications. The
   number of packages goes from five to three.
@@ -38,17 +40,25 @@ That approach has several problems:
   - For `localhost`, both the IPv4 and the IPv6 loopback addresses are bound, because the browser may resolve the name to
     either. The IPv6 address is skipped only when the machine does not support it. If another program already uses the
     port there, starting fails, because that program could otherwise receive the authorization code.
-  - Port 0 picks a free port for each sign-in, for providers that accept any loopback port.
-- Only a request that carries the state of the current sign-in ends the wait. Any web page open in the browser can send
-  requests to a loopback address, so other requests are answered and ignored; they can neither end the sign-in nor supply a code.
+  - Port 0 picks a free port for each sign-in, for providers that accept any loopback port. Each sign-in sends the redirect
+    URI with the bound port; the options are copied when the client is created and are never changed.
+  - Connections are read side by side, so a connection that the browser opens in advance and leaves idle does not delay
+    the redirect.
+- Only a request for the redirect path whose `Host` header names the host and port of the redirect URI, and that carries
+  the state of the current sign-in, ends the wait. Any web page open in the browser can send requests to a loopback
+  address, and through DNS rebinding such a page can use a host name of its own, so other requests are answered and
+  ignored; they can neither end the sign-in nor supply a code. The path is compared after percent-decoding.
 - The page the browser shows after the redirect only says that the response was received, because the code is exchanged afterwards.
-- Failures, in addition to ADR-003: no redirect within `Timeout` becomes a failed result with `TimeoutException`,
-  cancellation one with `OperationCanceledException`, and a redirect that carries an error one with `OAuth2Exception`.
-  A port that cannot be listened on (`SocketException`), a second sign-in on the same client, and an authorization URL
-  that is not an http or https URL (`InvalidOperationException`) propagate.
-- The loopback client always uses PKCE, whatever `OAuth2Options.UsePkce` says, as RFC 8252 requires of native applications.
-  With PKCE the client secret is not sent, except to Google, which requires it. Every provider tested below exchanged the
-  code this way.
+- `OpenBrowser` lets an application open the URL another way, such as through the launcher of a UI framework. It receives
+  the escaped absolute URI and returns a task.
+- Failures, in addition to ADR-003: no redirect within `Timeout` becomes a failed result with `TimeoutException`, and
+  cancellation, while waiting or during the code exchange, one with `OperationCanceledException`. A port that cannot be
+  listened on (`SocketException`), a second sign-in on the same client (`InvalidOperationException`), and a missing default
+  browser when `OpenBrowser` is null (`Win32Exception`) propagate.
+- The loopback client is a public client. It always uses PKCE, whatever `OAuth2Options.UsePkce` says, as RFC 8252 requires
+  of native applications, and it does not send the client secret, except to Google. Google's documentation lists the client
+  secret as optional for installed applications; that exception has not been tested without the secret. Every other provider
+  tested below exchanged the code without it. Web clients, which can keep a secret, send it whenever it is set.
 
 ## Provider test results
 
@@ -63,6 +73,9 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
 | LINE | — | `http://localhost:53682/callback` | Accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port must match: while only `http://localhost/callback` was registered, a redirect to port 53682 was refused as an invalid `redirect_uri`. The user information did not include an email address. `127.0.0.1` has not been tested. |
 | Facebook | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | `localhost:53682` was accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). `127.0.0.1:53682` was refused: the sign-in page reported that the application's connection is not secure. `localhost` with a free port was also accepted, although only port 53682 was registered. The app's mode (development or live) was not recorded, and a live app has not been tested. |
 
+These results were recorded before the revision of 2026-09-14. The LINE provider now reads the email address from the ID
+token, so a later test can return one when the channel may read it.
+
 ## Consequences
 
 - Applications that used the desktop packages move to `LoopbackOAuth2Client` and register a loopback redirect URI with each
@@ -73,5 +86,6 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
   rights, so a redirect URI should name its port.
 - The browser takes the focus during sign-in. The Windows Forms samples bring their window back to the front when the sign-in ends.
 - `tests/Polhem.OAuth2.UnitTests/LoopbackListenerTests.cs` and `LoopbackOAuth2ClientTests.cs` cover port selection, the
-  IPv6 port conflict, ignored requests without the state, the timeout, cancellation, and the redirect URI sent with the
-  token request. The tests target net10.0, so the netstandard2.0 build of the listener is not run by them.
+  IPv6 port conflict, ignored requests without the state or with another `Host` header, an idle connection, the timeout,
+  cancellation, and the redirect URI sent with the token request. On Windows the tests also run on .NET Framework, where the
+  netstandard2.0 build of the listener is used.
