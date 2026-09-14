@@ -69,6 +69,8 @@ else
 - Set `OpenBrowser` to open the URL another way, for example `uri => launcher.LaunchUriAsync(uri)` with the launcher of a UI framework.
 - The snippet uses top-level statements. The [OAuthWinForms](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthWinForms)
   sample shows the same sign-in in a Windows Forms application on .NET Framework.
+- An application that targets .NET Framework 4.7.2 and runs on a machine with FIPS mode enabled needs the setting described
+  under "Before deploying" in the ASP.NET (System.Web) section.
 
 The reasons behind this design, and how each provider handled loopback redirects, are recorded in
 [ADR-004](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-004-system-browser-loopback.md).
@@ -187,6 +189,10 @@ Before deploying:
 - On .NET Framework the core package depends on System.Text.Json. Keep the binding redirects that NuGet adds for it and its
   dependencies in `web.config`.
 - When more than one server can receive the callback, set the same `<machineKey>` in `web.config` on each of them.
+- On a machine with FIPS mode enabled, an application that targets .NET Framework 4.7.2 can get a `CryptographicException`
+  when a sign-in starts: for such applications .NET Framework blocks the managed SHA-256 implementation that PKCE uses.
+  Target .NET Framework 4.8 or later, or set the `Switch.System.Security.Cryptography.UseLegacyFipsThrow` switch to `false`.
+  See [Managed cryptography classes do not throw a CryptographyException in FIPS mode](https://learn.microsoft.com/dotnet/framework/migration-guide/retargeting/4.8.x#managed-cryptography-classes-do-not-throw-a-cryptographyexception-in-fips-mode).
 
 ## Web applications: how a sign-in is kept
 
@@ -236,6 +242,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 
 - Identify a user by the provider name together with `UserInfo.UserId`, not by `Email`: an address can change, and
   providers differ in whether they verify it.
+- The provider name is `AuthorizationResult.ProviderName`: `Google`, `Facebook`, `LINE`, `Azure` (Microsoft Entra ID),
+  `Auth0` or `Okta`. It does not depend on the name a client is registered under.
 - For Microsoft Entra ID, `UserId` is the `sub` claim, which is different for each application the user signs in to.
 - LINE returns the email address only in the ID token, and only when the channel may read it and the user agreed. The
   library reads it from the ID token that the token endpoint returned, and checks that the token was issued to the client,

@@ -1,0 +1,8 @@
+# Settings for the package source only. The repository root .editorconfig still applies.
+
+[*.cs]
+
+# The packages run in applications that may block on their tasks, such as System.Web and Windows Forms, where an await
+# that resumes on the captured context deadlocks. Every await in the packages uses ConfigureAwait(false). Tests do not
+# follow this rule, because xUnit asks test methods not to call ConfigureAwait(false).
+dotnet_diagnostic.CA2007.severity = warning

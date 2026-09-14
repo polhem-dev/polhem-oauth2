@@ -18,7 +18,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - `TokenResponse`：帶著 access token、refresh token、ID token，以及 token 類型、有效期限與 scope。
   `AuthorizationResult.Token` 帶著它，每個 client 的 `RefreshTokenAsync` 可以取得新的 token。
 - `AddOAuth2Client`：在 ASP.NET Core 應用程式註冊 client、`OAuth2Manager` 與 data protection。
-- `OAuth2Exception.Error` 與 `ErrorDescription`：provider 回傳的錯誤代碼與說明。
+- `OAuth2Exception`：協定層級的失敗擲出這個例外。`Error` 與 `ErrorDescription` 帶著 provider 回傳的錯誤代碼與說明。
 - `AzureOAuth2Options.Tenant`：給只註冊在單一 Microsoft Entra ID tenant 的應用程式使用。
 - Okta provider（`OktaOAuth2Options`）。`AuthorizationServerId` 設為空值時改用 org 授權伺服器。
 - LINE provider 從 ID token 讀取 email。

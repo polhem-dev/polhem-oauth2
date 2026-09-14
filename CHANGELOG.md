@@ -20,7 +20,8 @@ below are relative to the last Bee.OAuth2 release. How to move an application ov
 - `TokenResponse` holds the access, refresh and ID tokens with their type, lifetime and scopes. `AuthorizationResult.Token`
   carries it, and `RefreshTokenAsync` on each client obtains new tokens.
 - `AddOAuth2Client` registers a client, `OAuth2Manager` and data protection in an ASP.NET Core application.
-- `OAuth2Exception.Error` and `ErrorDescription` carry the error code and description returned by the provider.
+- `OAuth2Exception`, thrown for protocol failures. Its `Error` and `ErrorDescription` carry the error code and description
+  returned by the provider.
 - `AzureOAuth2Options.Tenant`, for applications registered in a single Microsoft Entra ID tenant.
 - The Okta provider (`OktaOAuth2Options`). An empty `AuthorizationServerId` selects the org authorization server.
 - The LINE provider reads the email address from the ID token.

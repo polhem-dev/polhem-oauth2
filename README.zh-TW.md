@@ -63,6 +63,7 @@ else
   找不到預設瀏覽器時擲出 `Win32Exception`。
 - 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 UI 框架的啟動器寫成 `uri => launcher.LaunchUriAsync(uri)`。
 - 這段範例使用最上層陳述式。在 .NET Framework 的 Windows Forms 應用程式裡怎麼登入，見 [OAuthWinForms](samples/OAuthWinForms) sample。
+- 目標框架為 .NET Framework 4.7.2、並在開啟 FIPS 模式的機器上執行的應用程式，需要 ASP.NET（System.Web）一節「部署前確認」裡的設定。
 
 這個設計的理由，以及各 provider 對 loopback 回呼的實測結果，記錄在
 [ADR-004](docs/adr/adr-004-system-browser-loopback.zh-TW.md)。
@@ -177,6 +178,10 @@ public class AuthController : Controller
   非同步頁面與作業系統的 TLS 預設值都取決於這個設定。
 - 在 .NET Framework 上，核心套件相依於 System.Text.Json。NuGet 為它及其相依套件加入 `web.config` 的 binding redirect 要保留。
 - 有多台伺服器可能收到回呼時，每一台的 `web.config` 都要設定相同的 `<machineKey>`。
+- 在開啟 FIPS 模式的機器上，目標框架為 .NET Framework 4.7.2 的應用程式，開始登入時可能擲出 `CryptographicException`：
+  對這類應用程式，.NET Framework 會擋下 PKCE 使用的 managed SHA-256 實作。請把目標框架改為 .NET Framework 4.8 或更新的版本，
+  或把 `Switch.System.Security.Cryptography.UseLegacyFipsThrow` 開關設為 `false`。
+  見 [Managed cryptography classes do not throw a CryptographyException in FIPS mode](https://learn.microsoft.com/dotnet/framework/migration-guide/retargeting/4.8.x#managed-cryptography-classes-do-not-throw-a-cryptographyexception-in-fips-mode)。
 
 ## 網頁應用程式：登入狀態怎麼保存
 
@@ -220,6 +225,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 ## 識別使用者
 
 - 以 provider 名稱加上 `UserInfo.UserId` 識別使用者，不要用 `Email`：email 可能變更，而且各 provider 是否驗證過 email 並不一致。
+- provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0` 或 `Okta`。
+  它與 client 註冊時使用的名稱無關。
 - Microsoft Entra ID 的 `UserId` 是 `sub` claim，同一個使用者登入不同的應用程式時，這個值也不同。
 - LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token 讀出 email，
   會檢查這個 token 是發給這個 client 的，但不檢查簽章。
