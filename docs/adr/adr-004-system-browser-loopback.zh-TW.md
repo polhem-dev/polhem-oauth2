@@ -4,7 +4,7 @@
 
 ## 狀態
 
-提議中（2026-09-14）。「各 provider 實測結果」中其餘 provider 測完後才採納。
+已採納（2026-09-14）
 
 ## 背景
 
@@ -52,7 +52,7 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | Google | Desktop app | `http://127.0.0.1:<可用 port>/callback`、`http://localhost:53682/callback` | 開啟 PKCE 時被接受，換 token 成功（2026-09-14）。登記的網址寫的是 port 0，實際以可用 port 導回仍被接受。 |
 | Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<可用 port>/`，後台登記為 `http://localhost` | 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。port 被忽略，結尾的 `/` 也不影響比對。`/callback` 這類路徑是否必須一致，以及 `127.0.0.1`，尚未測試。 |
 | Auth0 | Native | `http://127.0.0.1:53682/callback`、`http://localhost:53682/callback` | 兩個網址開啟 PKCE 時都被接受，沒送 client secret 也換 token 成功（2026-09-14）。port 必須一致：以 `127.0.0.1` 加上可用 port 導回時，被錯誤頁面拒絕。 |
-| Okta | Native | — | 未測試：沒有可用的 Okta 帳號。provider 類別支援 Okta，但它是否接受 loopback 回呼網址尚未驗證。 |
+| Okta | Native（Client authentication 為 None、要求 PKCE） | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | 兩個網址都被接受，沒送 client secret 也換 token 成功（2026-09-14）。`default` 授權伺服器一開始因為沒有任何存取政策而拒絕請求；為這個 app 加上允許 authorization code 的政策與規則後解決。以 `localhost` 加上可用 port 導回時沒有回來，port 必須一致。 |
 | LINE | — | `http://localhost:53682/callback` | 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。port 必須一致：後台只登記 `http://localhost/callback` 時，導回 port 53682 被當成無效的 `redirect_uri` 拒絕。使用者資訊沒有 email。`127.0.0.1` 尚未測試。 |
 | Facebook | — | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | `localhost:53682` 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。`127.0.0.1:53682` 被拒：登入頁顯示應用程式的網路連線不安全。`localhost` 以可用 port 導回也被接受，雖然只登記了 port 53682。app 的模式（開發或上線）沒有記錄，上線狀態的 app 尚未測試。 |
 

@@ -4,7 +4,7 @@
 
 ## Status
 
-Proposed (2026-09-14). It is accepted once the remaining providers in "Provider test results" have been tested.
+Accepted (2026-09-14)
 
 ## Context
 
@@ -59,7 +59,7 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
 | Google | Desktop app | `http://127.0.0.1:<free port>/callback`, `http://localhost:53682/callback` | Accepted with PKCE, and the code exchange succeeded (2026-09-14). The redirect with a free port was accepted although the registered URI names port 0. |
 | Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<free port>/`, registered as `http://localhost` | Accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port was ignored, and the trailing slash did not affect the match. Whether a path such as `/callback` must match, and `127.0.0.1`, have not been tested. |
 | Auth0 | Native | `http://127.0.0.1:53682/callback`, `http://localhost:53682/callback` | Both accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port must match: a redirect to `127.0.0.1` with a free port was refused with an error page. |
-| Okta | Native | — | Not tested: no Okta account was available. Okta is supported by the provider classes, but whether it accepts loopback redirect URIs has not been verified. |
+| Okta | Native (client authentication None, PKCE required) | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Both accepted, and the code exchange succeeded without the client secret (2026-09-14). The default authorization server first refused the request because it had no access policy; a policy for the app with a rule that allows the authorization code grant fixed that. A redirect to `localhost` with a free port did not come back, so the port must match. |
 | LINE | — | `http://localhost:53682/callback` | Accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port must match: while only `http://localhost/callback` was registered, a redirect to port 53682 was refused as an invalid `redirect_uri`. The user information did not include an email address. `127.0.0.1` has not been tested. |
 | Facebook | — | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | `localhost:53682` was accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). `127.0.0.1:53682` was refused: the sign-in page reported that the application's connection is not secure. `localhost` with a free port was also accepted, although only port 53682 was registered. The app's mode (development or live) was not recorded, and a live app has not been tested. |
 
