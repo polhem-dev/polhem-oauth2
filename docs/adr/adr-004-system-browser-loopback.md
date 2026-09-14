@@ -56,7 +56,7 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
 | Provider | Application type | Redirect URIs tested | Result |
 |----------|------------------|----------------------|--------|
 | Google | Desktop app | `http://127.0.0.1:<free port>/callback`, `http://localhost:53682/callback` | Accepted with PKCE, and the code exchange succeeded (2026-09-14). The redirect with a free port was accepted although the registered URI names port 0. |
-| Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<free port>/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
+| Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<free port>/`, registered as `http://localhost` | Accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port was ignored, and the trailing slash did not affect the match. Whether a path such as `/callback` must match, and `127.0.0.1`, have not been tested. |
 | Auth0 | Native | `http://127.0.0.1:53682/callback`, `http://localhost:53682/callback` | Not tested yet |
 | Okta | Native | `http://localhost:53682/callback`, `http://127.0.0.1:53682/callback` | Not tested yet |
 | LINE | — | `http://localhost:53682/callback` | Accepted with PKCE, and the code exchange succeeded without the client secret (2026-09-14). The port must match: while only `http://localhost/callback` was registered, a redirect to port 53682 was refused as an invalid `redirect_uri`. The user information did not include an email address. `127.0.0.1` has not been tested. |

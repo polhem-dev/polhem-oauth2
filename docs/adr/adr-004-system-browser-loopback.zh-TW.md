@@ -50,7 +50,7 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | Provider | 應用程式類型 | 測試的回呼網址 | 結果 |
 |----------|--------------|----------------|------|
 | Google | Desktop app | `http://127.0.0.1:<可用 port>/callback`、`http://localhost:53682/callback` | 開啟 PKCE 時被接受，換 token 成功（2026-09-14）。登記的網址寫的是 port 0，實際以可用 port 導回仍被接受。 |
-| Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<可用 port>/callback`、`http://127.0.0.1:53682/callback` | 尚未測試 |
+| Microsoft Entra ID | Mobile and desktop applications | `http://localhost:<可用 port>/`，後台登記為 `http://localhost` | 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。port 被忽略，結尾的 `/` 也不影響比對。`/callback` 這類路徑是否必須一致，以及 `127.0.0.1`，尚未測試。 |
 | Auth0 | Native | `http://127.0.0.1:53682/callback`、`http://localhost:53682/callback` | 尚未測試 |
 | Okta | Native | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | 尚未測試 |
 | LINE | — | `http://localhost:53682/callback` | 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。port 必須一致：後台只登記 `http://localhost/callback` 時，導回 port 53682 被當成無效的 `redirect_uri` 拒絕。使用者資訊沒有 email。`127.0.0.1` 尚未測試。 |

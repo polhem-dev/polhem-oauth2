@@ -17,7 +17,7 @@
   "Azure": {
     "ClientId": "",
     "ClientSecret": "",
-    "RedirectUri": "http://localhost:0/callback"
+    "RedirectUri": "http://localhost:0"
   },
   "Auth0": {
     "Domain": "your-tenant.auth0.com",

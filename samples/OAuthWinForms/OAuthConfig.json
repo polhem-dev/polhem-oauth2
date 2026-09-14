@@ -20,7 +20,7 @@
   "AzureOAuth": {
     "ClientId": "azure-client-id",
     "ClientSecret": "",
-    "RedirectUri": "http://localhost:0/callback",
+    "RedirectUri": "http://localhost:0",
     "UsePkce": true
   },
   "Auth0OAuth": {
