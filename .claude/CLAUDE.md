@@ -20,6 +20,16 @@ The reasons are recorded in `docs/adr/adr-002-language-policy.md`.
 
 Design decisions and their reasons are recorded in `docs/adr/`. Read the relevant ADR before changing behavior it describes.
 
+## Local working documents
+
+- `local/` at the repository root is ignored by git. Keep documents there that are not meant for every maintainer or for
+  publication: plans, drafts, personal notes, and review findings that list unfixed security issues.
+- Plans go in `local/plans/`. Never commit anything under `local/`, never add it with `git add -f`, and never link to it
+  from committed files.
+- Decisions of lasting value belong in `docs/adr/`; work other maintainers need to see belongs in GitHub issues or pull requests.
+- The language rule above does not apply to `local/`, because its documents are not maintained together.
+- A session in a git worktree cannot see `local/`. Hand off work that depends on it to a session in the main working tree.
+
 ## Build and test
 
 ```bash
