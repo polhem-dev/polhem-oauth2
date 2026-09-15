@@ -71,6 +71,7 @@ else
   sample shows the same sign-in in a Windows Forms application on .NET Framework.
 - An application that targets .NET Framework 4.7.2 and runs on a machine with FIPS mode enabled needs the setting described
   under "Before deploying" in the ASP.NET (System.Web) section.
+- To sign in to a separate back end as well, see the "Apps with a separate back end" section.
 
 The reasons behind this design, and how each provider handled loopback redirects, are recorded in
 [ADR-004](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-004-system-browser-loopback.md).
@@ -250,6 +251,20 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
   but does not check its signature.
 - The library does not validate ID tokens. `Token.IdToken` is returned as the provider sent it; validate it before relying
   on its claims.
+
+## Apps with a separate back end
+
+For brevity, the desktop example signs in and reads the user information in one call, which suits an application that
+uses the result itself. When the front end signs in and then signs in to a separate back end, do not send the user
+information from the front end to the back end as proof of identity: the back end cannot tell whether it was forged.
+
+- After signing in, the front end passes the token to the back end over HTTPS, and the back end obtains the user
+  information from the provider with that token.
+- Before the back end trusts the token, it confirms that the token was issued to its own client ID, for example through
+  the provider's token verification endpoint or by validating the signature and audience of the ID token. A request to
+  the user information endpoint alone does not confirm this: a token that another application obtained for the same
+  user returns the same user.
+- The library does not provide these back-end steps.
 
 ## Migrating from Bee.OAuth2
 

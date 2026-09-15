@@ -64,6 +64,7 @@ else
 - 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 UI 框架的啟動器寫成 `uri => launcher.LaunchUriAsync(uri)`。
 - 這段範例使用最上層陳述式。在 .NET Framework 的 Windows Forms 應用程式裡怎麼登入，見 [OAuthWinForms](samples/OAuthWinForms) sample。
 - 目標框架為 .NET Framework 4.7.2、並在開啟 FIPS 模式的機器上執行的應用程式，需要 ASP.NET（System.Web）一節「部署前確認」裡的設定。
+- 要再登入另一個後端時，見[前後端分離的應用程式](#前後端分離的應用程式)。
 
 這個設計的理由，以及各 provider 對 loopback 回呼的實測結果，記錄在
 [ADR-004](docs/adr/adr-004-system-browser-loopback.zh-TW.md)。
@@ -231,6 +232,16 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token 讀出 email，
   會檢查這個 token 是發給這個 client 的，但不檢查簽章。
 - 函式庫不驗證 ID token。`Token.IdToken` 是 provider 原樣回傳的內容，要依賴其中的 claim 前請先自行驗證。
+
+## 前後端分離的應用程式
+
+桌面應用程式的範例為了簡潔，一次呼叫就完成登入並取得使用者資訊，適合自己使用登入結果的應用程式。
+若前端登入後還要登入另一個後端，不要把前端取得的使用者資訊交給後端當作身份證明：後端無法分辨它是否遭到偽造。
+
+- 前端登入後，透過 HTTPS 把 token 交給後端，由後端用這個 token 向 provider 取得使用者資訊。
+- 後端採信 token 之前，要先確認它是發給自己 client ID 的，例如使用 provider 的 token 驗證端點，或驗證 ID token 的簽章與 audience。
+  只呼叫使用者資訊端點無法確認這一點：其他應用程式替同一個使用者取得的 token，也會回傳同一個使用者。
+- 函式庫沒有提供這些後端步驟。
 
 ## 從 Bee.OAuth2 遷移
 
