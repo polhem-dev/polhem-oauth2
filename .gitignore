@@ -364,12 +364,8 @@ FodyWeavers.xsd
 # macOS Finder metadata
 .DS_Store
 
-# Local credentials for the loopback redirect probe
-tools/LoopbackRedirectProbe/probe.settings.json
-
 # Local credentials for the samples and the tools; OAuthConfig.example.json is the committed template
 /OAuthConfig.json
-samples/**/OAuthConfig.json
 
 # Personal working documents, such as plans, kept out of version control
 /local/
