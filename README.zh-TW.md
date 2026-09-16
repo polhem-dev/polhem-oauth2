@@ -285,7 +285,6 @@ provider 在後台是桌面 client 與 Web client 分開登記的，所以每個
   "Providers": {
     "Okta": {
       "Domain": "dev-123456.okta.com",
-      "AuthorizationServerId": "default",
       "Desktop": { "ClientId": "", "RedirectUri": "http://localhost:53682/callback" },
       "Web": { "ClientId": "", "ClientSecret": "", "RedirectUri": "https://localhost:7032/auth/callback" }
     }

@@ -314,7 +314,6 @@ separately:
   "Providers": {
     "Okta": {
       "Domain": "dev-123456.okta.com",
-      "AuthorizationServerId": "default",
       "Desktop": { "ClientId": "", "RedirectUri": "http://localhost:53682/callback" },
       "Web": { "ClientId": "", "ClientSecret": "", "RedirectUri": "https://localhost:7032/auth/callback" }
     }
