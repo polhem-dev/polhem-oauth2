@@ -9,11 +9,12 @@ applications use, and shows whether the provider accepts that redirect URI and w
 ## Set up
 
 1. Register the redirect URI you want to test with the provider.
-2. Copy `probe.settings.example.json` to `probe.settings.json` in this folder. For each provider you test, fill in the
-   client credentials and the `RedirectUri` registered with that provider. `probe.settings.json` is ignored by git; do not
-   commit credentials.
+2. Copy `OAuthConfig.example.json` in the repository root to `OAuthConfig.json`. For each provider you test, fill in the
+   client credentials and the registered `RedirectUri` in the `Desktop` section of that provider. `OAuthConfig.json` is
+   ignored by git; do not commit credentials. The build copies it to the output folder, where the probe reads it. The
+   samples share this file, and the "Samples" section of the [repository README](../../README.md) describes its shape.
 
-Providers compare redirect URIs differently, so each provider section has its own `RedirectUri`. Always write the port:
+Providers compare redirect URIs differently, so each `Desktop` section has its own `RedirectUri`. Always write the port:
 a URI without one means port 80, which a program without administrator rights cannot listen on in macOS. Port `0` picks
 a free port, for providers that accept any loopback port.
 
@@ -27,8 +28,8 @@ dotnet run -- --provider Google
 | Option | Meaning |
 |--------|---------|
 | `--provider` | `Google`, `Facebook`, `Line`, `Azure`, `Auth0` or `Okta` |
-| `--redirect` | Optional. A loopback redirect URI that replaces the provider's `RedirectUri` from the settings file for this run. |
-| `--settings` | The settings file. The default is `probe.settings.json` in the current folder. |
+| `--redirect` | Optional. A loopback redirect URI that replaces the `RedirectUri` of the provider's `Desktop` section for this run. |
+| `--settings` | The settings file. The default is `OAuthConfig.json` in the output folder, which the build copies from the repository root. |
 | `--timeout` | Seconds to wait for the redirect. The default is 180. |
 
 ## Reading the result

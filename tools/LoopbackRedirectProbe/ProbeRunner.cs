@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Text.Json;
+using OAuthSamples;
 using Polhem.OAuth2;
 
 namespace LoopbackRedirectProbe
@@ -22,11 +23,11 @@ namespace LoopbackRedirectProbe
             LoopbackOAuth2Client client;
             try
             {
-                options = ProbeSettings.Load(arguments.SettingsPath, arguments.Provider);
+                options = OAuthConfig.Load(arguments.SettingsPath).GetClient(arguments.Provider, OAuthClientType.Desktop);
                 if (arguments.RedirectUri is not null)
                     options.RedirectUri = arguments.RedirectUri.OriginalString;
                 if (string.IsNullOrWhiteSpace(options.RedirectUri))
-                    return Fail($"Set RedirectUri in the '{arguments.Provider}' section of the settings file, or pass --redirect.", 2);
+                    return Fail($"Set RedirectUri in 'Providers.{arguments.Provider}.{OAuthClientType.Desktop}' of the settings file, or pass --redirect.", 2);
                 client = new LoopbackOAuth2Client(options) { Timeout = TimeSpan.FromSeconds(arguments.TimeoutSeconds) };
             }
             catch (FileNotFoundException ex)

@@ -302,8 +302,35 @@ information from the front end to the back end as proof of identity: the back en
 
 ## Samples
 
-Each sample reads its provider settings from `OAuthConfig.json` in its folder. Copy `OAuthConfig.example.json` to
-`OAuthConfig.json` and fill it in. `OAuthConfig.json` is ignored by git; keep credentials out of `OAuthConfig.example.json`.
+The samples and the loopback redirect probe read their provider settings from one `OAuthConfig.json` in the repository
+root. Copy `OAuthConfig.example.json` to `OAuthConfig.json` and fill it in; the build copies the file to the output
+folder of each project. `OAuthConfig.json` is ignored by git; keep credentials out of `OAuthConfig.example.json`.
+
+Every provider holds one client per client type, because a provider registers a desktop client and a web client
+separately:
+
+```json
+{
+  "Providers": {
+    "Okta": {
+      "Domain": "dev-123456.okta.com",
+      "AuthorizationServerId": "default",
+      "Desktop": { "ClientId": "", "RedirectUri": "http://localhost:53682/callback" },
+      "Web": { "ClientId": "", "ClientSecret": "", "RedirectUri": "https://localhost:7032/auth/callback" }
+    }
+  }
+}
+```
+
+- The console and Windows Forms samples and the probe read `Desktop`, and the ASP.NET Core sample reads `Web`. A client
+  section takes the properties of that provider's options type, such as `Scopes` and `UsePkce`, and what it leaves out
+  keeps the default of the type.
+- The fields both clients share, none of which are credentials, sit in the provider section: `Domain` for Auth0 and
+  Okta, `AuthorizationServerId` for Okta, and `Tenant` for Azure. Anything else there is an error, so credentials cannot
+  end up shared by accident.
+- A provider whose back end registers one client for both, such as a LINE channel with two callback URLs, gets the same
+  `ClientId` and `ClientSecret` in both sections.
+- A section whose `ClientId` is still empty is skipped, so the samples offer only the providers you filled in.
 
 | Sample | Shows |
 |--------|-------|

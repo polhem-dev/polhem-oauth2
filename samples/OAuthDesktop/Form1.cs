@@ -1,12 +1,12 @@
 using System.Net.Sockets;
 using System.Text.Json;
+using OAuthSamples;
 using Polhem.OAuth2;
 
 namespace OAuthDesktop
 {
     public partial class Form1 : Form
     {
-        private static readonly JsonSerializerOptions s_readOptions = new() { PropertyNameCaseInsensitive = true };
         private static readonly JsonSerializerOptions s_writeOptions = new() { WriteIndented = true };
 
         private readonly Dictionary<string, LoopbackOAuth2Client> _clients = new(StringComparer.Ordinal);
@@ -18,33 +18,27 @@ namespace OAuthDesktop
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            var config = LoadOAuthConfig(Path.Combine(AppContext.BaseDirectory, "OAuthConfig.json"));
-            RegisterIfExists("Google", config.GoogleOAuth);
-            RegisterIfExists("Facebook", config.FacebookOAuth);
-            RegisterIfExists("Line", config.LineOAuth);
-            RegisterIfExists("Azure", config.AzureOAuth);
-            RegisterIfExists("Auth0", config.Auth0OAuth);
-            RegisterIfExists("Okta", config.OktaOAuth);
-        }
-
-        private static OAuthConfig LoadOAuthConfig(string filePath)
-        {
-            if (!File.Exists(filePath))
+            try
             {
-                throw new FileNotFoundException(
-                    "OAuthConfig.json was not found. In the sample folder, copy OAuthConfig.example.json to OAuthConfig.json and fill it in.",
-                    filePath);
+                foreach (var client in OAuthConfig.Load().GetClients(OAuthClientType.Desktop))
+                    Register(client.ProviderName, client.Options);
             }
-
-            string json = File.ReadAllText(filePath);
-            return JsonSerializer.Deserialize<OAuthConfig>(json, s_readOptions) ?? new OAuthConfig();
+            catch (FileNotFoundException ex)
+            {
+                edtUserInfo.AppendText(ex.Message + "\r\n");
+            }
+            catch (InvalidDataException ex)
+            {
+                edtUserInfo.AppendText(ex.Message + "\r\n");
+            }
+            catch (JsonException ex)
+            {
+                edtUserInfo.AppendText($"{OAuthConfig.FileName} is not valid JSON: {ex.Message}\r\n");
+            }
         }
 
-        private void RegisterIfExists(string name, OAuth2Options? options)
+        private void Register(string name, OAuth2Options options)
         {
-            if (options == null)
-                return;
-
             try
             {
                 _clients[name] = new LoopbackOAuth2Client(options);
@@ -59,7 +53,7 @@ namespace OAuthDesktop
         {
             if (!_clients.TryGetValue(clientName, out var client))
             {
-                edtUserInfo.Text = $"{clientName} is not configured in OAuthConfig.json.";
+                edtUserInfo.Text = $"{clientName} is not configured in {OAuthConfig.FileName}.";
                 return;
             }
 

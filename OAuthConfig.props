@@ -1,0 +1,17 @@
+<Project>
+
+  <!-- The samples and the tools share one OAuth2 settings file and one set of classes that read it. Every project that
+       needs them imports this file explicitly, so a reader of a project file sees where its settings come from. -->
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthClientEntry.cs" Link="Shared\OAuthClientEntry.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthClientType.cs" Link="Shared\OAuthClientType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthConfig.cs" Link="Shared\OAuthConfig.cs" />
+  </ItemGroup>
+
+  <!-- OAuthConfig.json holds real credentials and is not in the repository, so a clone without one still builds. -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)OAuthConfig.json')">
+    <None Include="$(MSBuildThisFileDirectory)OAuthConfig.json" Link="OAuthConfig.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\..\OAuthConfig.props" />
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -10,12 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="OAuthConfig.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

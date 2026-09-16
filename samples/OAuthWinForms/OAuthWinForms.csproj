@@ -1,10 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\..\OAuthConfig.props" />
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>OAuthWinForms</RootNamespace>
+
+    <!-- net48 defaults to C# 7.3, which the shared files in samples/Shared are past. -->
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,10 +20,6 @@
   <ItemGroup>
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="OAuthConfig.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

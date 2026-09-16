@@ -1,36 +1,13 @@
-using System.Text.Json;
-using OAuthAspNetCore.Models;
+using OAuthSamples;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-string configPath = Path.Combine(builder.Environment.ContentRootPath, "OAuthConfig.json");
-if (!File.Exists(configPath))
-{
-    throw new FileNotFoundException(
-        "OAuthConfig.json was not found. In the sample folder, copy OAuthConfig.example.json to OAuthConfig.json and fill it in.",
-        configPath);
-}
-
-// Register every provider configured in OAuthConfig.json under the name that AuthController uses.
-var config = JsonSerializer.Deserialize<OAuthConfig>(
-    File.ReadAllText(configPath),
-    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new OAuthConfig();
-
-if (config.GoogleOAuth is { } google)
-    builder.Services.AddOAuth2Client("Google", google);
-if (config.FacebookOAuth is { } facebook)
-    builder.Services.AddOAuth2Client("Facebook", facebook);
-if (config.LineOAuth is { } line)
-    builder.Services.AddOAuth2Client("Line", line);
-if (config.AzureOAuth is { } azure)
-    builder.Services.AddOAuth2Client("Azure", azure);
-if (config.Auth0OAuth is { } auth0)
-    builder.Services.AddOAuth2Client("Auth0", auth0);
-if (config.OktaOAuth is { } okta)
-    builder.Services.AddOAuth2Client("Okta", okta);
+// Register every provider the shared settings file configures for a web client, under the name AuthController uses.
+foreach (var client in OAuthConfig.Load().GetClients(OAuthClientType.Web))
+    builder.Services.AddOAuth2Client(client.ProviderName, client.Options);
 
 var app = builder.Build();
 

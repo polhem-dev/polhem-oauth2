@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using OAuthSamples;
 
 namespace LoopbackRedirectProbe
 {
@@ -8,11 +9,9 @@ namespace LoopbackRedirectProbe
     /// </summary>
     internal sealed class ProbeArguments
     {
-        public const string Usage =
-            "Usage: LoopbackRedirectProbe --provider <Google|Facebook|Line|Azure|Auth0|Okta> [--redirect <loopback URI>]" +
-            " [--settings <path>] [--timeout <seconds>]";
-
-        private static readonly string[] s_providers = { "Google", "Facebook", "Line", "Azure", "Auth0", "Okta" };
+        public static readonly string Usage =
+            "Usage: LoopbackRedirectProbe --provider <" + string.Join("|", OAuthConfig.ProviderNames) + ">" +
+            " [--redirect <loopback URI>] [--settings <path>] [--timeout <seconds>]";
 
         private ProbeArguments(string provider, Uri? redirectUri, string settingsPath, int timeoutSeconds)
         {
@@ -29,6 +28,9 @@ namespace LoopbackRedirectProbe
         /// </summary>
         public Uri? RedirectUri { get; }
 
+        /// <summary>
+        /// Gets the settings file to read. The default is the shared <c>OAuthConfig.json</c> in the output folder.
+        /// </summary>
         public string SettingsPath { get; }
 
         public int TimeoutSeconds { get; }
@@ -49,11 +51,11 @@ namespace LoopbackRedirectProbe
             }
 
             string? provider = values.TryGetValue("provider", out var requestedProvider)
-                ? s_providers.FirstOrDefault(name => string.Equals(name, requestedProvider, StringComparison.OrdinalIgnoreCase))
+                ? OAuthConfig.ProviderNames.FirstOrDefault(name => string.Equals(name, requestedProvider, StringComparison.OrdinalIgnoreCase))
                 : null;
             if (provider is null)
             {
-                error = "--provider must be one of: " + string.Join(", ", s_providers) + ".";
+                error = "--provider must be one of: " + string.Join(", ", OAuthConfig.ProviderNames) + ".";
                 return false;
             }
 
@@ -72,7 +74,7 @@ namespace LoopbackRedirectProbe
                 return false;
             }
 
-            string settingsPath = values.TryGetValue("settings", out var settings) ? settings : "probe.settings.json";
+            string settingsPath = values.TryGetValue("settings", out var settings) ? settings : OAuthConfig.DefaultFilePath;
 
             arguments = new ProbeArguments(provider, redirectUri, settingsPath, timeoutSeconds);
             error = string.Empty;

@@ -274,8 +274,32 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 
 ## Samples
 
-每個 sample 都從自己資料夾裡的 `OAuthConfig.json` 讀取 provider 設定。先把 `OAuthConfig.example.json` 複製成
-`OAuthConfig.json` 再填入。`OAuthConfig.json` 已被 git 忽略；不要把憑證填進 `OAuthConfig.example.json`。
+所有 sample 與 loopback 回呼網址實測工具，都從 repo 根目錄的同一份 `OAuthConfig.json` 讀取 provider 設定。
+先把 `OAuthConfig.example.json` 複製成 `OAuthConfig.json` 再填入，建置時會複製到每個專案的輸出目錄。
+`OAuthConfig.json` 已被 git 忽略；不要把憑證填進 `OAuthConfig.example.json`。
+
+provider 在後台是桌面 client 與 Web client 分開登記的，所以每個 provider 依 client 類型各有一組 client：
+
+```json
+{
+  "Providers": {
+    "Okta": {
+      "Domain": "dev-123456.okta.com",
+      "AuthorizationServerId": "default",
+      "Desktop": { "ClientId": "", "RedirectUri": "http://localhost:53682/callback" },
+      "Web": { "ClientId": "", "ClientSecret": "", "RedirectUri": "https://localhost:7032/auth/callback" }
+    }
+  }
+}
+```
+
+- 主控台與 Windows Forms sample 和實測工具讀 `Desktop`，ASP.NET Core sample 讀 `Web`。client 區段可以寫該 provider
+  options 型別的屬性，例如 `Scopes` 與 `UsePkce`；沒寫的沿用型別的預設值。
+- 兩組 client 共用、而且不是憑證的欄位寫在 provider 層：Auth0 與 Okta 的 `Domain`、Okta 的 `AuthorizationServerId`、
+  Azure 的 `Tenant`。這層出現其他欄位會報錯，憑證因此不會不小心被共用。
+- 後台其實只登記一個 client 的 provider（例如一個 LINE channel 登記兩個回呼網址），兩組填相同的 `ClientId`
+  與 `ClientSecret` 即可。
+- `ClientId` 還留空的區段會被略過，所以 sample 只會出現你已經填好的 provider。
 
 | Sample | 示範 |
 |--------|------|

@@ -1,25 +1,29 @@
 using System.Net.Sockets;
 using System.Text.Json;
-using OAuthConsole;
+using OAuthSamples;
 using Polhem.OAuth2;
 
 // Usage: dotnet run -- <Google|Facebook|Line|Azure|Auth0|Okta>
 string providerName = args.Length > 0 ? args[0] : "Google";
 
-string configPath = Path.Combine(AppContext.BaseDirectory, "OAuthConfig.json");
-if (!File.Exists(configPath))
+OAuth2Options options;
+try
 {
-    Console.Error.WriteLine("OAuthConfig.json was not found. In the sample folder, copy OAuthConfig.example.json to OAuthConfig.json and fill it in.");
+    options = OAuthConfig.Load().GetClient(providerName, OAuthClientType.Desktop);
+}
+catch (FileNotFoundException ex)
+{
+    Console.Error.WriteLine(ex.Message);
     return 2;
 }
-
-var config = JsonSerializer.Deserialize<OAuthConfig>(
-    File.ReadAllText(configPath), new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new OAuthConfig();
-
-OAuth2Options? options = config.Find(providerName);
-if (options is null)
+catch (InvalidDataException ex)
 {
-    Console.Error.WriteLine($"OAuthConfig.json has no settings for '{providerName}'. Use Google, Facebook, Line, Azure, Auth0 or Okta.");
+    Console.Error.WriteLine(ex.Message);
+    return 2;
+}
+catch (JsonException ex)
+{
+    Console.Error.WriteLine($"{OAuthConfig.FileName} is not valid JSON: {ex.Message}");
     return 2;
 }
 
