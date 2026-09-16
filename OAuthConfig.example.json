@@ -46,7 +46,7 @@
       }
     },
     "Auth0": {
-      "Domain": "your-tenant.auth0.com",
+      "Domain": "",
       "Desktop": {
         "ClientId": "",
         "RedirectUri": "http://127.0.0.1:53682/callback"
@@ -58,7 +58,7 @@
       }
     },
     "Okta": {
-      "Domain": "dev-123456.okta.com",
+      "Domain": "",
       "Desktop": {
         "ClientId": "",
         "RedirectUri": "http://localhost:53682/callback"
