@@ -22,12 +22,25 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
-            // The OpenID Connect user information endpoint returns the standard claims only, so the user is identified by sub.
+            // The user information endpoint returns no object ID, so the user is identified by sub.
             return new UserInfo(
                 OAuth2Json.GetString(user, "sub"),
-                OAuth2Json.GetString(user, "name"),
+                OAuth2Json.GetString(user, "name") ?? JoinNameParts(user),
                 OAuth2Json.GetString(user, "email"),
                 json);
+        }
+
+        // A personal Microsoft account returns no name claim. It returns the name parts as givenname and familyname, without
+        // the underscores of the OpenID Connect given_name and family_name, so both spellings are read.
+        private static string? JoinNameParts(JsonElement user)
+        {
+            string?[] parts =
+            {
+                OAuth2Json.GetString(user, "given_name") ?? OAuth2Json.GetString(user, "givenname"),
+                OAuth2Json.GetString(user, "family_name") ?? OAuth2Json.GetString(user, "familyname")
+            };
+            string name = string.Join(" ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+            return name.Length == 0 ? null : name;
         }
     }
 }

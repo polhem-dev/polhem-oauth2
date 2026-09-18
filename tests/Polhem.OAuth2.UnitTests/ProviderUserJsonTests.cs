@@ -90,6 +90,41 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Microsoft Entra ID builds the name from givenname and familyname for a personal Microsoft account")]
+        public void Azure_ParseUserJson_PersonalAccountWithoutName_JoinsNameParts()
+        {
+            const string json = """{"sub":"AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ","@odata.context":"https://substrate.office.com/profileB2/v2.0/me/$metadata#userinfo","givenname":"Ada","familyname":"Lovelace","email":"ada@outlook.com","locale":"en-GB"}""";
+
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson(json);
+
+            Assert.Equal("Ada Lovelace", user.UserName);
+            Assert.Equal("ada@outlook.com", user.Email);
+        }
+
+        [Theory]
+        [DisplayName("Microsoft Entra ID falls back to the name parts when name is missing or JSON null")]
+        [InlineData("""{"sub":"1","given_name":"Ada","family_name":"Lovelace"}""", "Ada Lovelace")]
+        [InlineData("""{"sub":"1","name":null,"givenname":"Ada","familyname":"Lovelace"}""", "Ada Lovelace")]
+        [InlineData("""{"sub":"1","givenname":"Ada"}""", "Ada")]
+        [InlineData("""{"sub":"1","familyname":"Lovelace"}""", "Lovelace")]
+        [InlineData("""{"sub":"1","givenname":"","familyname":"Lovelace"}""", "Lovelace")]
+        public void Azure_ParseUserJson_MissingName_FallsBackToNameParts(string json, string expected)
+        {
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson(json);
+
+            Assert.Equal(expected, user.UserName);
+        }
+
+        [Fact]
+        [DisplayName("Microsoft Entra ID has no user name when neither name nor any name part is returned")]
+        public void Azure_ParseUserJson_NoNameOrParts_MapsToNull()
+        {
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson("""{"sub":"1","givenname":" "}""");
+
+            Assert.Null(user.UserName);
+        }
+
+        [Fact]
         [DisplayName("Auth0 maps sub, name and email")]
         public void Auth0_ParseUserJson_MapsSubNameAndEmail()
         {
