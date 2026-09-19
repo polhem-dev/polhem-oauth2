@@ -305,7 +305,8 @@ provider 在後台是桌面、Web 與行動 App 的 client 分開登記的，所
   Android App（[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)），所以沒有 `Android` 區段，sample 在 Android 上
   改由後端登入它們。
 - 最上層的 `AppRelay` 區段設定後端中轉：`BackendUrl` 是 ASP.NET Core sample 的網址，`RedirectUri` 是 App 的中轉回呼網址，
-  ASP.NET Core sample 會用它呼叫 `AddOAuth2AppRelay` 登記。
+  ASP.NET Core sample 會用它呼叫 `AddOAuth2AppRelay` 登記。中轉走 HTTPS，所以模擬器必須信任 ASP.NET Core 的開發憑證。
+  Android 模擬器上先執行 `adb reverse tcp:7032 tcp:7032`，讓 `localhost` 連到主機。
 
 | Sample | 示範 |
 |--------|------|

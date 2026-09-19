@@ -338,7 +338,8 @@ separately:
   `Android` section, and the sample signs in to them through the back end there.
 - The top-level `AppRelay` section configures the back-end relay: `BackendUrl` is where the ASP.NET Core sample runs, and
   `RedirectUri` is the relay callback of the application, which the ASP.NET Core sample registers with
-  `AddOAuth2AppRelay`.
+  `AddOAuth2AppRelay`. The relay runs over HTTPS, so the simulator or emulator must trust the ASP.NET Core development
+  certificate. On the Android emulator, run `adb reverse tcp:7032 tcp:7032` so that `localhost` reaches the host.
 
 | Sample | Shows |
 |--------|-------|
