@@ -5,6 +5,7 @@
 [![Build CI](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml/badge.svg)](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml)
 
 輕量的 .NET OAuth2 登入套件。桌面與主控台應用程式透過系統瀏覽器、loopback 回呼與 PKCE 登入，可在 Windows、macOS、Linux 上使用。
+Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式透過 `WebAuthenticator` 登入，可以直連，也可以經由自己的後端中轉。
 ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權碼流程，每次登入各自保存在一個加密的 cookie。
 
 支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta。
@@ -13,7 +14,7 @@ ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權�
 
 | 套件 | 目標框架 | 用途 |
 |------|----------|------|
-| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0、net10.0 | 各 provider、桌面與主控台應用程式的登入，以及其他伺服器端框架 |
+| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0、net10.0 | 各 provider、桌面、主控台與 .NET MAUI 應用程式的登入，以及其他伺服器端框架 |
 | [Polhem.OAuth2.AspNetCore](https://www.nuget.org/packages/Polhem.OAuth2.AspNetCore) | net10.0 | ASP.NET Core 應用程式 |
 | [Polhem.OAuth2.AspNet](https://www.nuget.org/packages/Polhem.OAuth2.AspNet) | net472 | System.Web 上的 ASP.NET Web Forms 與 MVC 應用程式 |
 
@@ -86,6 +87,86 @@ else
 - Okta：授權伺服器需要一個存取政策，並有允許 authorization code 的規則。沒有的話，登入會因政策評估失敗而被拒。
 - Facebook 拒絕 `127.0.0.1`，請改用 `localhost`。實測時 app 是開發模式還是上線模式，沒有記錄。
 - 沒寫 port 的回呼網址等於 port 80，監聽它通常需要管理員權限，所以請寫出 port。
+
+## .NET MAUI 應用程式
+
+Android、iOS 或 Mac Catalyst 上的應用程式有兩種登入方式（[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)）：
+
+- **直連**：給沒有自己後端的應用程式。`AppOAuth2Client` 以 `WebAuthenticator` 開啟登入頁，provider 導回應用程式的 URI scheme，
+  client 再以 PKCE、不帶 client secret 換取授權碼。
+- **經由後端中轉**：給要登入自己 ASP.NET Core 後端的應用程式。後端以 web client 身分登入，交給應用程式一個只能用一次的
+  code，應用程式再以它兌換使用者資訊。Google 與 LINE 不接受直接導回 Android 應用程式，所以在 Android 上必須用這個方式。
+
+`WebAuthenticator` 在 Windows 上無法使用，所以 MAUI 應用程式的 Windows 平台跟桌面應用程式一樣，以 `LoopbackOAuth2Client` 登入。
+
+### 直連登入
+
+```csharp
+using Polhem.OAuth2;
+
+var options = new Auth0OAuth2Options
+{
+    Domain = "your-tenant.auth0.com",
+    ClientId = "your-native-client-id",
+    RedirectUri = "com.example.app:/oauth2redirect"
+};
+
+var client = new AppOAuth2Client(options, async (url, redirectUri, cancellationToken) =>
+    (await WebAuthenticator.Default.AuthenticateAsync(url, redirectUri)).CallbackUri);
+
+AuthorizationResult result = await client.SignInAsync();
+```
+
+- 回呼網址是自訂 scheme 或 `https` 網址。`http`、`javascript`、`data`、`file`、相對網址，以及帶 fragment 的網址都會被拒絕。
+- 每個 provider 要求各自的導回形式與後台登記，例如 Facebook 是 `fb<app id>://authorize`，LINE 在 iOS 上是
+  `line3rdp.<bundle id>://auth`。[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md) 的表格列出每一家，以及實測過的平台。
+- 不要設定 client secret：隨應用程式散佈的任何內容都能被取出。
+- 使用者中途關閉登入，會成為帶 `OperationCanceledException` 的失敗結果；provider 回傳錯誤（例如 `access_denied`）則是帶
+  `OAuth2Exception` 的失敗結果。
+- 使用者資訊只留在應用程式裡，不能當作伺服器端的身份證明；要登入自己後端的應用程式，請改用後端中轉。
+
+### 平台設定
+
+應用程式必須能接收導回自己 scheme 的網址：
+
+- iOS 與 Mac Catalyst：在 `Info.plist` 的 `CFBundleURLTypes` 列出 scheme。在 App Sandbox 裡執行的 Mac Catalyst 應用程式，
+  另外需要 `com.apple.security.network.client` entitlement。
+- Android：加一個繼承 `WebAuthenticatorCallbackActivity` 的 activity，以 intent filter 接收該 scheme；並在
+  `AndroidManifest.xml` 的 `<queries>` 宣告 Custom Tabs 服務，Android 11 以後要有這項宣告才能開啟它。
+
+```csharp
+[Activity(NoHistory = true, LaunchMode = LaunchMode.SingleTop, Exported = true)]
+[IntentFilter([Intent.ActionView], Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable], DataScheme = "com.example.app")]
+public class CallbackActivity : WebAuthenticatorCallbackActivity
+{
+}
+```
+
+```xml
+<queries>
+  <intent>
+    <action android:name="android.support.customtabs.action.CustomTabsService" />
+  </intent>
+</queries>
+```
+
+### 經由後端中轉登入
+
+後端照 ASP.NET Core 一節登記 web client，再登記應用程式的回呼網址：
+
+```csharp
+builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.example.app:/relay"));
+```
+
+- 應用程式產生 PKCE 的 code verifier，帶著自己的回呼網址與 S256 code challenge 開啟後端的網址。該端點呼叫
+  `oauth2Manager.RedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`。
+- provider 導回後端原本的回呼端點。`CompleteAuthorizationAsync` 之後，
+  `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` 會把由應用程式發起的登入，帶著一次性 code
+  導回應用程式並回傳 true；瀏覽器裡的登入則回傳 false。
+- 應用程式把 code 與它的 verifier POST 給後端，後端以 `oauth2Manager.RedeemAppCodeAsync` 取得使用者資訊，或得到 null。
+  接著由後端發給應用程式自己的 session；provider 的 token 留在後端。
+- code 存在 `IDistributedCache`。有多台伺服器時，改用分散式快取並共用 data protection 金鑰，跟網頁登入一樣。
+- [OAuthAspNetCore](samples/OAuthAspNetCore) 與 [OAuthMaui](samples/OAuthMaui) 兩個 sample 示範了兩端的寫法。
 
 ## ASP.NET Core
 
@@ -241,7 +322,7 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - 前端登入後，透過 HTTPS 把 token 交給後端，由後端用這個 token 向 provider 取得使用者資訊。
 - 後端採信 token 之前，要先確認它是發給自己 client ID 的，例如使用 provider 的 token 驗證端點，或驗證 ID token 的簽章與 audience。
   只呼叫使用者資訊端點無法確認這一點：其他應用程式替同一個使用者取得的 token，也會回傳同一個使用者。
-- 函式庫沒有提供這些後端步驟。
+- 函式庫沒有提供這些後端步驟。.NET MAUI 應用程式可以改為經由自己的 ASP.NET Core 後端中轉登入，見 .NET MAUI 一節。
 
 ## 從 Bee.OAuth2 遷移
 

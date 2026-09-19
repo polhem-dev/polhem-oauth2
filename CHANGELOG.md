@@ -5,6 +5,26 @@
 Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `AppOAuth2Client` signs in from .NET MAUI applications on Android, iOS and Mac Catalyst: it opens the sign-in through a
+  delegate such as `WebAuthenticator`, accepts custom-scheme and `https` redirect URIs, and always uses PKCE, so it needs no
+  client secret. See [ADR-006](docs/adr/adr-006-app-sign-in.md).
+- The back-end relay in Polhem.OAuth2.AspNetCore: `AddOAuth2AppRelay`, `OAuth2AppRelayOptions`, and
+  `OAuth2Manager.RedirectToAppAuthorization`, `RedirectToAppAsync` and `RedeemAppCodeAsync` let an application sign in
+  through its own back end, which keeps the provider's tokens and gives the application a single-use code.
+- The net10.0 build of Polhem.OAuth2 is marked AOT compatible, so the trim and AOT analyzers check it.
+- The OAuthMaui sample, and relay endpoints in the OAuthAspNetCore sample.
+
+### Changed
+
+- When an `AppOAuth2Client` signs in to Facebook with an `fb<app id>` redirect URI, the token request adds the trailing
+  slash that Facebook requires.
+- The documentation of `LoopbackOAuth2Client.SignInAsync` names `PlatformNotSupportedException`, which the default browser
+  throws on iOS.
+
 ## [1.0.0] - 2026-09-14
 
 The first release under the Polhem name. It continues [Bee.OAuth2](https://github.com/jeff377/bee-oauth2); the changes
@@ -69,4 +89,5 @@ below are relative to the last Bee.OAuth2 release. How to move an application ov
   sign-in, and it reads connections side by side.
 - Provider endpoints must use https.
 
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0

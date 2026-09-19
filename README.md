@@ -5,8 +5,9 @@
 [![Build CI](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml/badge.svg)](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml)
 
 Lightweight OAuth2 sign-in for .NET. Desktop and console applications sign in through the system browser with a loopback
-redirect and PKCE, on Windows, macOS and Linux. ASP.NET Core and ASP.NET (System.Web) applications use the authorization
-code flow with PKCE, and keep each sign-in in a protected cookie.
+redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Android, iOS and Mac Catalyst sign in through
+`WebAuthenticator`, directly or through their own back end. ASP.NET Core and ASP.NET (System.Web) applications use the
+authorization code flow with PKCE, and keep each sign-in in a protected cookie.
 
 Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.
 
@@ -14,7 +15,7 @@ Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.
 
 | Package | Target frameworks | Use it for |
 |---------|-------------------|------------|
-| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0, net10.0 | The providers, sign-in from desktop and console applications, and other server frameworks |
+| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0, net10.0 | The providers, sign-in from desktop, console and .NET MAUI applications, and other server frameworks |
 | [Polhem.OAuth2.AspNetCore](https://www.nuget.org/packages/Polhem.OAuth2.AspNetCore) | net10.0 | ASP.NET Core applications |
 | [Polhem.OAuth2.AspNet](https://www.nuget.org/packages/Polhem.OAuth2.AspNet) | net472 | ASP.NET Web Forms and MVC applications on System.Web |
 
@@ -96,6 +97,95 @@ These registrations were tested with each provider on 2026-09-14.
   one, the sign-in fails with a policy evaluation error.
 - Facebook refused `127.0.0.1`; use `localhost`. Whether the tested app was in development or live mode was not recorded.
 - A redirect URI without a port means port 80, which usually needs administrator rights to listen on. Name the port.
+
+## .NET MAUI applications
+
+An application on Android, iOS or Mac Catalyst signs in in one of two ways
+([ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md)):
+
+- **Directly**, for an application without a back end of its own. `AppOAuth2Client` opens the sign-in with
+  `WebAuthenticator`, the provider redirects to a URI scheme of the application, and the client exchanges the code with
+  PKCE and without a client secret.
+- **Through the back end**, for an application that signs in to its own ASP.NET Core back end. The back end signs in as a
+  web client and gives the application a single-use code, which the application redeems for the user information. Google
+  and LINE accept no direct redirect to an Android application, so on Android they need this way.
+
+`WebAuthenticator` does not work on Windows, so the Windows platform of a MAUI application signs in with
+`LoopbackOAuth2Client`, as a desktop application does.
+
+### Signing in directly
+
+```csharp
+using Polhem.OAuth2;
+
+var options = new Auth0OAuth2Options
+{
+    Domain = "your-tenant.auth0.com",
+    ClientId = "your-native-client-id",
+    RedirectUri = "com.example.app:/oauth2redirect"
+};
+
+var client = new AppOAuth2Client(options, async (url, redirectUri, cancellationToken) =>
+    (await WebAuthenticator.Default.AuthenticateAsync(url, redirectUri)).CallbackUri);
+
+AuthorizationResult result = await client.SignInAsync();
+```
+
+- The redirect URI is a custom scheme or an `https` URI. `http`, `javascript`, `data` and `file` URIs, relative URIs, and
+  URIs with a fragment are rejected.
+- Each provider needs its own redirect form and registration, such as `fb<app id>://authorize` for Facebook and
+  `line3rdp.<bundle id>://auth` for LINE on iOS. The table in [ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md) lists them with the platforms tested.
+- Set no client secret: anything shipped with an application can be extracted.
+- Closing the sign-in becomes a failed result with `OperationCanceledException`, and an error from the provider, such as
+  `access_denied`, one with `OAuth2Exception`.
+- The user information stays in the application. It is no proof of identity for a server, so an application that signs in
+  to its own back end signs in through the back end.
+
+### Platform settings
+
+The application must receive the redirect to its scheme:
+
+- iOS and Mac Catalyst: list the scheme under `CFBundleURLTypes` in `Info.plist`. A Mac Catalyst application in the App
+  Sandbox also needs the `com.apple.security.network.client` entitlement.
+- Android: add an activity that derives from `WebAuthenticatorCallbackActivity`, with an intent filter for the scheme, and
+  declare the Custom Tabs service under `<queries>` in `AndroidManifest.xml`, which Android 11 and later require to open it.
+
+```csharp
+[Activity(NoHistory = true, LaunchMode = LaunchMode.SingleTop, Exported = true)]
+[IntentFilter([Intent.ActionView], Categories = [Intent.CategoryDefault, Intent.CategoryBrowsable], DataScheme = "com.example.app")]
+public class CallbackActivity : WebAuthenticatorCallbackActivity
+{
+}
+```
+
+```xml
+<queries>
+  <intent>
+    <action android:name="android.support.customtabs.action.CustomTabsService" />
+  </intent>
+</queries>
+```
+
+### Signing in through the back end
+
+The back end registers its web clients as in the ASP.NET Core section, and the redirect URIs of its applications:
+
+```csharp
+builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.example.app:/relay"));
+```
+
+- The application creates a PKCE code verifier and opens a URL of the back end with its redirect URI and the S256 code
+  challenge. That endpoint calls `oauth2Manager.RedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`.
+- The provider returns to the back end's usual callback. After `CompleteAuthorizationAsync`,
+  `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` sends a sign-in that an application started
+  back to the application with a single-use code and returns true. For a sign-in in the browser it returns false.
+- The application posts the code and its verifier to the back end, where `oauth2Manager.RedeemAppCodeAsync` returns the
+  user information, or null. The back end then issues the application's own session; the provider's tokens stay on the
+  back end.
+- The codes are kept in `IDistributedCache`. With several servers, use a distributed cache and share the data protection
+  keys, as for web sign-ins.
+- The [OAuthAspNetCore](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthAspNetCore) and
+  [OAuthMaui](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthMaui) samples show both sides.
 
 ## ASP.NET Core
 
@@ -265,7 +355,8 @@ information from the front end to the back end as proof of identity: the back en
   the provider's token verification endpoint or by validating the signature and audience of the ID token. A request to
   the user information endpoint alone does not confirm this: a token that another application obtained for the same
   user returns the same user.
-- The library does not provide these back-end steps.
+- The library does not provide these back-end steps. A .NET MAUI application can sign in through its ASP.NET Core back
+  end instead; see the .NET MAUI section.
 
 ## Migrating from Bee.OAuth2
 

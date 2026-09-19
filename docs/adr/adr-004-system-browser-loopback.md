@@ -5,7 +5,7 @@
 ## Status
 
 Accepted (2026-09-14). Revised on 2026-09-14, before the first release, for `OAuth2Client`, the client secret rule, and the
-listener.
+listener. Revised on 2026-09-19 to name the platforms the flow has been tested on and the exception on iOS.
 
 ## Context
 
@@ -30,8 +30,9 @@ That approach has several problems:
   the loopback interface redirection described in RFC 8252, section 7.3. It builds on the same `OAuth2Client` flow as the
   web packages.
 - `Polhem.OAuth2.WinForms` and `Polhem.OAuth2.Desktop` are removed. The flow needs only base class library types, so it
-  lives in the netstandard2.0 core and runs on Windows, macOS and Linux, including console and Avalonia applications. The
-  number of packages goes from five to three.
+  lives in the netstandard2.0 core and does not depend on a UI framework. The number of packages goes from five to three.
+  The provider tests below ran in a console application; the device tests of ADR-006 run the listener on Android, iOS,
+  Mac Catalyst and Windows, and sign in through the default browser on Windows.
 - The listener accepts TCP connections itself instead of using `HttpListener`. On Windows `HttpListener` is built on
   http.sys, which needs a URL reservation for prefixes such as `http://127.0.0.1:53682/`, and it cannot pick a free port.
 - Listening rules:
@@ -54,7 +55,8 @@ That approach has several problems:
 - Failures, in addition to ADR-003: no redirect within `Timeout` becomes a failed result with `TimeoutException`, and
   cancellation, while waiting or during the code exchange, one with `OperationCanceledException`. A port that cannot be
   listened on (`SocketException`), a second sign-in on the same client (`InvalidOperationException`), and a missing default
-  browser when `OpenBrowser` is null (`Win32Exception`) propagate.
+  browser when `OpenBrowser` is null (`Win32Exception`, or `PlatformNotSupportedException` on iOS, where no process can be
+  started) propagate.
 - The loopback client is a public client. It always uses PKCE, whatever `OAuth2Options.UsePkce` says, as RFC 8252 requires
   of native applications, and it does not send the client secret, except to Google. Google's documentation lists the client
   secret as optional for installed applications; that exception has not been tested without the secret. Every other provider

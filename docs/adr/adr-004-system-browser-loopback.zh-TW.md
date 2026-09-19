@@ -4,7 +4,8 @@
 
 ## 狀態
 
-已採納（2026-09-14）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client`、client secret 的規則與監聽程式。
+已採納（2026-09-14）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client`、client secret 的規則與監聽程式。2026-09-19 修訂，
+寫明這個流程實際測過的平台，以及 iOS 上的例外。
 
 ## 背景
 
@@ -25,7 +26,8 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 - 核心套件提供 `LoopbackOAuth2Client`。它的 `SignInAsync` 會在回呼網址的 loopback 位址上監聽、用預設瀏覽器開啟授權網址、
   等待導回，再用授權碼換 token。這就是 RFC 8252 第 7.3 節描述的 loopback 介面導回。它與網頁套件共用同一套 `OAuth2Client` 流程。
 - 移除 `Polhem.OAuth2.WinForms` 與 `Polhem.OAuth2.Desktop`。這個流程只需要基底類別庫的型別，所以放在 netstandard2.0 的核心裡，
-  可以在 Windows、macOS、Linux 上執行，包括主控台與 Avalonia 應用程式。套件數量由五個減為三個。
+  不依賴任何 UI 框架。套件數量由五個減為三個。下方的 provider 實測在主控台應用程式中進行；ADR-006 的裝置測試在 Android、iOS、
+  Mac Catalyst 與 Windows 上執行監聽程式，並在 Windows 上透過預設瀏覽器登入。
 - 監聽程式自己接受 TCP 連線，不使用 `HttpListener`。Windows 上的 `HttpListener` 建在 http.sys 之上，
   `http://127.0.0.1:53682/` 這類字首需要先保留 URL，而且它無法自動挑選可用的 port。
 - 監聽規則：
@@ -43,7 +45,8 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 - `OpenBrowser` 讓應用程式用其他方式開啟網址，例如透過 UI 框架的啟動器。它接收跳脫過的絕對 URI，並回傳一個 task。
 - 失敗的處理，補充 ADR-003：在 `Timeout` 內沒有導回，轉成帶 `TimeoutException` 的失敗結果；等待期間或換 token 期間的取消，
   轉成帶 `OperationCanceledException` 的失敗結果。port 無法監聽（`SocketException`）、同一個 client 同時登入第二次
-  （`InvalidOperationException`）、`OpenBrowser` 為 null 而找不到預設瀏覽器（`Win32Exception`），則往外拋。
+  （`InvalidOperationException`）、`OpenBrowser` 為 null 而找不到預設瀏覽器（`Win32Exception`；iOS 無法啟動處理程序，
+  擲出 `PlatformNotSupportedException`），則往外拋。
 - loopback client 是 public client。它一律使用 PKCE，不看 `OAuth2Options.UsePkce` 的設定，這是 RFC 8252 對原生應用程式的要求；
   它也不送 client secret，只有 Google 例外。Google 的文件把 client secret 列為已安裝應用程式的選填參數，
   這個例外尚未在不送 secret 的情況下測試。下方實測的其他 provider 都在沒有 secret 的情況下換到 token。

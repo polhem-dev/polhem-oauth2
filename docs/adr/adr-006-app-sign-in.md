@@ -4,8 +4,7 @@
 
 ## Status
 
-Accepted (2026-09-19). The types named below are not implemented yet; the provider test results from the finished
-implementation will be added to this record.
+Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with the library are under "Test results".
 
 ## Context
 
@@ -132,6 +131,44 @@ The Mac Catalyst loopback result comes from a listener written in the test appli
   `LoopbackOAuth2Client`. The Windows platform is reconsidered once `WebAuthenticator` works there.
 - After a relayed sign-in the application receives only the user information, not the provider's tokens, so no provider
   token has to be stored on the device.
+
+## Test results
+
+### Real providers
+
+Signed in on 2026-09-19 with the library through the `samples/OAuthMaui` application and, for the back-end relay, the
+`samples/OAuthAspNetCore` back end. iOS ran on the iPhone 17 Pro simulator (iOS 26.5), Mac Catalyst on macOS 26.6, and
+Android on an emulator with Android 15.
+
+| Provider | Direct, iOS | Direct, Mac Catalyst | Direct, Android | Back-end relay |
+|----------|-------------|----------------------|-----------------|----------------|
+| Google | Accepted | Accepted | Not possible (see the context) | Accepted on Mac Catalyst |
+| Microsoft Entra ID | Test application only | Accepted | Accepted | Not tested |
+| Auth0 | Test application only | Accepted | Accepted | Not tested |
+| Okta | Test application only | Accepted | Accepted | Not tested |
+| LINE | Test application only | Accepted; the user information had no email address | Not possible (see the context) | Not tested |
+| Facebook | Test application only | Accepted, with the trailing slash added by `FacebookOAuth2Provider` | Accepted | Not tested |
+
+- "Test application only" means that the throwaway application of the context section signed in, but the library was not
+  run on iOS with that provider. iOS and Mac Catalyst run the same code path and share the provider registrations.
+- The back-end relay was tested with real providers only on Mac Catalyst. On iOS and Android the simulator or emulator
+  would have to trust the development certificate of the back end; the relay is covered there by the end-to-end tests below.
+- Windows has not been tested with real providers.
+- Closing the sign-in, all through the library: on Android, closing Custom Tabs with the back button; on iOS, canceling
+  the system prompt before a direct sign-in and before a relayed one; on Mac Catalyst, closing the sign-in window. Each
+  became a failed result with `OperationCanceledException`, which the sample shows as canceled. Canceling on Google's own
+  page on Mac Catalyst returned `access_denied`, which became a failed result with `OAuth2Exception`, as for any provider
+  error.
+
+### Automated tests
+
+- `tests/Polhem.OAuth2.DeviceTests` runs the unit tests of the core package on Android, iOS, Mac Catalyst and Windows, in
+  Release, so the core package is trimmed and, on iOS, compiled ahead of time as in an application.
+- The same application signs in to `tests/Polhem.OAuth2.FakeProvider`, which stands in for Auth0 over HTTPS: directly, with
+  a provider error, and through the back-end relay on Android, iOS and Mac Catalyst, and with `LoopbackOAuth2Client` and the
+  default browser on Windows.
+- The Device Tests workflow runs both on all four platforms when started by hand, because it takes far longer than the build.
+  A user closing the sign-in cannot be automated there and was checked by hand as above.
 
 ## Consequences
 

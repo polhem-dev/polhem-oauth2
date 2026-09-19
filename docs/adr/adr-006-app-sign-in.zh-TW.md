@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-19）。下文提到的型別尚未實作；實作完成後的各 provider 實測結果會補進這份紀錄。
+已採納（2026-09-19）。2026-09-19 實作完成；以函式庫登入的結果見「實測結果」。
 
 ## 背景
 
@@ -113,6 +113,40 @@ Mac Catalyst 的 loopback 結果來自實測應用程式裡自寫的監聽程式
 - 不為桌面應用程式提供後端中轉，包括 MAUI 應用程式的 Windows 平台，它們維持使用 `LoopbackOAuth2Client`。
   `WebAuthenticator` 能在 Windows 運作後，再重新評估 Windows 平台。
 - 中轉登入後，應用程式只拿到使用者資訊，拿不到 provider 的 token，所以裝置上不必保存任何 provider token。
+
+## 實測結果
+
+### 真實 provider
+
+2026-09-19 以函式庫透過 `samples/OAuthMaui` 登入；後端中轉搭配 `samples/OAuthAspNetCore` 後端。iOS 在 iPhone 17 Pro 模擬器
+（iOS 26.5），Mac Catalyst 在 macOS 26.6，Android 在 Android 15 的模擬器上。
+
+| Provider | 直連，iOS | 直連，Mac Catalyst | 直連，Android | 後端中轉 |
+|----------|-----------|--------------------|---------------|----------|
+| Google | 成功 | 成功 | 不可行（見背景） | Mac Catalyst 成功 |
+| Microsoft Entra ID | 僅實測 App | 成功 | 成功 | 未測 |
+| Auth0 | 僅實測 App | 成功 | 成功 | 未測 |
+| Okta | 僅實測 App | 成功 | 成功 | 未測 |
+| LINE | 僅實測 App | 成功；使用者資訊沒有 email | 不可行（見背景） | 未測 |
+| Facebook | 僅實測 App | 成功，結尾斜線由 `FacebookOAuth2Provider` 補上 | 成功 | 未測 |
+
+- 「僅實測 App」表示背景一節那個用完即丟的 App 登入成功過，但沒有在 iOS 上以函式庫對該 provider 登入。iOS 與 Mac Catalyst
+  走同一條程式路徑，也共用 provider 的後台登記。
+- 後端中轉只在 Mac Catalyst 上對真實 provider 測過。iOS 與 Android 需要模擬器信任後端的開發憑證；這兩個平台的中轉由下方的
+  端對端測試涵蓋。
+- Windows 沒有對真實 provider 測過。
+- 中途關閉登入，全部透過函式庫：Android 以返回鍵關閉 Custom Tabs；iOS 在直連與中轉登入前的系統提示按取消；Mac Catalyst
+  關閉登入視窗。每一種都成為帶 `OperationCanceledException` 的失敗結果，sample 顯示為已取消。Mac Catalyst 上在 Google 自己的
+  頁面按取消會回傳 `access_denied`，和其他 provider 錯誤一樣，成為帶 `OAuth2Exception` 的失敗結果。
+
+### 自動化測試
+
+- `tests/Polhem.OAuth2.DeviceTests` 在 Android、iOS、Mac Catalyst 與 Windows 上以 Release 執行核心套件的單元測試，核心套件因此
+  會像在應用程式裡一樣被 trim，在 iOS 上也會預先編譯（AOT）。
+- 同一個 App 登入 `tests/Polhem.OAuth2.FakeProvider`，它以 HTTPS 模仿 Auth0：在 Android、iOS 與 Mac Catalyst 上測直連成功、
+  provider 回傳錯誤與後端中轉，在 Windows 上以 `LoopbackOAuth2Client` 與預設瀏覽器登入。
+- Device Tests workflow 在四個平台上執行這兩者，只在手動觸發時執行，因為它比建置花的時間長得多。使用者中途關閉登入在那裡
+  無法自動化，改為如上手動檢查。
 
 ## 影響
 

@@ -5,6 +5,23 @@
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更。格式依循
 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [Unreleased]
+
+### 新增
+
+- `AppOAuth2Client`：Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式登入。它透過 `WebAuthenticator` 之類的委派開啟登入頁，
+  接受自訂 scheme 與 `https` 回呼網址，一律使用 PKCE，因此不需要 client secret。見 [ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)。
+- Polhem.OAuth2.AspNetCore 的後端中轉：`AddOAuth2AppRelay`、`OAuth2AppRelayOptions`，以及
+  `OAuth2Manager.RedirectToAppAuthorization`、`RedirectToAppAsync`、`RedeemAppCodeAsync`，讓應用程式經由自己的後端登入；
+  provider 的 token 留在後端，應用程式拿到一個只能用一次的 code。
+- Polhem.OAuth2 的 net10.0 版本標示為 AOT 相容，由 trim 與 AOT analyzer 檢查。
+- OAuthMaui sample，以及 OAuthAspNetCore sample 的中轉端點。
+
+### 變更
+
+- `AppOAuth2Client` 以 `fb<app id>` 回呼網址登入 Facebook 時，token 請求會補上 Facebook 要求的結尾斜線。
+- `LoopbackOAuth2Client.SignInAsync` 的文件列出 `PlatformNotSupportedException`：iOS 上的預設瀏覽器會擲出這個例外。
+
 ## [1.0.0] - 2026-09-14
 
 以 Polhem 名義發佈的第一版，延續自 [Bee.OAuth2](https://github.com/jeff377/bee-oauth2)；以下變更都是相對於 Bee.OAuth2 的最後一版。
@@ -60,4 +77,5 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - loopback 監聽程式只接受 Host 標頭為回呼網址主機、且帶著本次登入 state 的請求，並且同時讀取多條連線。
 - provider 端點必須使用 https。
 
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0
