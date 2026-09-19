@@ -18,7 +18,9 @@
 
   <Target Name="GenerateOAuthAppFiles" BeforeTargets="PrepareForBuild"
           Inputs="$(OAuthAppGenerator);$(OAuthConfigFile)" Outputs="$(OAuthAppDirectory)OAuthApp.json">
-    <Exec Command="dotnet run --file &quot;$(OAuthAppGenerator)&quot; -- &quot;$(OAuthConfigFile)&quot; &quot;$(OAuthAppDirectory)&quot; $(OAuthDefaultScheme)"
+    <!-- The directory is passed without its trailing slash, because on Windows a backslash before the closing quotation
+         mark escapes it and joins the next argument to this one. -->
+    <Exec Command="dotnet run --file &quot;$(OAuthAppGenerator)&quot; -- &quot;$(OAuthConfigFile)&quot; &quot;$(OAuthAppDirectory.TrimEnd('\/'))&quot; $(OAuthDefaultScheme)"
           EnvironmentVariables="DOTNET_CLI_TELEMETRY_OPTOUT=1" />
   </Target>
 
