@@ -1,5 +1,1 @@
 #nullable enable
-Polhem.OAuth2.AppOAuth2Client
-Polhem.OAuth2.AppOAuth2Client.AppOAuth2Client(Polhem.OAuth2.OAuth2Options! options, System.Func<System.Uri!, System.Uri!, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Uri!>!>! authenticate, System.Net.Http.HttpClient? httpClient = null) -> void
-Polhem.OAuth2.AppOAuth2Client.RefreshTokenAsync(string! refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.TokenResponse!>!
-Polhem.OAuth2.AppOAuth2Client.SignInAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!

@@ -5,7 +5,7 @@
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更。格式依循
 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。
 
-## [Unreleased]
+## [1.1.0] - 2026-09-19
 
 ### 新增
 
@@ -21,6 +21,11 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 - `AppOAuth2Client` 以 `fb<app id>` 回呼網址登入 Facebook 時，token 請求會補上 Facebook 要求的結尾斜線。
 - `LoopbackOAuth2Client.SignInAsync` 的文件列出 `PlatformNotSupportedException`：iOS 上的預設瀏覽器會擲出這個例外。
+
+### 修正
+
+- Microsoft Entra ID provider 在個人 Microsoft 帳戶登入時也會填入 `UserName`：這類帳戶不傳 `name` claim，改由名字與姓氏組成
+  （[#2](https://github.com/polhem-dev/polhem-oauth2/issues/2)）。
 
 ## [1.0.0] - 2026-09-14
 
@@ -77,5 +82,6 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - loopback 監聽程式只接受 Host 標頭為回呼網址主機、且帶著本次登入 state 的請求，並且同時讀取多條連線。
 - provider 端點必須使用 https。
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0

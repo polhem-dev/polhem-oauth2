@@ -5,7 +5,7 @@
 Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.1.0] - 2026-09-19
 
 ### Added
 
@@ -24,6 +24,11 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
   slash that Facebook requires.
 - The documentation of `LoopbackOAuth2Client.SignInAsync` names `PlatformNotSupportedException`, which the default browser
   throws on iOS.
+
+### Fixed
+
+- The Microsoft Entra ID provider fills `UserName` for a personal Microsoft account, which sends no `name` claim: it joins the
+  given and family names instead ([#2](https://github.com/polhem-dev/polhem-oauth2/issues/2)).
 
 ## [1.0.0] - 2026-09-14
 
@@ -89,5 +94,6 @@ below are relative to the last Bee.OAuth2 release. How to move an application ov
   sign-in, and it reads connections side by side.
 - Provider endpoints must use https.
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0
