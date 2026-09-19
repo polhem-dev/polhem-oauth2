@@ -20,6 +20,8 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("client-id", "", "openid")]
         [InlineData("client-id", "/auth/callback", "openid")]
         [InlineData("client-id", "myapp://callback", "openid")]
+        [InlineData("client-id", "com.example.app:/oauth2redirect", "openid")]
+        [InlineData("client-id", "fb1234567890://authorize", "openid")]
         [InlineData("client-id", RedirectUri, " ")]
         public void Constructor_InvalidOptions_ThrowsArgumentException(string clientId, string redirectUri, string scope)
         {

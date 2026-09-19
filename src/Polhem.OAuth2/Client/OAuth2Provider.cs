@@ -117,7 +117,7 @@ namespace Polhem.OAuth2
             {
                 ["grant_type"] = "authorization_code",
                 ["code"] = authorizationCode,
-                ["redirect_uri"] = redirectUri,
+                ["redirect_uri"] = GetTokenRedirectUri(redirectUri),
                 ["client_id"] = Options.ClientId
             };
             if (codeVerifier is { Length: > 0 } verifier)
@@ -227,6 +227,17 @@ namespace Polhem.OAuth2
                 parameters["code_challenge_method"] = "S256";
             }
             return parameters;
+        }
+
+        /// <summary>
+        /// Gets the redirect URI to send with the token request. The default is the redirect URI of the authorization request,
+        /// as RFC 6749, section 4.1.3 requires.
+        /// </summary>
+        /// <param name="redirectUri">The redirect URI sent with the authorization request.</param>
+        /// <returns>The redirect URI for the token request.</returns>
+        protected virtual string GetTokenRedirectUri(string redirectUri)
+        {
+            return redirectUri;
         }
 
         /// <summary>

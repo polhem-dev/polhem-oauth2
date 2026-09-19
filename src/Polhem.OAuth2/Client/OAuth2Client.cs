@@ -14,7 +14,8 @@ namespace Polhem.OAuth2
     /// </para>
     /// <para>
     /// This client is a confidential client: it sends the client secret to the token endpoint whenever one is set.
-    /// Desktop and console applications use <see cref="LoopbackOAuth2Client"/> instead.
+    /// Desktop and console applications use <see cref="LoopbackOAuth2Client"/> instead, and mobile applications use
+    /// <see cref="AppOAuth2Client"/>.
     /// </para>
     /// </remarks>
     public sealed class OAuth2Client
@@ -36,13 +37,13 @@ namespace Polhem.OAuth2
         {
         }
 
-        internal OAuth2Client(OAuth2Options options, HttpClient? httpClient, bool publicClient)
+        internal OAuth2Client(OAuth2Options options, HttpClient? httpClient, bool publicClient, bool appRedirectUri = false)
         {
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
 
             var copy = options.Clone();
-            if (copy.GetValidationError() is { } error)
+            if (copy.GetValidationError(appRedirectUri) is { } error)
                 throw new ArgumentException(error, nameof(options));
 
             Provider = OAuth2Provider.Create(copy, httpClient);

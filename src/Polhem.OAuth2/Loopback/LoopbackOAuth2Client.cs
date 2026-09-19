@@ -33,11 +33,10 @@ namespace Polhem.OAuth2
         // in advance and is not waited for.
         private static readonly TimeSpan s_requestReadTimeout = TimeSpan.FromSeconds(5);
 
-        private readonly OAuth2Client _client;
+        private readonly PublicSignIn _signIn;
         private readonly string _configuredRedirectUri;
         private readonly Uri _redirectUri;
         private TimeSpan _timeout = TimeSpan.FromMinutes(5);
-        private int _signInInProgress;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="LoopbackOAuth2Client"/> class.
@@ -59,7 +58,7 @@ namespace Polhem.OAuth2
             if (!Uri.TryCreate(options.RedirectUri, UriKind.Absolute, out var redirectUri) || !LoopbackListener.IsLoopbackRedirectUri(redirectUri))
                 throw new ArgumentException("The redirect URI must be an absolute http URI on localhost or a loopback address.", nameof(options));
 
-            _client = new OAuth2Client(options, httpClient, publicClient: true);
+            _signIn = new PublicSignIn(new OAuth2Client(options, httpClient, publicClient: true));
             _configuredRedirectUri = options.RedirectUri;
             _redirectUri = redirectUri;
         }
@@ -111,13 +110,10 @@ namespace Polhem.OAuth2
         /// <exception cref="System.ComponentModel.Win32Exception"><see cref="OpenBrowser"/> is null and no browser can be started.</exception>
         public async Task<AuthorizationResult> SignInAsync(CancellationToken cancellationToken = default)
         {
-            if (Interlocked.CompareExchange(ref _signInInProgress, 1, 0) != 0)
-                throw new InvalidOperationException("A sign-in is already in progress on this client.");
-
-            try
+            using (_signIn.Enter())
             {
-                if (cancellationToken.IsCancellationRequested)
-                    return AuthorizationResult.Failure(new OperationCanceledException(cancellationToken));
+                if (PublicSignIn.CanceledBeforeStart(cancellationToken) is { } canceled)
+                    return canceled;
 
                 using (var listener = LoopbackListener.Start(_redirectUri))
                 using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
@@ -125,7 +121,7 @@ namespace Polhem.OAuth2
                     // With port 0 the bound port differs on every sign-in, and both the authorization request and the token
                     // request must send the redirect URI with that port.
                     string redirectUri = _redirectUri.Port == 0 ? listener.RedirectUri.AbsoluteUri : _configuredRedirectUri;
-                    AuthorizationRequest authorization = _client.CreateAuthorizationRequest(redirectUri);
+                    AuthorizationRequest authorization = _signIn.Client.CreateAuthorizationRequest(redirectUri);
 
                     timeout.CancelAfter(_timeout);
                     await OpenAuthorizationUrlAsync(new Uri(authorization.Url)).ConfigureAwait(false);
@@ -142,19 +138,8 @@ namespace Polhem.OAuth2
                             : AuthorizationResult.Failure(new TimeoutException("No redirect arrived before the timeout."));
                     }
 
-                    try
-                    {
-                        return await _client.CompleteAuthorizationAsync(callback, authorization.Pending, cancellationToken).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
-                    {
-                        return AuthorizationResult.Failure(ex);
-                    }
+                    return await _signIn.CompleteAsync(callback, authorization.Pending, cancellationToken).ConfigureAwait(false);
                 }
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _signInInProgress, 0);
             }
         }
 
@@ -175,7 +160,7 @@ namespace Polhem.OAuth2
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
         public Task<TokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
         {
-            return _client.RefreshTokenAsync(refreshToken, cancellationToken);
+            return _signIn.Client.RefreshTokenAsync(refreshToken, cancellationToken);
         }
 
         private Task OpenAuthorizationUrlAsync(Uri url)
@@ -251,7 +236,7 @@ namespace Polhem.OAuth2
 
             // Any web page open in the browser can send requests to a loopback address, and through DNS rebinding such a page
             // can use a host name of its own. A request that names another host, or lacks the state, is not the redirect.
-            var callback = LoopbackCallback.FromQuery(query);
+            var callback = CallbackQuery.FromQuery(query);
             if (!listener.IsRedirectHost(request.Host) || !string.Equals(callback.State, state, StringComparison.Ordinal))
             {
                 await request.RespondAsync("400 Bad Request", RejectedMessage).ConfigureAwait(false);
