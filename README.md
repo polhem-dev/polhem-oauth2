@@ -65,7 +65,8 @@ else
 - The client always uses PKCE. A client secret shipped with a desktop application can be extracted, so it is not sent,
   except to Google.
 - A timeout (`Timeout`, 5 minutes by default), cancellation, or an error from the provider becomes a failed result. A port
-  that cannot be listened on throws `SocketException`, and a missing default browser throws `Win32Exception`.
+  that cannot be listened on throws `SocketException`, and a missing default browser throws `Win32Exception`
+  (`PlatformNotSupportedException` on iOS, which cannot start a process).
 - Set `OpenBrowser` to open the URL another way, for example `uri => launcher.LaunchUriAsync(uri)` with the launcher of a UI framework.
 - The snippet uses top-level statements. The [OAuthWinForms](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthWinForms)
   sample shows the same sign-in in a Windows Forms application on .NET Framework.

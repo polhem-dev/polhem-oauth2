@@ -13,6 +13,7 @@ namespace Polhem.OAuth2
         /// <param name="url">The URL to open.</param>
         /// <exception cref="InvalidOperationException"><paramref name="url"/> is not an absolute http or https URL.</exception>
         /// <exception cref="System.ComponentModel.Win32Exception">The operating system cannot start a browser.</exception>
+        /// <exception cref="PlatformNotSupportedException">The platform cannot start a process, as on iOS.</exception>
         public static void Open(Uri url)
         {
             // The operating system shell also starts programs and opens files, so anything other than a web URL is refused.

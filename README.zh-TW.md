@@ -60,7 +60,7 @@ else
   port 寫 0 時每次登入都會挑一個可用的 port，只適用於接受任意 loopback port 的 provider。
 - client 一律使用 PKCE。隨桌面應用程式散佈的 client secret 可以被取出，所以不會送出，只有 Google 例外。
 - 逾時（`Timeout`，預設 5 分鐘）、取消、provider 回傳錯誤，都會成為失敗結果。port 無法監聽時擲出 `SocketException`，
-  找不到預設瀏覽器時擲出 `Win32Exception`。
+  找不到預設瀏覽器時擲出 `Win32Exception`（iOS 無法啟動處理程序，擲出 `PlatformNotSupportedException`）。
 - 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 UI 框架的啟動器寫成 `uri => launcher.LaunchUriAsync(uri)`。
 - 這段範例使用最上層陳述式。在 .NET Framework 的 Windows Forms 應用程式裡怎麼登入，見 [OAuthWinForms](samples/OAuthWinForms) sample。
 - 目標框架為 .NET Framework 4.7.2、並在開啟 FIPS 模式的機器上執行的應用程式，需要 ASP.NET（System.Web）一節「部署前確認」裡的設定。

@@ -108,6 +108,7 @@ namespace Polhem.OAuth2
         /// <exception cref="InvalidOperationException">A sign-in is already in progress on this client.</exception>
         /// <exception cref="SocketException">The port of the redirect URI cannot be listened on, for example because it is in use.</exception>
         /// <exception cref="System.ComponentModel.Win32Exception"><see cref="OpenBrowser"/> is null and no browser can be started.</exception>
+        /// <exception cref="PlatformNotSupportedException"><see cref="OpenBrowser"/> is null and the platform cannot start a process, as on iOS.</exception>
         public async Task<AuthorizationResult> SignInAsync(CancellationToken cancellationToken = default)
         {
             using (_signIn.Enter())
