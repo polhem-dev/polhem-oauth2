@@ -11,3 +11,4 @@
 | [ADR-003](adr-003-exception-semantics.zh-TW.md) | 只有預期的 OAuth2 失敗會轉成失敗結果 |
 | [ADR-004](adr-004-system-browser-loopback.zh-TW.md) | 桌面應用程式改由系統瀏覽器加 loopback 回呼登入 |
 | [ADR-005](adr-005-web-sign-in-cookie.zh-TW.md) | 每次網頁登入各自保存在一個加密的 cookie |
+| [ADR-006](adr-006-app-sign-in.zh-TW.md) | 行動應用程式直連 provider 登入，或透過自家後端中轉 |
