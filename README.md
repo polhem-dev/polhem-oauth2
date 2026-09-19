@@ -306,7 +306,7 @@ The samples and the loopback redirect probe read their provider settings from on
 root. Copy `OAuthConfig.example.json` to `OAuthConfig.json` and fill it in; the build copies the file to the output
 folder of each project. `OAuthConfig.json` is ignored by git; keep credentials out of `OAuthConfig.example.json`.
 
-Every provider holds one client per client type, because a provider registers a desktop client and a web client
+Every provider holds one client per client type, because a provider registers desktop, web and mobile clients
 separately:
 
 ```json
@@ -330,13 +330,23 @@ separately:
 - A provider whose back end registers one client for both, such as a LINE channel with two callback URLs, gets the same
   `ClientId` and `ClientSecret` in both sections.
 - A section whose `ClientId` is still empty is skipped, so the samples offer only the providers you filled in.
+- The OAuthMaui sample reads `iOS` on iOS and Mac Catalyst, `Android` on Android, and `Desktop` on Windows. An `iOS` or
+  `Android` section cannot hold a `ClientSecret`, because an application cannot keep one: loading such a file fails. The
+  build of OAuthMaui packages only `ClientId`, `RedirectUri`, `Scopes`, `UsePkce` and the shared fields, never a secret.
+  Google and LINE refuse a direct redirect to an Android application
+  ([ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md)), so they have no
+  `Android` section, and the sample signs in to them through the back end there.
+- The top-level `AppRelay` section configures the back-end relay: `BackendUrl` is where the ASP.NET Core sample runs, and
+  `RedirectUri` is the relay callback of the application, which the ASP.NET Core sample registers with
+  `AddOAuth2AppRelay`.
 
 | Sample | Shows |
 |--------|-------|
 | [OAuthConsole](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthConsole) | Desktop sign-in from a console application, on any operating system |
 | [OAuthDesktop](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthDesktop) | Desktop sign-in from Windows Forms on .NET |
 | [OAuthWinForms](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthWinForms) | Desktop sign-in from Windows Forms on .NET Framework 4.8 |
-| [OAuthAspNetCore](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthAspNetCore) | ASP.NET Core |
+| [OAuthAspNetCore](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthAspNetCore) | ASP.NET Core, including the relay endpoints for OAuthMaui |
+| [OAuthMaui](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthMaui) | .NET MAUI: direct and back-end relay sign-in on Android, iOS and Mac Catalyst, loopback sign-in on Windows. It needs the MAUI workload and is not part of the solution. |
 
 [LoopbackRedirectProbe](https://github.com/polhem-dev/polhem-oauth2/tree/main/tools/LoopbackRedirectProbe) checks whether
 a provider accepts a loopback redirect URI before you build on it.
