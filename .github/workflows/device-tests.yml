@@ -51,9 +51,10 @@ jobs:
       - name: Start the fake provider
         run: |
           ca="$RUNNER_TEMP/fake-provider-ca.pem"
-          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$RUNNER_TEMP/fake-provider.log" 2>&1 &
+          mkdir -p TestResults
+          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$GITHUB_WORKSPACE/TestResults/fake-provider.log" 2>&1 &
           for i in $(seq 1 180); do [ -f "$ca" ] && break; sleep 1; done
-          test -f "$ca" || { cat "$RUNNER_TEMP/fake-provider.log"; exit 1; }
+          test -f "$ca" || { cat "$GITHUB_WORKSPACE/TestResults/fake-provider.log"; exit 1; }
           echo "FAKE_PROVIDER_CA=$ca" >> "$GITHUB_ENV"
 
       - name: Boot an iOS simulator
@@ -112,9 +113,10 @@ jobs:
       - name: Start the fake provider
         run: |
           ca="$RUNNER_TEMP/fake-provider-ca.pem"
-          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$RUNNER_TEMP/fake-provider.log" 2>&1 &
+          mkdir -p TestResults
+          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$GITHUB_WORKSPACE/TestResults/fake-provider.log" 2>&1 &
           for i in $(seq 1 180); do [ -f "$ca" ] && break; sleep 1; done
-          test -f "$ca" || { cat "$RUNNER_TEMP/fake-provider.log"; exit 1; }
+          test -f "$ca" || { cat "$GITHUB_WORKSPACE/TestResults/fake-provider.log"; exit 1; }
           echo "FAKE_PROVIDER_CA=$ca" >> "$GITHUB_ENV"
 
       - name: Enable KVM
@@ -167,11 +169,18 @@ jobs:
       - name: Start the fake provider and trust it on the host
         run: |
           $ca = Join-Path $env:RUNNER_TEMP 'fake-provider-ca.pem'
+          New-Item -ItemType Directory -Force TestResults | Out-Null
           Start-Process dotnet -ArgumentList 'run', '--project', $env:FAKE_PROVIDER, '-c', 'Release', '--', '--port', '7443', '--ca-certificate', $ca `
-            -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP 'fake-provider.log') -RedirectStandardError (Join-Path $env:RUNNER_TEMP 'fake-provider.err')
+            -RedirectStandardOutput TestResults/fake-provider.log -RedirectStandardError TestResults/fake-provider.err
           for ($i = 0; $i -lt 180 -and -not (Test-Path $ca); $i++) { Start-Sleep -Seconds 1 }
-          if (-not (Test-Path $ca)) { Get-Content (Join-Path $env:RUNNER_TEMP 'fake-provider.err'); exit 1 }
+          if (-not (Test-Path $ca)) { Get-Content TestResults/fake-provider.err; exit 1 }
           certutil -addstore -f Root $ca
+
+      # The loopback test opens the default browser, Edge, whose first-run pages would stop it before the sign-in.
+      - name: Turn off the first-run experience of Edge
+        run: |
+          New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Force | Out-Null
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Name HideFirstRunExperience -Value 1 -Type DWord
 
       - name: Run the device tests on Windows
         run: >
