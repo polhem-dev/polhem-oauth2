@@ -5,6 +5,10 @@ name: Device Tests
 # example after a change to the loopback or HTTP code and before a release.
 on:
   workflow_dispatch:
+    inputs:
+      platforms:
+        description: 'Platforms to test: all, or any of apple, android and windows separated by commas'
+        default: all
 
 permissions:
   contents: read
@@ -24,6 +28,7 @@ env:
 
 jobs:
   device-apple:
+    if: inputs.platforms == 'all' || contains(inputs.platforms, 'apple')
     runs-on: macos-26
     timeout-minutes: 45
 
@@ -52,7 +57,7 @@ jobs:
         run: |
           ca="$RUNNER_TEMP/fake-provider-ca.pem"
           mkdir -p TestResults
-          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$GITHUB_WORKSPACE/TestResults/fake-provider.log" 2>&1 &
+          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" --Logging:LogLevel:Microsoft.AspNetCore.Server.Kestrel=Debug > "$GITHUB_WORKSPACE/TestResults/fake-provider.log" 2>&1 &
           for i in $(seq 1 180); do [ -f "$ca" ] && break; sleep 1; done
           test -f "$ca" || { cat "$GITHUB_WORKSPACE/TestResults/fake-provider.log"; exit 1; }
           echo "FAKE_PROVIDER_CA=$ca" >> "$GITHUB_ENV"
@@ -91,6 +96,7 @@ jobs:
           if-no-files-found: ignore
 
   device-android:
+    if: inputs.platforms == 'all' || contains(inputs.platforms, 'android')
     # The Linux runners give the emulator hardware acceleration through KVM; the macOS arm64 runners cannot.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -114,7 +120,7 @@ jobs:
         run: |
           ca="$RUNNER_TEMP/fake-provider-ca.pem"
           mkdir -p TestResults
-          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$GITHUB_WORKSPACE/TestResults/fake-provider.log" 2>&1 &
+          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" --Logging:LogLevel:Microsoft.AspNetCore.Server.Kestrel=Debug > "$GITHUB_WORKSPACE/TestResults/fake-provider.log" 2>&1 &
           for i in $(seq 1 180); do [ -f "$ca" ] && break; sleep 1; done
           test -f "$ca" || { cat "$GITHUB_WORKSPACE/TestResults/fake-provider.log"; exit 1; }
           echo "FAKE_PROVIDER_CA=$ca" >> "$GITHUB_ENV"
@@ -148,6 +154,7 @@ jobs:
           if-no-files-found: ignore
 
   device-windows:
+    if: inputs.platforms == 'all' || contains(inputs.platforms, 'windows')
     runs-on: windows-latest
     timeout-minutes: 45
 
@@ -170,7 +177,7 @@ jobs:
         run: |
           $ca = Join-Path $env:RUNNER_TEMP 'fake-provider-ca.pem'
           New-Item -ItemType Directory -Force TestResults | Out-Null
-          Start-Process dotnet -ArgumentList 'run', '--project', $env:FAKE_PROVIDER, '-c', 'Release', '--', '--port', '7443', '--ca-certificate', $ca `
+          Start-Process dotnet -ArgumentList 'run', '--project', $env:FAKE_PROVIDER, '-c', 'Release', '--', '--port', '7443', '--ca-certificate', $ca, '--Logging:LogLevel:Microsoft.AspNetCore.Server.Kestrel=Debug' `
             -RedirectStandardOutput TestResults/fake-provider.log -RedirectStandardError TestResults/fake-provider.err
           for ($i = 0; $i -lt 180 -and -not (Test-Path $ca); $i++) { Start-Sleep -Seconds 1 }
           if (-not (Test-Path $ca)) { Get-Content TestResults/fake-provider.err; exit 1 }
@@ -187,6 +194,16 @@ jobs:
           dotnet test $env:DEVICE_TESTS -c Release -f net10.0-windows10.0.19041.0
           -p:FakeProviderUrl=$env:FAKE_PROVIDER_URL -p:DeviceRunnersDataTimeout=120
           --results-directory TestResults/windows --logger "trx;LogFileName=test-results.trx"
+
+      - name: Capture the screen
+        if: failure()
+        run: |
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+          $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bitmap.Save((Join-Path (Resolve-Path TestResults) 'screen.png'))
 
       - name: Upload test results
         if: always()

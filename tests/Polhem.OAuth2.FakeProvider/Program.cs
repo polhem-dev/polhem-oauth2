@@ -30,6 +30,13 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(FakePr
 
 var app = builder.Build();
 
+// Each request is written to the log, so a failed end-to-end test shows how far the browser got.
+app.Use(async (context, next) =>
+{
+    await next(context);
+    app.Logger.LogInformation("{Method} {Path} -> {StatusCode}", context.Request.Method, context.Request.Path, context.Response.StatusCode);
+});
+
 new FakeAuthorizationServer(WebClientId, WebClientSecret).Map(app);
 
 app.MapGet("/auth/app/{clientName}", (HttpContext context, OAuth2Manager manager, string clientName) =>
