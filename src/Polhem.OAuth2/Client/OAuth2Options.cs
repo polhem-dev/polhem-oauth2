@@ -130,6 +130,7 @@ namespace Polhem.OAuth2
             if (value.IndexOf('#') >= 0 || !Uri.TryCreate(value, UriKind.Absolute, out var uri))
                 return false;
             // A custom scheme needs no period: Facebook requires fb<app id>, and Entra ID on Android requires msauth.
+            // AppRelaySettings in Polhem.OAuth2.AspNetCore repeats this rule for the relay's application redirect URIs.
             // On Unix a path such as /callback parses as an absolute file URI, which the file scheme rejects.
             return !s_nonAppSchemes.Contains(uri.Scheme);
         }

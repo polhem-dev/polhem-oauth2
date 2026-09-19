@@ -87,5 +87,40 @@ namespace Polhem.OAuth2.UnitTests
         {
             Assert.Null(PendingAuthorizationCookie.GetName(new string('a', 257)));
         }
+
+        [Fact]
+        [DisplayName("Deserialize reads back the application redirect URI and code challenge of a relayed sign-in")]
+        public void Deserialize_RelayedSignIn_ReturnsAppValues()
+        {
+            var pending = new PendingAuthorization("state", "verifier", "https://app.example.com/callback");
+            byte[] data = PendingAuthorizationCookie.Serialize("Google", pending, s_issuedAt, "com.example.app:/signin", "challenge");
+
+            var (clientName, _) = PendingAuthorizationCookie.Deserialize(data, s_issuedAt, out string? appRedirectUri, out string? appCodeChallenge);
+
+            Assert.Equal("Google", clientName);
+            Assert.Equal("com.example.app:/signin", appRedirectUri);
+            Assert.Equal("challenge", appCodeChallenge);
+        }
+
+        [Fact]
+        [DisplayName("Deserialize reports no application for a web sign-in")]
+        public void Deserialize_WebSignIn_ReturnsNoAppValues()
+        {
+            byte[] data = PendingAuthorizationCookie.Serialize("Google", new PendingAuthorization("state", null, "https://app.example.com/callback"), s_issuedAt);
+
+            PendingAuthorizationCookie.Deserialize(data, s_issuedAt, out string? appRedirectUri, out string? appCodeChallenge);
+
+            Assert.Null(appRedirectUri);
+            Assert.Null(appCodeChallenge);
+        }
+
+        [Theory]
+        [DisplayName("Deserialize rejects an application redirect URI without a code challenge, and the reverse")]
+        [InlineData("""{"client":"Google","state":"s","redirectUri":"https://app.example.com/callback","issuedAt":1789387200,"appRedirectUri":"com.example.app:/signin"}""")]
+        [InlineData("""{"client":"Google","state":"s","redirectUri":"https://app.example.com/callback","issuedAt":1789387200,"appChallenge":"challenge"}""")]
+        public void Deserialize_PartialAppValues_ThrowsOAuth2Exception(string json)
+        {
+            Assert.Throws<OAuth2Exception>(() => PendingAuthorizationCookie.Deserialize(Encoding.UTF8.GetBytes(json), s_issuedAt, out _, out _));
+        }
     }
 }

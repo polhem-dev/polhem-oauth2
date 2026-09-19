@@ -63,8 +63,13 @@ namespace Polhem.OAuth2
         /// <param name="clientName">The name the client is registered under.</param>
         /// <param name="pending">The values to keep until the callback.</param>
         /// <param name="issuedAt">When the sign-in started.</param>
+        /// <param name="appRedirectUri">
+        /// For a sign-in relayed to an application (ADR-006), the application redirect URI to return to; otherwise null.
+        /// </param>
+        /// <param name="appCodeChallenge">For a relayed sign-in, the S256 code challenge of the application; otherwise null.</param>
         /// <returns>The encoded bytes.</returns>
-        public static byte[] Serialize(string clientName, PendingAuthorization pending, DateTimeOffset issuedAt)
+        public static byte[] Serialize(
+            string clientName, PendingAuthorization pending, DateTimeOffset issuedAt, string? appRedirectUri = null, string? appCodeChallenge = null)
         {
             using (var stream = new MemoryStream())
             {
@@ -77,6 +82,11 @@ namespace Polhem.OAuth2
                         writer.WriteString("verifier", codeVerifier);
                     writer.WriteString("redirectUri", pending.RedirectUri);
                     writer.WriteNumber("issuedAt", issuedAt.ToUnixTimeSeconds());
+                    if (appRedirectUri is not null && appCodeChallenge is not null)
+                    {
+                        writer.WriteString("appRedirectUri", appRedirectUri);
+                        writer.WriteString("appChallenge", appCodeChallenge);
+                    }
                     writer.WriteEndObject();
                 }
                 return stream.ToArray();
@@ -93,6 +103,23 @@ namespace Polhem.OAuth2
         /// The data does not hold a pending sign-in, or the sign-in started longer ago than <see cref="Lifetime"/>.
         /// </exception>
         public static (string ClientName, PendingAuthorization Pending) Deserialize(byte[] data, DateTimeOffset now)
+        {
+            return Deserialize(data, now, out _, out _);
+        }
+
+        /// <summary>
+        /// Decodes a pending sign-in, after it is unprotected, together with the application it is relayed to, if any.
+        /// </summary>
+        /// <param name="data">The bytes written by <see cref="Serialize"/>.</param>
+        /// <param name="now">The current time.</param>
+        /// <param name="appRedirectUri">The application redirect URI of a relayed sign-in, or null for a web sign-in.</param>
+        /// <param name="appCodeChallenge">The code challenge of a relayed sign-in, or null for a web sign-in.</param>
+        /// <returns>The name of the client and the pending values.</returns>
+        /// <exception cref="OAuth2Exception">
+        /// The data does not hold a pending sign-in, or the sign-in started longer ago than <see cref="Lifetime"/>.
+        /// </exception>
+        public static (string ClientName, PendingAuthorization Pending) Deserialize(
+            byte[] data, DateTimeOffset now, out string? appRedirectUri, out string? appCodeChallenge)
         {
             string? clientName;
             string? state;
@@ -115,6 +142,8 @@ namespace Polhem.OAuth2
                     state = GetString(root, "state");
                     codeVerifier = GetString(root, "verifier");
                     redirectUri = GetString(root, "redirectUri");
+                    appRedirectUri = GetString(root, "appRedirectUri");
+                    appCodeChallenge = GetString(root, "appChallenge");
                 }
             }
             catch (JsonException ex)
@@ -123,7 +152,8 @@ namespace Polhem.OAuth2
             }
 
             if (clientName is not { Length: > 0 } || state is not { Length: > 0 } || redirectUri is not { Length: > 0 }
-                || issuedAt <= 0 || issuedAt > MaxUnixSeconds)
+                || issuedAt <= 0 || issuedAt > MaxUnixSeconds
+                || (appRedirectUri is { Length: > 0 }) != (appCodeChallenge is { Length: > 0 }))
             {
                 throw new OAuth2Exception(InvalidMessage);
             }

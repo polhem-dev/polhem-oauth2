@@ -1,1 +1,10 @@
 #nullable enable
+Polhem.OAuth2.AspNetCore.OAuth2AppRelayOptions
+Polhem.OAuth2.AspNetCore.OAuth2AppRelayOptions.AppRedirectUris.get -> System.Collections.Generic.IList<string!>!
+Polhem.OAuth2.AspNetCore.OAuth2AppRelayOptions.CodeLifetime.get -> System.TimeSpan
+Polhem.OAuth2.AspNetCore.OAuth2AppRelayOptions.CodeLifetime.set -> void
+Polhem.OAuth2.AspNetCore.OAuth2AppRelayOptions.OAuth2AppRelayOptions() -> void
+Polhem.OAuth2.AspNetCore.OAuth2Manager.RedeemAppCodeAsync(string! clientName, string! code, string! codeVerifier, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.UserInfo?>!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAppAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> void
+static Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<Polhem.OAuth2.AspNetCore.OAuth2AppRelayOptions!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

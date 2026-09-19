@@ -1,0 +1,278 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Distributed;
+
+namespace Polhem.OAuth2.AspNetCore
+{
+    // The back-end relay of ADR-006: a sign-in started by a mobile application, returned to it with a single-use code,
+    // and redeemed with the application's code verifier.
+    public sealed partial class OAuth2Manager
+    {
+        private const string RelayCacheKeyPrefix = "Polhem.OAuth2.AppRelay.";
+
+        // RFC 7636: an S256 challenge of 32 random bytes is 43 base64url characters, and a verifier has 43 to 128 characters.
+        private const int CodeChallengeLength = 43;
+        private const int MinCodeVerifierLength = 43;
+        private const int MaxCodeVerifierLength = 128;
+
+        private static readonly object s_appSignInKey = new();
+
+        /// <summary>
+        /// Starts a sign-in relayed to a mobile application (ADR-006) and redirects the response to the authorization URL.
+        /// The provider returns to the client's web redirect URI, so no other redirect URI is registered with the provider.
+        /// </summary>
+        /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
+        /// <param name="clientName">The name the client is registered under.</param>
+        /// <param name="appRedirectUri">
+        /// The application redirect URI to return to after the sign-in. It must equal one of
+        /// <see cref="OAuth2AppRelayOptions.AppRedirectUris"/>.
+        /// </param>
+        /// <param name="codeChallenge">
+        /// The base64url SHA-256 hash of a code verifier that the application created and keeps, as in PKCE (RFC 7636). The
+        /// application presents the verifier to <see cref="RedeemAppCodeAsync"/>.
+        /// </param>
+        /// <remarks>
+        /// The application redirect URI and the code challenge are kept in the protected sign-in cookie, so the application
+        /// must open this request in the browser session that later follows the redirect to the provider and back, as
+        /// <c>WebAuthenticator</c> does.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">An argument is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="appRedirectUri"/> is not registered, or <paramref name="codeChallenge"/> is not 43 base64url characters.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// The relay is not registered, or no client is registered under <paramref name="clientName"/>.
+        /// </exception>
+        public void RedirectToAppAuthorization(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
+        {
+            if (context is null)
+                throw new ArgumentNullException(nameof(context));
+            if (appRedirectUri is null)
+                throw new ArgumentNullException(nameof(appRedirectUri));
+            if (codeChallenge is null)
+                throw new ArgumentNullException(nameof(codeChallenge));
+
+            var relay = RequireRelay();
+            if (!relay.IsRegistered(appRedirectUri))
+                throw new ArgumentException("The application redirect URI is not registered with the relay.", nameof(appRedirectUri));
+            if (codeChallenge.Length != CodeChallengeLength || !IsBase64Url(codeChallenge))
+                throw new ArgumentException("The code challenge must be 43 base64url characters.", nameof(codeChallenge));
+
+            context.Response.Redirect(StartSignIn(context, clientName, appRedirectUri, codeChallenge));
+        }
+
+        /// <summary>
+        /// Returns a relayed sign-in to the application: stores the user information under a new single-use code and
+        /// redirects to the application redirect URI with that code, or with an error when the sign-in failed.
+        /// </summary>
+        /// <param name="context">The HTTP context of the callback request, after <see cref="CompleteAuthorizationAsync"/>.</param>
+        /// <param name="result">The result that <see cref="CompleteAuthorizationAsync"/> returned for this request.</param>
+        /// <param name="cancellationToken">Cancels storing the code.</param>
+        /// <returns>
+        /// True if the sign-in was relayed and the response now redirects to the application; false for a web sign-in, whose
+        /// response is left unchanged.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The redirect carries only the code, or the error code of a failed sign-in, never a provider token. The code can be
+        /// redeemed once, within <see cref="OAuth2AppRelayOptions.CodeLifetime"/>, with <see cref="RedeemAppCodeAsync"/>.
+        /// </para>
+        /// <para>
+        /// A callback whose sign-in cookie is missing or altered cannot be recognized as relayed, so it is handled as a web
+        /// sign-in and this method returns false.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="result"/> is null.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
+        public async Task<bool> RedirectToAppAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
+        {
+            if (context is null)
+                throw new ArgumentNullException(nameof(context));
+            if (result is null)
+                throw new ArgumentNullException(nameof(result));
+            if (!context.Items.TryGetValue(s_appSignInKey, out object? item) || item is not AppSignIn signIn)
+                return false;
+
+            context.Items.Remove(s_appSignInKey);
+            var relay = RequireRelay();
+            string separator = signIn.AppRedirectUri.IndexOf('?') >= 0 ? "&" : "?";
+
+            if (!result.IsSuccess || result.UserInfo is null)
+            {
+                // Only the error code of the provider is passed on; any other failure is reported without its details.
+                string error = result.Exception is OAuth2Exception { Error: { Length: > 0 } providerError } ? providerError : "sign_in_failed";
+                context.Response.Redirect(signIn.AppRedirectUri + separator + "error=" + Uri.EscapeDataString(error));
+                return true;
+            }
+
+            string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+            byte[] entry = SerializeRelayEntry(signIn, result.UserInfo, DateTimeOffset.UtcNow + relay.CodeLifetime);
+            await _relayCache!.SetAsync(
+                GetRelayCacheKey(code), entry, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = relay.CodeLifetime }, cancellationToken)
+                .ConfigureAwait(false);
+
+            context.Response.Redirect(signIn.AppRedirectUri + separator + "code=" + code);
+            return true;
+        }
+
+        /// <summary>
+        /// Redeems the code that a relayed sign-in returned to the application, and returns the user information.
+        /// </summary>
+        /// <param name="clientName">The name of the client the sign-in used.</param>
+        /// <param name="code">The code from the redirect to the application.</param>
+        /// <param name="codeVerifier">The verifier whose challenge the application passed to <see cref="RedirectToAppAuthorization"/>.</param>
+        /// <param name="cancellationToken">Cancels the cache requests.</param>
+        /// <returns>
+        /// The user information, or null when the code is unknown, expired or already redeemed, belongs to another client,
+        /// or the verifier does not match.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// Call this from an endpoint that the application reaches over HTTPS, then issue the application's own session for
+        /// the user. The result carries no provider token.
+        /// </para>
+        /// <para>
+        /// The code is removed on the first attempt, whether or not the verifier matches. <see cref="IDistributedCache"/> has
+        /// no atomic read-and-remove, so two attempts that arrive at the same moment could both read it; both still need the
+        /// verifier.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">An argument is null.</exception>
+        /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
+        public async Task<UserInfo?> RedeemAppCodeAsync(string clientName, string code, string codeVerifier, CancellationToken cancellationToken = default)
+        {
+            if (clientName is null)
+                throw new ArgumentNullException(nameof(clientName));
+            if (code is null)
+                throw new ArgumentNullException(nameof(code));
+            if (codeVerifier is null)
+                throw new ArgumentNullException(nameof(codeVerifier));
+            RequireRelay();
+
+            if (code.Length == 0 || code.Length > 256 || !IsBase64Url(code)
+                || codeVerifier.Length < MinCodeVerifierLength || codeVerifier.Length > MaxCodeVerifierLength || !IsCodeVerifier(codeVerifier))
+            {
+                return null;
+            }
+
+            string key = GetRelayCacheKey(code);
+            byte[]? entry = await _relayCache!.GetAsync(key, cancellationToken).ConfigureAwait(false);
+            if (entry is null)
+                return null;
+            await _relayCache.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
+
+            return ReadRelayEntry(entry, clientName, codeVerifier, DateTimeOffset.UtcNow);
+        }
+
+        private AppRelaySettings RequireRelay()
+        {
+            return _relay is not null && _relayCache is not null
+                ? _relay
+                : throw new InvalidOperationException("The application relay is not registered. Call AddOAuth2AppRelay.");
+        }
+
+        // The cache holds a hash of the code, so a reader of the cache cannot learn a code that can be redeemed.
+        private static string GetRelayCacheKey(string code)
+        {
+            return RelayCacheKeyPrefix + WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(code)));
+        }
+
+        private static byte[] SerializeRelayEntry(AppSignIn signIn, UserInfo user, DateTimeOffset expiresAt)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new Utf8JsonWriter(stream))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("client", signIn.ClientName);
+                    writer.WriteString("challenge", signIn.CodeChallenge);
+                    writer.WriteNumber("expiresAt", expiresAt.ToUnixTimeMilliseconds());
+                    writer.WriteString("userId", user.UserId);
+                    writer.WriteString("userName", user.UserName);
+                    writer.WriteString("email", user.Email);
+                    writer.WriteString("raw", user.RawJson);
+                    writer.WriteEndObject();
+                }
+                return stream.ToArray();
+            }
+        }
+
+        private static UserInfo? ReadRelayEntry(byte[] entry, string clientName, string codeVerifier, DateTimeOffset now)
+        {
+            try
+            {
+                using (var document = JsonDocument.Parse(entry))
+                {
+                    var root = document.RootElement;
+                    string? challenge = GetString(root, "challenge");
+                    if (!string.Equals(GetString(root, "client"), clientName, StringComparison.Ordinal)
+                        || challenge is null
+                        || !root.TryGetProperty("expiresAt", out var expires) || !expires.TryGetInt64(out long expiresAt)
+                        || now.ToUnixTimeMilliseconds() >= expiresAt
+                        || !MatchesChallenge(codeVerifier, challenge)
+                        || GetString(root, "raw") is not { } raw)
+                    {
+                        return null;
+                    }
+                    return new UserInfo(GetString(root, "userId"), GetString(root, "userName"), GetString(root, "email"), raw);
+                }
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        private static bool MatchesChallenge(string codeVerifier, string challenge)
+        {
+            byte[] computed = Encoding.ASCII.GetBytes(WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier))));
+            return CryptographicOperations.FixedTimeEquals(computed, Encoding.ASCII.GetBytes(challenge));
+        }
+
+        private static string? GetString(JsonElement obj, string propertyName)
+        {
+            return obj.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        }
+
+        private static bool IsBase64Url(string value)
+        {
+            foreach (char c in value)
+            {
+                if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_'))
+                    return false;
+            }
+            return true;
+        }
+
+        // RFC 7636, section 4.1: a code verifier uses the unreserved characters.
+        private static bool IsCodeVerifier(string value)
+        {
+            foreach (char c in value)
+            {
+                if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~'))
+                    return false;
+            }
+            return true;
+        }
+
+        private sealed class AppSignIn
+        {
+            public AppSignIn(string clientName, string appRedirectUri, string codeChallenge)
+            {
+                ClientName = clientName;
+                AppRedirectUri = appRedirectUri;
+                CodeChallenge = codeChallenge;
+            }
+
+            public string ClientName { get; }
+
+            public string AppRedirectUri { get; }
+
+            public string CodeChallenge { get; }
+        }
+    }
+}

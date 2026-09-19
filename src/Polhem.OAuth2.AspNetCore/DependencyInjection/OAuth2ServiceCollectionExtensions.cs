@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Polhem.OAuth2;
 using Polhem.OAuth2.AspNetCore;
@@ -45,7 +46,45 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton(new OAuth2ClientRegistration(clientName, client));
             services.AddDataProtection();
             services.TryAddSingleton(provider => new OAuth2Manager(
-                provider.GetServices<OAuth2ClientRegistration>(), provider.GetRequiredService<IDataProtectionProvider>()));
+                provider.GetServices<OAuth2ClientRegistration>(),
+                provider.GetRequiredService<IDataProtectionProvider>(),
+                provider.GetService<AppRelaySettings>(),
+                provider.GetService<IDistributedCache>()));
+            return services;
+        }
+
+        /// <summary>
+        /// Registers the back-end relay, through which mobile applications sign in with the clients registered by
+        /// <see cref="AddOAuth2Client"/> (ADR-006), and the in-memory <see cref="IDistributedCache"/> unless another
+        /// distributed cache is already registered.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configure">Sets the application redirect URIs and the code lifetime.</param>
+        /// <returns>The service collection.</returns>
+        /// <remarks>
+        /// Relay codes are kept in <see cref="IDistributedCache"/>. When several servers receive callbacks, register a
+        /// distributed cache that they share, as well as a shared data protection key ring. The options are validated and
+        /// copied by this call.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="services"/> or <paramref name="configure"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// No application redirect URI is set, one of them is not an absolute https URI or custom scheme URI without a
+        /// fragment, or the code lifetime is not positive.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">The relay is already registered.</exception>
+        public static IServiceCollection AddOAuth2AppRelay(this IServiceCollection services, Action<OAuth2AppRelayOptions> configure)
+        {
+            if (services is null)
+                throw new ArgumentNullException(nameof(services));
+            if (configure is null)
+                throw new ArgumentNullException(nameof(configure));
+            if (services.Any(descriptor => descriptor.ServiceType == typeof(AppRelaySettings)))
+                throw new InvalidOperationException("The OAuth2 application relay is already registered.");
+
+            var options = new OAuth2AppRelayOptions();
+            configure(options);
+            services.AddSingleton(AppRelaySettings.Create(options));
+            services.AddDistributedMemoryCache();
             return services;
         }
 

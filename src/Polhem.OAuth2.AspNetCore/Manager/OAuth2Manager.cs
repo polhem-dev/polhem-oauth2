@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Primitives;
 
 namespace Polhem.OAuth2.AspNetCore
@@ -17,16 +18,29 @@ namespace Polhem.OAuth2.AspNetCore
     /// Every server that can receive the callback must share the data protection key ring.
     /// </para>
     /// <para>The cookie is marked Secure, so the sign-in must start and end on HTTPS pages. It expires after 10 minutes.</para>
+    /// <para>
+    /// With <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay"/>, the
+    /// same clients also sign in mobile applications through the back-end relay of ADR-006:
+    /// <see cref="RedirectToAppAuthorization"/>, <see cref="RedirectToAppAsync"/> and <see cref="RedeemAppCodeAsync"/>.
+    /// </para>
     /// </remarks>
-    public sealed class OAuth2Manager
+    public sealed partial class OAuth2Manager
     {
         private readonly Dictionary<string, OAuth2Client> _clients;
         private readonly IDataProtector _protector;
+        private readonly AppRelaySettings? _relay;
+        private readonly IDistributedCache? _relayCache;
 
-        internal OAuth2Manager(IEnumerable<OAuth2ClientRegistration> registrations, IDataProtectionProvider dataProtectionProvider)
+        internal OAuth2Manager(
+            IEnumerable<OAuth2ClientRegistration> registrations,
+            IDataProtectionProvider dataProtectionProvider,
+            AppRelaySettings? relay = null,
+            IDistributedCache? relayCache = null)
         {
             _clients = registrations.ToDictionary(registration => registration.Name, registration => registration.Client, StringComparer.Ordinal);
             _protector = dataProtectionProvider.CreateProtector(PendingAuthorizationCookie.ProtectionPurpose);
+            _relay = relay;
+            _relayCache = relayCache;
         }
 
         /// <summary>
@@ -53,17 +67,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="InvalidOperationException">No client is registered under <paramref name="clientName"/>.</exception>
         public string CreateAuthorizationUrl(HttpContext context, string clientName)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
-
-            var client = GetClient(clientName)
-                ?? throw new InvalidOperationException($"No OAuth2 client is registered under the name '{clientName}'.");
-
-            var request = client.CreateAuthorizationRequest();
-            byte[] payload = PendingAuthorizationCookie.Serialize(clientName, request.Pending, DateTimeOffset.UtcNow);
-            string cookieName = PendingAuthorizationCookie.NamePrefix + request.Pending.State;
-            context.Response.Cookies.Append(cookieName, WebEncoders.Base64UrlEncode(_protector.Protect(payload)), CreateCookieOptions(PendingAuthorizationCookie.Lifetime));
-            return request.Url;
+            return StartSignIn(context, clientName, appRedirectUri: null, appCodeChallenge: null);
         }
 
         /// <summary>
@@ -99,6 +103,10 @@ namespace Polhem.OAuth2.AspNetCore
         /// The response removes the sign-in cookie before the code is exchanged, so the browser cannot complete the same
         /// sign-in twice.
         /// </para>
+        /// <para>
+        /// A relayed sign-in completes the same way. Call <see cref="RedirectToAppAsync"/> with the result afterwards to
+        /// return it to the application.
+        /// </para>
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The sign-in names a client that is no longer registered.</exception>
@@ -115,7 +123,9 @@ namespace Polhem.OAuth2.AspNetCore
             PendingAuthorization pending;
             try
             {
-                (clientName, pending) = TakePendingAuthorization(context, state);
+                (clientName, pending) = TakePendingAuthorization(context, state, out string? appRedirectUri, out string? appCodeChallenge);
+                if (appRedirectUri is not null && appCodeChallenge is not null)
+                    context.Items[s_appSignInKey] = new AppSignIn(clientName, appRedirectUri, appCodeChallenge);
             }
             catch (OAuth2Exception ex)
             {
@@ -138,9 +148,27 @@ namespace Polhem.OAuth2.AspNetCore
             }
         }
 
-        // Reads the cookie of the sign-in that the state names, and removes it on the response.
-        private (string ClientName, PendingAuthorization Pending) TakePendingAuthorization(HttpContext context, string? state)
+        private string StartSignIn(HttpContext context, string clientName, string? appRedirectUri, string? appCodeChallenge)
         {
+            if (context is null)
+                throw new ArgumentNullException(nameof(context));
+
+            var client = GetClient(clientName)
+                ?? throw new InvalidOperationException($"No OAuth2 client is registered under the name '{clientName}'.");
+
+            var request = client.CreateAuthorizationRequest();
+            byte[] payload = PendingAuthorizationCookie.Serialize(clientName, request.Pending, DateTimeOffset.UtcNow, appRedirectUri, appCodeChallenge);
+            string cookieName = PendingAuthorizationCookie.NamePrefix + request.Pending.State;
+            context.Response.Cookies.Append(cookieName, WebEncoders.Base64UrlEncode(_protector.Protect(payload)), CreateCookieOptions(PendingAuthorizationCookie.Lifetime));
+            return request.Url;
+        }
+
+        // Reads the cookie of the sign-in that the state names, and removes it on the response.
+        private (string ClientName, PendingAuthorization Pending) TakePendingAuthorization(
+            HttpContext context, string? state, out string? appRedirectUri, out string? appCodeChallenge)
+        {
+            appRedirectUri = null;
+            appCodeChallenge = null;
             if (string.IsNullOrEmpty(state))
                 throw new OAuth2Exception("The state is missing.");
 
@@ -150,7 +178,7 @@ namespace Polhem.OAuth2.AspNetCore
                 ?? throw new OAuth2Exception("No sign-in started in this browser matches the state. It may have expired.");
 
             context.Response.Cookies.Delete(cookieName, CreateCookieOptions(maxAge: null));
-            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), DateTimeOffset.UtcNow);
+            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), DateTimeOffset.UtcNow, out appRedirectUri, out appCodeChallenge);
         }
 
         // A cookie that is not valid base64url is reported like one that fails decryption, because both mean it was altered.
