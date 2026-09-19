@@ -173,7 +173,15 @@ jobs:
       - name: Build the sample for Windows
         run: dotnet build $env:MAUI_SAMPLE -f net10.0-windows10.0.19041.0
 
-      - name: Start the fake provider and trust it on the host
+      # The loopback test opens the default browser, Edge, whose first-run pages would stop it before the sign-in.
+      - name: Turn off the first-run experience of Edge
+        run: |
+          New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Force | Out-Null
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Name HideFirstRunExperience -Value 1 -Type DWord
+
+      # Started in a step of its own, the fake provider no longer accepted connections when the tests ran on Windows
+      # (Edge reported ERR_CONNECTION_REFUSED), so it starts in the same step as the tests.
+      - name: Run the device tests on Windows
         run: |
           $ca = Join-Path $env:RUNNER_TEMP 'fake-provider-ca.pem'
           New-Item -ItemType Directory -Force TestResults | Out-Null
@@ -182,18 +190,10 @@ jobs:
           for ($i = 0; $i -lt 180 -and -not (Test-Path $ca); $i++) { Start-Sleep -Seconds 1 }
           if (-not (Test-Path $ca)) { Get-Content TestResults/fake-provider.err; exit 1 }
           certutil -addstore -f Root $ca
-
-      # The loopback test opens the default browser, Edge, whose first-run pages would stop it before the sign-in.
-      - name: Turn off the first-run experience of Edge
-        run: |
-          New-Item -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Force | Out-Null
-          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Edge' -Name HideFirstRunExperience -Value 1 -Type DWord
-
-      - name: Run the device tests on Windows
-        run: >
-          dotnet test $env:DEVICE_TESTS -c Release -f net10.0-windows10.0.19041.0
-          -p:FakeProviderUrl=$env:FAKE_PROVIDER_URL -p:DeviceRunnersDataTimeout=120
-          --results-directory TestResults/windows --logger "trx;LogFileName=test-results.trx"
+          dotnet test $env:DEVICE_TESTS -c Release -f net10.0-windows10.0.19041.0 `
+            -p:FakeProviderUrl=$env:FAKE_PROVIDER_URL -p:DeviceRunnersDataTimeout=120 `
+            --results-directory TestResults/windows --logger "trx;LogFileName=test-results.trx"
+          exit $LASTEXITCODE
 
       - name: Capture the screen
         if: failure()
