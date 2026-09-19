@@ -10,6 +10,10 @@
         "ClientId": "",
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
+      },
+      "iOS": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui:/oauth2redirect"
       }
     },
     "Facebook": {
@@ -21,6 +25,14 @@
         "ClientId": "",
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
+      },
+      "iOS": {
+        "ClientId": "",
+        "RedirectUri": ""
+      },
+      "Android": {
+        "ClientId": "",
+        "RedirectUri": ""
       }
     },
     "Line": {
@@ -32,6 +44,10 @@
         "ClientId": "",
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
+      },
+      "iOS": {
+        "ClientId": "",
+        "RedirectUri": "line3rdp.dev.polhem.oauthmaui://auth"
       }
     },
     "Azure": {
@@ -43,6 +59,14 @@
         "ClientId": "",
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
+      },
+      "iOS": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui://oauth2redirect"
+      },
+      "Android": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui://oauth2redirect"
       }
     },
     "Auth0": {
@@ -55,6 +79,14 @@
         "ClientId": "",
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
+      },
+      "iOS": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui:/oauth2redirect"
+      },
+      "Android": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui:/oauth2redirect"
       }
     },
     "Okta": {
@@ -67,7 +99,19 @@
         "ClientId": "",
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
+      },
+      "iOS": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui:/oauth2redirect"
+      },
+      "Android": {
+        "ClientId": "",
+        "RedirectUri": "dev.polhem.oauthmaui:/oauth2redirect"
       }
     }
+  },
+  "AppRelay": {
+    "BackendUrl": "https://localhost:7032",
+    "RedirectUri": "dev.polhem.oauthmaui:/relay"
   }
 }

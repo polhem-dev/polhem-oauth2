@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthClientEntry.cs" Link="Shared\OAuthClientEntry.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthClientType.cs" Link="Shared\OAuthClientType.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthAppRelay.cs" Link="Shared\OAuthAppRelay.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)samples\Shared\OAuthConfig.cs" Link="Shared\OAuthConfig.cs" />
   </ItemGroup>
 

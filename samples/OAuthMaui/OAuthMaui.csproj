@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Needs the .NET MAUI workload. It is not part of Polhem.OAuth2.slnx, so building the solution does not need it. -->
+  <PropertyGroup>
+    <TargetFrameworks>net10.0-android;net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OAuthMaui</RootNamespace>
+    <ApplicationTitle>OAuth MAUI</ApplicationTitle>
+    <ApplicationId>dev.polhem.oauthmaui</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" Color="#2B5797" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#2B5797" BaseSize="128,128" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
+  </ItemGroup>
+
+  <!-- The classes that read the shared settings, without OAuthConfig.props: that file copies the whole OAuthConfig.json,
+       secrets included, which an application must not carry. OAuthApp.targets packages the allowed part instead. -->
+  <ItemGroup>
+    <Compile Include="..\Shared\OAuthAppRelay.cs" Link="Shared\OAuthAppRelay.cs" />
+    <Compile Include="..\Shared\OAuthClientEntry.cs" Link="Shared\OAuthClientEntry.cs" />
+    <Compile Include="..\Shared\OAuthClientType.cs" Link="Shared\OAuthClientType.cs" />
+    <Compile Include="..\Shared\OAuthConfig.cs" Link="Shared\OAuthConfig.cs" />
+  </ItemGroup>
+
+  <Import Project="OAuthApp.targets" />
+
+</Project>

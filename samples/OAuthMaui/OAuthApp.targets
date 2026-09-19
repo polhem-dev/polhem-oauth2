@@ -1,0 +1,33 @@
+<Project>
+
+  <!-- OAuthConfig.json holds the client secrets of the desktop and web clients, so it is never packaged as a whole.
+       build/GenerateOAuthApp.cs copies an allowlist of fields into OAuthApp.json, which the application carries, and
+       derives the callback schemes each platform registers from the redirect URIs. No ClientSecret is ever written.
+       It runs as a .NET 10 file-based program, because a code task compiles against netstandard, which lacks System.Text.Json. -->
+
+  <PropertyGroup>
+    <OAuthConfigFile>$(MSBuildThisFileDirectory)..\..\OAuthConfig.json</OAuthConfigFile>
+    <OAuthAppGenerator>$(MSBuildThisFileDirectory)build\GenerateOAuthApp.cs</OAuthAppGenerator>
+    <OAuthAppDirectory>$(MSBuildProjectDirectory)\$(BaseIntermediateOutputPath)oauth\$(TargetFramework)\</OAuthAppDirectory>
+    <OAuthDefaultScheme>dev.polhem.oauthmaui</OAuthDefaultScheme>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="build\**" />
+  </ItemGroup>
+
+  <Target Name="GenerateOAuthAppFiles" BeforeTargets="PrepareForBuild"
+          Inputs="$(OAuthAppGenerator);$(OAuthConfigFile)" Outputs="$(OAuthAppDirectory)OAuthApp.json">
+    <Exec Command="dotnet run --file &quot;$(OAuthAppGenerator)&quot; -- &quot;$(OAuthConfigFile)&quot; &quot;$(OAuthAppDirectory)&quot; $(OAuthDefaultScheme)"
+          EnvironmentVariables="DOTNET_CLI_TELEMETRY_OPTOUT=1" />
+  </Target>
+
+  <Target Name="AddOAuthAppFiles" BeforeTargets="PrepareForBuild" DependsOnTargets="GenerateOAuthAppFiles">
+    <ItemGroup>
+      <MauiAsset Include="$(OAuthAppDirectory)OAuthApp.json" LogicalName="OAuthApp.json" />
+      <Compile Include="$(OAuthAppDirectory)OAuthCallbackActivity.g.cs" />
+      <PartialAppManifest Include="$(OAuthAppDirectory)OAuthUrlTypes.plist" Condition="'$(TargetPlatformIdentifier)' == 'ios' Or '$(TargetPlatformIdentifier)' == 'maccatalyst'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

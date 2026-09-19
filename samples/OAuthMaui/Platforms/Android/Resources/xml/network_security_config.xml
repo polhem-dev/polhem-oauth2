@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!-- Debug builds also trust certificates the user installed, so the ASP.NET Core development certificate works for the
+       back-end relay on an emulator. Release builds trust only the system certificates. -->
+  <debug-overrides>
+    <trust-anchors>
+      <certificates src="system" />
+      <certificates src="user" />
+    </trust-anchors>
+  </debug-overrides>
+</network-security-config>

@@ -14,7 +14,7 @@ namespace OAuthSamples
     /// The file holds one section per provider under <c>Providers</c>, and each provider section holds one client per
     /// client type, because a provider registers a desktop client and a web client separately. Fields that both clients
     /// share and that are not credentials, such as the Okta domain, sit in the provider section and are merged into
-    /// each client.
+    /// each client. The optional <c>AppRelay</c> section configures the back-end relay of the mobile sample.
     /// </remarks>
     public sealed class OAuthConfig
     {
@@ -23,7 +23,9 @@ namespace OAuthSamples
 
         private const string ExampleFileName = "OAuthConfig.example.json";
         private const string ProvidersName = "Providers";
+        private const string AppRelayName = "AppRelay";
         private const string ClientIdName = "ClientId";
+        private const string ClientSecretName = "ClientSecret";
 
         private static readonly Provider[] s_providers =
         {
@@ -45,6 +47,9 @@ namespace OAuthSamples
             _filePath = filePath;
             _clients = clients;
         }
+
+        /// <summary>Gets the back-end relay settings, or null when the file has no <c>AppRelay</c> section.</summary>
+        public OAuthAppRelay? AppRelay { get; private set; }
 
         /// <summary>Gets the provider names the settings file accepts, in the order the samples list them.</summary>
         public static IReadOnlyList<string> ProviderNames { get; } = Array.ConvertAll(s_providers, provider => provider.Name);
@@ -82,7 +87,21 @@ namespace OAuthSamples
                     filePath);
             }
 
-            if (JsonNode.Parse(File.ReadAllText(filePath)) is not JsonObject document)
+            return Parse(File.ReadAllText(filePath), filePath);
+        }
+
+        /// <summary>
+        /// Reads settings from JSON text, such as the file a mobile application carries in its package.
+        /// </summary>
+        /// <param name="json">The JSON text.</param>
+        /// <param name="sourceName">The name that error messages give the source, such as its file name.</param>
+        /// <returns>The settings.</returns>
+        /// <exception cref="JsonException">The text is not valid JSON.</exception>
+        /// <exception cref="InvalidDataException">The text has a section or a field the settings do not define.</exception>
+        public static OAuthConfig Parse(string json, string sourceName)
+        {
+            string filePath = sourceName;
+            if (JsonNode.Parse(json) is not JsonObject document)
                 throw new InvalidDataException($"'{filePath}' does not hold a JSON object.");
 
             var clients = new Dictionary<OAuthClientType, List<OAuthClientEntry>>();
@@ -92,10 +111,16 @@ namespace OAuthSamples
             var config = new OAuthConfig(filePath, clients);
             foreach (var section in document)
             {
+                if (string.Equals(section.Key, AppRelayName, StringComparison.OrdinalIgnoreCase))
+                {
+                    config.AppRelay = config.ReadAppRelay(section.Value);
+                    continue;
+                }
+
                 if (!string.Equals(section.Key, ProvidersName, StringComparison.OrdinalIgnoreCase))
                 {
                     throw new InvalidDataException(
-                        $"'{filePath}' has an unknown top-level section '{section.Key}'. The only section is '{ProvidersName}'.");
+                        $"'{filePath}' has an unknown top-level section '{section.Key}'. The sections are '{ProvidersName}' and '{AppRelayName}'.");
                 }
 
                 if (section.Value is not JsonObject providers)
@@ -213,6 +238,14 @@ namespace OAuthSamples
             foreach (var field in section)
             {
                 hasClientId |= string.Equals(field.Key, ClientIdName, StringComparison.OrdinalIgnoreCase);
+                // A secret shipped inside an application package is public, so an App client is a public client (ADR-006).
+                if ((clientType == OAuthClientType.Ios || clientType == OAuthClientType.Android)
+                    && string.Equals(field.Key, ClientSecretName, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException(
+                        $"'{_filePath}' has a {ClientSecretName} in '{ProvidersName}.{provider.Name}.{clientType}'. " +
+                        "An application cannot keep a secret, so remove it.");
+                }
                 merged[field.Key] = field.Value?.DeepClone();
             }
 
@@ -227,6 +260,31 @@ namespace OAuthSamples
                 throw new InvalidDataException($"'{_filePath}' could not read '{ProvidersName}.{provider.Name}.{clientType}'.");
 
             return new OAuthClientEntry(provider.Name, options);
+        }
+
+        private OAuthAppRelay ReadAppRelay(JsonNode? node)
+        {
+            if (node is not JsonObject section)
+                throw new InvalidDataException($"'{_filePath}' does not hold a JSON object in '{AppRelayName}'.");
+
+            string? backendUrl = null;
+            string? redirectUri = null;
+            foreach (var field in section)
+            {
+                if (string.Equals(field.Key, "BackendUrl", StringComparison.OrdinalIgnoreCase))
+                    backendUrl = field.Value?.GetValue<string>();
+                else if (string.Equals(field.Key, "RedirectUri", StringComparison.OrdinalIgnoreCase))
+                    redirectUri = field.Value?.GetValue<string>();
+                else
+                    throw new InvalidDataException($"'{_filePath}' has an unknown field '{AppRelayName}.{field.Key}'. The fields are BackendUrl and RedirectUri.");
+            }
+
+            if (!Uri.TryCreate(backendUrl, UriKind.Absolute, out var backend) || backend.Scheme != Uri.UriSchemeHttps)
+                throw new InvalidDataException($"'{_filePath}' needs an absolute https URL in '{AppRelayName}.BackendUrl'.");
+            if (string.IsNullOrWhiteSpace(redirectUri))
+                throw new InvalidDataException($"'{_filePath}' needs a RedirectUri in '{AppRelayName}'.");
+
+            return new OAuthAppRelay(backend, redirectUri!);
         }
 
         /// <summary>

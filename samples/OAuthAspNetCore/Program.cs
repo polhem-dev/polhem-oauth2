@@ -6,8 +6,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews();
 
 // Register every provider the shared settings file configures for a web client, under the name AuthController uses.
-foreach (var client in OAuthConfig.Load().GetClients(OAuthClientType.Web))
+var oauthConfig = OAuthConfig.Load();
+foreach (var client in oauthConfig.GetClients(OAuthClientType.Web))
     builder.Services.AddOAuth2Client(client.ProviderName, client.Options);
+
+// The OAuthMaui sample signs in through these web clients as well, when the settings file has an AppRelay section (ADR-006).
+if (oauthConfig.AppRelay is { } relay)
+    builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(relay.RedirectUri));
 
 var app = builder.Build();
 
