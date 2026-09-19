@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Polhem.OAuth2.UnitTests" />
+    <InternalsVisibleTo Include="Polhem.OAuth2.DeviceTests" />
   </ItemGroup>
 
   <!-- A file named *.NetStandard.cs is compiled for netstandard2.0 only, and a file named *.Net.cs for net10.0 only.

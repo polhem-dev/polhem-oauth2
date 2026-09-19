@@ -38,3 +38,7 @@ dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj -c Rele
 ```
 
 `EnableWindowsTargeting` is only needed on macOS and Linux, where it lets the `net10.0-windows` sample build.
+
+The .NET MAUI projects, `samples/OAuthMaui` and `tests/Polhem.OAuth2.DeviceTests`, are not in the solution and need the
+MAUI workload. The device tests run with `dotnet test <project> -c Release -f <platform target framework>` on a booted
+simulator, emulator or the host; the `device-*` jobs in `.github/workflows/build-ci.yml` show the arguments for each platform.

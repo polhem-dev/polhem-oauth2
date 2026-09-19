@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application android:allowBackup="false" android:supportsRtl="true"></application>
+  <!-- The runner sends the results to the host, and the loopback tests listen on the device. -->
+  <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

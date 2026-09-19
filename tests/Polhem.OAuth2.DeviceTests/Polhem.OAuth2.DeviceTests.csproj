@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- A .NET MAUI application that runs the platform-independent unit tests, and the tests that only mean something on a
+       device, on Android, iOS, Mac Catalyst and Windows (ADR-006). `dotnet test -f <target framework>` builds it, deploys it
+       to the device or simulator, and collects the results through DeviceRunners.Testing.Targets.
+       Needs the .NET MAUI workload. It is not part of Polhem.OAuth2.slnx, so building the solution does not need it. -->
+  <PropertyGroup>
+    <!-- The iOS and Mac Catalyst workloads do not install on Linux. -->
+    <TargetFrameworks>net10.0-android</TargetFrameworks>
+    <TargetFrameworks Condition="!$([MSBuild]::IsOSPlatform('linux'))">$(TargetFrameworks);net10.0-ios;net10.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net10.0-windows10.0.19041.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <RootNamespace>Polhem.OAuth2.DeviceTests</RootNamespace>
+    <ApplicationTitle>Polhem.OAuth2 Device Tests</ApplicationTitle>
+    <ApplicationId>dev.polhem.oauth2.devicetests</ApplicationId>
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+    <!-- The MAUI application has its own entry point. -->
+    <GenerateTestingPlatformEntryPoint>false</GenerateTestingPlatformEntryPoint>
+    <!-- An unpackaged Windows application takes the configuration of `dotnet test` from environment variables, and needs
+         no Developer Mode to deploy. -->
+    <WindowsPackageType Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">None</WindowsPackageType>
+    <!-- Keeps the results and device logs under bin, which git ignores. The results directory option of `dotnet test` overrides it. -->
+    <TestResultsDirectory>$(MSBuildProjectDirectory)/bin/TestResults/</TestResultsDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DeviceRunners.Testing.Targets" Version="0.1.0-preview.12" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Maui" Version="0.1.0-preview.12" />
+    <PackageReference Include="DeviceRunners.VisualRunners.Xunit" Version="0.1.0-preview.12" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
+  </ItemGroup>
+
+  <!-- The unit tests of the core package, compiled into the application. The ASP.NET tests and the tests of the pending
+       authorization cookie belong to the server packages, which do not run on a device. -->
+  <ItemGroup>
+    <Compile Include="..\Polhem.OAuth2.UnitTests\*.cs"
+             Exclude="..\Polhem.OAuth2.UnitTests\AspNet*.cs;..\Polhem.OAuth2.UnitTests\FakeHttpContext.cs;..\Polhem.OAuth2.UnitTests\PendingAuthorizationCookieTests.cs"
+             Link="UnitTests\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- The runner finds the tests by reflection, which the trimmer cannot see. The core package is still trimmed, the way
+       an application trims it. -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="$(AssemblyName)" RootMode="all" />
+  </ItemGroup>
+
+</Project>
