@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-  <application android:allowBackup="false" android:supportsRtl="true"></application>
+  <application android:allowBackup="false" android:supportsRtl="true"
+               android:networkSecurityConfig="@xml/network_security_config"></application>
   <!-- The runner sends the results to the host, and the loopback tests listen on the device. -->
   <uses-permission android:name="android.permission.INTERNET" />
+  <!-- WebAuthenticator opens the sign-in in Custom Tabs, which Android 11 and later only reveal to an application that asks. -->
+  <queries>
+    <intent>
+      <action android:name="android.support.customtabs.action.CustomTabsService" />
+    </intent>
+  </queries>
 </manifest>

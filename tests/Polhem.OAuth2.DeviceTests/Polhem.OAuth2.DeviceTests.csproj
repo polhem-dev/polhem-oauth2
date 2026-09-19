@@ -55,6 +55,16 @@
              Link="UnitTests\%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <!-- The end-to-end tests sign in to tests/Polhem.OAuth2.FakeProvider at the origin passed as
+       -p:FakeProviderUrl=https://localhost:7443, and are skipped without it. -->
+  <ItemGroup>
+    <Compile Include="..\Polhem.OAuth2.FakeProvider\FakeProviderValues.cs" Link="EndToEnd\FakeProviderValues.cs" />
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(FakeProviderUrl)' != ''">
+      <_Parameter1>FakeProviderUrl</_Parameter1>
+      <_Parameter2>$(FakeProviderUrl)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!-- The runner finds the tests by reflection, which the trimmer cannot see. The core package is still trimmed, the way
        an application trims it. -->
   <ItemGroup>

@@ -17,6 +17,10 @@ env:
   DEVICE_XCODE: /Applications/Xcode_26.5.app
   DEVICE_TESTS: tests/Polhem.OAuth2.DeviceTests/Polhem.OAuth2.DeviceTests.csproj
   MAUI_SAMPLE: samples/OAuthMaui/OAuthMaui.csproj
+  # The end-to-end tests sign in to tests/Polhem.OAuth2.FakeProvider, which each job starts with a CA of its own and
+  # installs on the simulator, the emulator or the host (ADR-006).
+  FAKE_PROVIDER: tests/Polhem.OAuth2.FakeProvider/Polhem.OAuth2.FakeProvider.csproj
+  FAKE_PROVIDER_URL: https://localhost:7443
 
 jobs:
   device-apple:
@@ -44,6 +48,14 @@ jobs:
       - name: Build the sample for Mac Catalyst
         run: dotnet build "$MAUI_SAMPLE" -f net10.0-maccatalyst
 
+      - name: Start the fake provider
+        run: |
+          ca="$RUNNER_TEMP/fake-provider-ca.pem"
+          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$RUNNER_TEMP/fake-provider.log" 2>&1 &
+          for i in $(seq 1 180); do [ -f "$ca" ] && break; sleep 1; done
+          test -f "$ca" || { cat "$RUNNER_TEMP/fake-provider.log"; exit 1; }
+          echo "FAKE_PROVIDER_CA=$ca" >> "$GITHUB_ENV"
+
       - name: Boot an iOS simulator
         run: |
           udid=$(xcrun simctl list devices available --json \
@@ -52,15 +64,21 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
           echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
 
+      - name: Trust the fake provider on the simulator and the host
+        run: |
+          xcrun simctl keychain "$SIMULATOR_UDID" add-root-cert "$FAKE_PROVIDER_CA"
+          sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$FAKE_PROVIDER_CA"
+
       - name: Run the device tests on the iOS simulator
         run: >
           dotnet test "$DEVICE_TESTS" -c Release -f net10.0-ios -r iossimulator-arm64
-          -p:DeviceRunnersDevice="$SIMULATOR_UDID"
+          -p:DeviceRunnersDevice="$SIMULATOR_UDID" -p:FakeProviderUrl="$FAKE_PROVIDER_URL" -p:DeviceRunnersDataTimeout=120
           --results-directory TestResults/ios --logger "trx;LogFileName=test-results.trx"
 
       - name: Run the device tests on Mac Catalyst
         run: >
           dotnet test "$DEVICE_TESTS" -c Release -f net10.0-maccatalyst -r maccatalyst-arm64
+          -p:FakeProviderUrl="$FAKE_PROVIDER_URL" -p:DeviceRunnersDataTimeout=120
           --results-directory TestResults/maccatalyst --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
@@ -91,13 +109,22 @@ jobs:
       - name: Build the sample for Android
         run: dotnet build "$MAUI_SAMPLE" -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT"
 
+      - name: Start the fake provider
+        run: |
+          ca="$RUNNER_TEMP/fake-provider-ca.pem"
+          nohup dotnet run --project "$FAKE_PROVIDER" -c Release -- --port 7443 --ca-certificate "$ca" > "$RUNNER_TEMP/fake-provider.log" 2>&1 &
+          for i in $(seq 1 180); do [ -f "$ca" ] && break; sleep 1; done
+          test -f "$ca" || { cat "$RUNNER_TEMP/fake-provider.log"; exit 1; }
+          echo "FAKE_PROVIDER_CA=$ca" >> "$GITHUB_ENV"
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # The runner reaches the host at 10.0.2.2, which DeviceRunners builds into the application.
+      # The runner reaches the host at 10.0.2.2, which DeviceRunners builds into the application. The script installs the
+      # CA of the fake provider and forwards its port, and needs the root access of a google_apis image.
       - name: Run the device tests on the Android emulator
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d  # v2.38.0
         with:
@@ -106,7 +133,9 @@ jobs:
           arch: x86_64
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
-          script: dotnet test "$DEVICE_TESTS" -c Release -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT" --results-directory TestResults/android --logger "trx;LogFileName=test-results.trx"
+          script: |
+            bash tests/Polhem.OAuth2.DeviceTests/scripts/prepare-android-emulator.sh "$FAKE_PROVIDER_CA"
+            dotnet test "$DEVICE_TESTS" -c Release -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT" -p:FakeProviderUrl="$FAKE_PROVIDER_URL" -p:DeviceRunnersDataTimeout=120 --results-directory TestResults/android --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
         if: always()
@@ -135,9 +164,19 @@ jobs:
       - name: Build the sample for Windows
         run: dotnet build $env:MAUI_SAMPLE -f net10.0-windows10.0.19041.0
 
+      - name: Start the fake provider and trust it on the host
+        run: |
+          $ca = Join-Path $env:RUNNER_TEMP 'fake-provider-ca.pem'
+          Start-Process dotnet -ArgumentList 'run', '--project', $env:FAKE_PROVIDER, '-c', 'Release', '--', '--port', '7443', '--ca-certificate', $ca `
+            -RedirectStandardOutput (Join-Path $env:RUNNER_TEMP 'fake-provider.log') -RedirectStandardError (Join-Path $env:RUNNER_TEMP 'fake-provider.err')
+          for ($i = 0; $i -lt 180 -and -not (Test-Path $ca); $i++) { Start-Sleep -Seconds 1 }
+          if (-not (Test-Path $ca)) { Get-Content (Join-Path $env:RUNNER_TEMP 'fake-provider.err'); exit 1 }
+          certutil -addstore -f Root $ca
+
       - name: Run the device tests on Windows
         run: >
           dotnet test $env:DEVICE_TESTS -c Release -f net10.0-windows10.0.19041.0
+          -p:FakeProviderUrl=$env:FAKE_PROVIDER_URL -p:DeviceRunnersDataTimeout=120
           --results-directory TestResults/windows --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results

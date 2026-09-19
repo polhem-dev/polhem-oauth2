@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The end-to-end tests install the CA of the fake provider as a user certificate, which an application only trusts when
+     it says so. This is a test application; a released application should not trust user certificates. -->
+<network-security-config>
+  <base-config>
+    <trust-anchors>
+      <certificates src="system" />
+      <certificates src="user" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>

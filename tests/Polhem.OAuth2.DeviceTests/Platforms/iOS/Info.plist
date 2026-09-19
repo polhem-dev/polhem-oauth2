@@ -17,5 +17,16 @@
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>Sign-in callbacks</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>dev.polhem.oauth2.devicetests</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>

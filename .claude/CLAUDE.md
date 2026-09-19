@@ -43,3 +43,9 @@ The .NET MAUI projects, `samples/OAuthMaui` and `tests/Polhem.OAuth2.DeviceTests
 MAUI workload. The device tests run with `dotnet test <project> -c Release -f <platform target framework>` on a booted
 simulator, emulator or the host; `.github/workflows/device-tests.yml` shows the arguments for each platform. That workflow
 only runs when started by hand, so run it after changing code that behaves differently per platform.
+
+The end-to-end device tests sign in to `tests/Polhem.OAuth2.FakeProvider` and are skipped unless the build gets
+`-p:FakeProviderUrl=https://localhost:7443`. The fake provider creates a CA for each run, which the device must trust:
+the steps named "Start the fake provider" and "Trust the fake provider" in `device-tests.yml` show how, and
+`tests/Polhem.OAuth2.DeviceTests/scripts/prepare-android-emulator.sh` prepares an emulator. Use test simulators and
+emulators only.

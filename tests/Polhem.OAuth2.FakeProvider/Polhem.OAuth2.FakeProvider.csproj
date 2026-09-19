@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- A stand-in for Auth0 that the end-to-end device tests sign in to (ADR-006). It also hosts the back-end relay, so the
+       relay signs in to it the way a real back end signs in to Auth0. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Polhem.OAuth2.AspNetCore\Polhem.OAuth2.AspNetCore.csproj" />
+  </ItemGroup>
+
+</Project>
