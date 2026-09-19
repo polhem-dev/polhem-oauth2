@@ -41,4 +41,5 @@ dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj -c Rele
 
 The .NET MAUI projects, `samples/OAuthMaui` and `tests/Polhem.OAuth2.DeviceTests`, are not in the solution and need the
 MAUI workload. The device tests run with `dotnet test <project> -c Release -f <platform target framework>` on a booted
-simulator, emulator or the host; the `device-*` jobs in `.github/workflows/build-ci.yml` show the arguments for each platform.
+simulator, emulator or the host; `.github/workflows/device-tests.yml` shows the arguments for each platform. That workflow
+only runs when started by hand, so run it after changing code that behaves differently per platform.

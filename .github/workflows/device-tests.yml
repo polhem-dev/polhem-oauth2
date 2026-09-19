@@ -1,0 +1,149 @@
+name: Device Tests
+
+# Builds the OAuthMaui sample and runs tests/Polhem.OAuth2.DeviceTests on each platform, in Release so the core package is
+# trimmed the way an application trims it. It takes much longer than Build CI, so it runs only when started by hand, for
+# example after a change to the loopback or HTTP code and before a release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# The SDK and the workload set are pinned together, because the iOS workload requires one Xcode version and a newer
+# workload can silently require a newer Xcode than the runner has. Change the three values together.
+env:
+  DEVICE_DOTNET_SDK: 10.0.300
+  DEVICE_WORKLOAD_VERSION: 10.0.301.1
+  DEVICE_XCODE: /Applications/Xcode_26.5.app
+  DEVICE_TESTS: tests/Polhem.OAuth2.DeviceTests/Polhem.OAuth2.DeviceTests.csproj
+  MAUI_SAMPLE: samples/OAuthMaui/OAuthMaui.csproj
+
+jobs:
+  device-apple:
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
+        with:
+          dotnet-version: ${{ env.DEVICE_DOTNET_SDK }}
+
+      - name: Select Xcode
+        run: sudo xcode-select --switch "$DEVICE_XCODE"
+
+      - name: Install the MAUI workload
+        run: dotnet workload install maui --version "$DEVICE_WORKLOAD_VERSION"
+
+      - name: Build the sample for iOS
+        run: dotnet build "$MAUI_SAMPLE" -f net10.0-ios
+
+      - name: Build the sample for Mac Catalyst
+        run: dotnet build "$MAUI_SAMPLE" -f net10.0-maccatalyst
+
+      - name: Boot an iOS simulator
+        run: |
+          udid=$(xcrun simctl list devices available --json \
+            | jq -r '[.devices | to_entries[] | select(.key | test("iOS-26-5$")) | .value[] | select(.name == "iPhone 17 Pro")][0].udid')
+          test -n "$udid" && test "$udid" != "null"
+          xcrun simctl bootstatus "$udid" -b
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Run the device tests on the iOS simulator
+        run: >
+          dotnet test "$DEVICE_TESTS" -c Release -f net10.0-ios -r iossimulator-arm64
+          -p:DeviceRunnersDevice="$SIMULATOR_UDID"
+          --results-directory TestResults/ios --logger "trx;LogFileName=test-results.trx"
+
+      - name: Run the device tests on Mac Catalyst
+        run: >
+          dotnet test "$DEVICE_TESTS" -c Release -f net10.0-maccatalyst -r maccatalyst-arm64
+          --results-directory TestResults/maccatalyst --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: device-tests-apple
+          path: TestResults
+          if-no-files-found: ignore
+
+  device-android:
+    # The Linux runners give the emulator hardware acceleration through KVM; the macOS arm64 runners cannot.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
+        with:
+          dotnet-version: ${{ env.DEVICE_DOTNET_SDK }}
+
+      - name: Install the MAUI workload
+        run: dotnet workload install maui-android --version "$DEVICE_WORKLOAD_VERSION"
+
+      - name: Build the sample for Android
+        run: dotnet build "$MAUI_SAMPLE" -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The runner reaches the host at 10.0.2.2, which DeviceRunners builds into the application.
+      - name: Run the device tests on the Android emulator
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d  # v2.38.0
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: dotnet test "$DEVICE_TESTS" -c Release -f net10.0-android -p:AndroidSdkDirectory="$ANDROID_SDK_ROOT" --results-directory TestResults/android --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: device-tests-android
+          path: TestResults
+          if-no-files-found: ignore
+
+  device-windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
+        with:
+          dotnet-version: ${{ env.DEVICE_DOTNET_SDK }}
+
+      - name: Install the MAUI workload
+        run: dotnet workload install maui --version $env:DEVICE_WORKLOAD_VERSION
+
+      - name: Build the sample for Windows
+        run: dotnet build $env:MAUI_SAMPLE -f net10.0-windows10.0.19041.0
+
+      - name: Run the device tests on Windows
+        run: >
+          dotnet test $env:DEVICE_TESTS -c Release -f net10.0-windows10.0.19041.0
+          --results-directory TestResults/windows --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: device-tests-windows
+          path: TestResults
+          if-no-files-found: ignore
