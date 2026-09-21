@@ -328,7 +328,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
   thrown. See [ADR-003](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-003-exception-semantics.md).
 - An error from the provider is an `OAuth2Exception`: `Error` holds the error code, such as `access_denied`, and
   `ErrorDescription` the provider's text. Anyone who sends the user a link can set the values of an error in a redirect,
-  so encode them before showing them.
+  so encode them before showing them. The token endpoint of Facebook reports a Graph API error instead: `Error` holds its
+  numeric code, such as `100`, and `ErrorDescription` its message.
 
 ## Identifying users
 

@@ -5,6 +5,14 @@
 Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- An error from the token endpoint of Facebook becomes an `OAuth2Exception`, as for every other provider. Facebook reports a
+  Graph API error object, which was read as a response without an error code and thrown as an `HttpRequestException`. `Error`
+  holds the numeric code of the Graph API error, and `ErrorDescription` its message.
+
 ## [1.1.0] - 2026-09-19
 
 ### Added

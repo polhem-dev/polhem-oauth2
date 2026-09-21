@@ -253,11 +253,55 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("ExchangeCodeAsync reports an unsuccessful status without an error code as HttpRequestException")]
         [InlineData("")]
         [InlineData("<html><body>Bad request</body></html>")]
-        [InlineData("""{"error":{"message":"Invalid verification code format.","code":100}}""")]
+        [InlineData("""{"error":{"message":"No code and no type."}}""")]
+        [InlineData("""{"error":["invalid_grant"]}""")]
         public async Task ExchangeCodeAsync_UnsuccessfulStatusWithoutErrorCode_ThrowsHttpRequestException(string body)
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, body);
             var provider = CreateProvider("Facebook", handler);
+
+            await Assert.ThrowsAsync<HttpRequestException>(
+                () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+        }
+
+        [Theory]
+        [DisplayName("Facebook reports a Graph API error object as OAuth2Exception with its code, or its type when it has no code")]
+        [InlineData("""{"error":{"message":"This authorization code has been used.","type":"OAuthException","code":100,"error_subcode":36009}}""", "100")]
+        [InlineData("""{"error":{"message":"This authorization code has been used.","type":"OAuthException"}}""", "OAuthException")]
+        public async Task Facebook_ExchangeCodeAsync_GraphApiError_ThrowsOAuth2ExceptionWithCode(string body, string expectedError)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, body);
+            var provider = CreateProvider("Facebook", handler);
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(
+                () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+
+            Assert.Equal(expectedError, exception.Error);
+            Assert.Equal("This authorization code has been used.", exception.ErrorDescription);
+            Assert.DoesNotContain("has been used", exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("Facebook still reads an error response in the form of RFC 6749")]
+        public async Task Facebook_ExchangeCodeAsync_Rfc6749Error_ThrowsOAuth2ExceptionWithErrorCode()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant","error_description":"The code has expired."}""");
+            var provider = CreateProvider("Facebook", handler);
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(
+                () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+
+            Assert.Equal("invalid_grant", exception.Error);
+        }
+
+        [Fact]
+        [DisplayName("A provider other than Facebook does not read an error object")]
+        public async Task ExchangeCodeAsync_ErrorObjectFromOtherProvider_ThrowsHttpRequestException()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.BadRequest, """{"error":{"message":"Invalid verification code format.","code":100}}""");
+            var provider = CreateProvider("Google", handler);
 
             await Assert.ThrowsAsync<HttpRequestException>(
                 () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));

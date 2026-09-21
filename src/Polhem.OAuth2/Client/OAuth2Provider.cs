@@ -250,6 +250,19 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
+        /// Reads the error that an unsuccessful token response reports. The default reads the <c>error</c> and
+        /// <c>error_description</c> strings of RFC 6749, section 5.2.
+        /// </summary>
+        /// <param name="response">The root object of the token response.</param>
+        /// <returns>The exception for the error, or null when the response names no error.</returns>
+        protected virtual OAuth2Exception? ReadError(JsonElement response)
+        {
+            return OAuth2Json.GetProtocolString(response, "error") is { Length: > 0 } error
+                ? OAuth2Exception.FromProviderError(error, OAuth2Json.GetProtocolString(response, "error_description"))
+                : null;
+        }
+
+        /// <summary>
         /// Maps the fields of the user information object.
         /// </summary>
         /// <param name="user">The root object of the user information response.</param>
@@ -280,17 +293,13 @@ namespace Polhem.OAuth2
             }
         }
 
-        // RFC 6749, section 5.2: an error response is a JSON object whose error field holds a code such as invalid_grant.
-        private static OAuth2Exception? ReadErrorResponse(string body)
+        private OAuth2Exception? ReadErrorResponse(string body)
         {
             try
             {
                 using (var document = OAuth2Json.ParseObject(body))
                 {
-                    var root = document.RootElement;
-                    return OAuth2Json.GetProtocolString(root, "error") is { Length: > 0 } error
-                        ? OAuth2Exception.FromProviderError(error, OAuth2Json.GetProtocolString(root, "error_description"))
-                        : null;
+                    return ReadError(document.RootElement);
                 }
             }
             catch (JsonException)

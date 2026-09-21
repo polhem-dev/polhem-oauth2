@@ -48,8 +48,14 @@ namespace Polhem.OAuth2
         /// the failure is not an error returned by the provider.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// An error in a redirect back to the application arrives in the query string, which anyone who sends the user a link
         /// can set. Encode the value before showing it in a page.
+        /// </para>
+        /// <para>
+        /// The token endpoint of Facebook reports a Graph API error instead of these codes. Its numeric code, such as
+        /// <c>100</c>, is the value here, and its message is <see cref="ErrorDescription"/>.
+        /// </para>
         /// </remarks>
         public string? Error { get; }
 

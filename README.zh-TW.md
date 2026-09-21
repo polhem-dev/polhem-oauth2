@@ -302,7 +302,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - `Exception` 只收納登入預期會發生的失敗，例如 HTTP 請求失敗、state 不相符、provider 回傳錯誤。
   設定或程式錯誤（例如 client 名稱沒有註冊）會往外拋。見 [ADR-003](docs/adr/adr-003-exception-semantics.zh-TW.md)。
 - provider 回傳的錯誤是 `OAuth2Exception`：`Error` 是錯誤代碼，例如 `access_denied`；`ErrorDescription` 是 provider 提供的說明。
-  導回網址裡的錯誤，任何送連結給使用者的人都能設定，所以顯示前要先編碼。
+  導回網址裡的錯誤，任何送連結給使用者的人都能設定，所以顯示前要先編碼。Facebook 的 token 端點回傳的是 Graph API 的錯誤：
+  `Error` 是它的數字代碼，例如 `100`；`ErrorDescription` 是它的訊息。
 
 ## 識別使用者
 

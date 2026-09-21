@@ -4,7 +4,8 @@
 
 ## Status
 
-Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAuth2Client` and the web sign-in cookie.
+Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAuth2Client` and the web sign-in cookie, and on
+2026-09-21 for the error object of Facebook.
 
 ## Context
 
@@ -16,6 +17,8 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
 
 - Protocol failures throw `OAuth2Exception`:
   - an error returned by the provider, in the redirect or by the token endpoint, with its code in `Error` and its text in
+    `ErrorDescription`. The token endpoint of Facebook reports a Graph API error object instead of the strings of RFC 6749,
+    section 5.2: its numeric `code` becomes `Error`, or its `type` when it has no code, and its `message` becomes
     `ErrorDescription`;
   - a state that is missing or does not match, and a missing authorization code or PKCE code verifier;
   - a token response without an access token, and an empty user information response.

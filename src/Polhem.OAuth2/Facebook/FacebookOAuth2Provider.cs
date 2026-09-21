@@ -45,6 +45,25 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// The Graph API reports an error as an object with a numeric <c>code</c>, a <c>type</c> and a <c>message</c>, not as
+        /// the strings of RFC 6749, section 5.2. The code identifies the failure, so it becomes
+        /// <see cref="OAuth2Exception.Error"/>, and the type stands in for a response that has no code.
+        /// </remarks>
+        protected override OAuth2Exception? ReadError(JsonElement response)
+        {
+            if (!response.TryGetProperty("error", out var error) || error.ValueKind != JsonValueKind.Object)
+                return base.ReadError(response);
+
+            string? code = error.TryGetProperty("code", out var number) && number.ValueKind == JsonValueKind.Number
+                ? number.GetRawText()
+                : OAuth2Json.GetProtocolString(error, "type");
+            return code is { Length: > 0 }
+                ? OAuth2Exception.FromProviderError(code, OAuth2Json.GetProtocolString(error, "message"))
+                : null;
+        }
+
+        /// <inheritdoc/>
         protected override string GetUserInfoUrl()
         {
             // The Graph API returns only the fields that are asked for.

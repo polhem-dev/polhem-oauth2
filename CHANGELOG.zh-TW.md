@@ -5,6 +5,13 @@
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更。格式依循
 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [Unreleased]
+
+### 修正
+
+- Facebook 的 token 端點回傳的錯誤，與其他 provider 一樣成為 `OAuth2Exception`。Facebook 回傳的是 Graph API 的錯誤物件，
+  先前被當成沒有錯誤代碼的回應，擲出 `HttpRequestException`。`Error` 是 Graph API 錯誤的數字代碼，`ErrorDescription` 是它的訊息。
+
 ## [1.1.0] - 2026-09-19
 
 ### 新增
