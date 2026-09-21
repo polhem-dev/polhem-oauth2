@@ -18,9 +18,14 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - `OAuth2Manager.RedirectToAppAsync` throws `InvalidOperationException` when the sign-in names an application redirect URI
   that is no longer in `OAuth2AppRelayOptions.AppRedirectUris`, instead of redirecting to it. It also stops when the callback
   request is aborted, as `CompleteAuthorizationAsync` does, so passing `HttpContext.RequestAborted` is no longer needed.
+- An endpoint with a fragment is rejected when the client is created, as RFC 6749, section 3.1, requires. Such an endpoint never
+  worked, because the fragment swallowed the parameters added after it.
 
 ### Fixed
 
+- The query of `AuthorizationEndpoint` is kept, and the parameters of the authorization request are added after it, as RFC 6749,
+  section 3.1, requires. An endpoint such as `https://tenant.auth0.com/authorize?audience=...` produced a URL with two question
+  marks, which the provider refused. The same applies to the `UserInfoEndpoint` of Facebook.
 - An error from the token endpoint of Facebook becomes an `OAuth2Exception`, as for every other provider. Facebook reports a
   Graph API error object, which was read as a response without an error code and thrown as an `HttpRequestException`. `Error`
   holds the numeric code of the Graph API error, and `ErrorDescription` its message.

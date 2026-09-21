@@ -31,11 +31,15 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
-        [DisplayName("Create rejects an endpoint that is not an absolute https URI")]
+        [DisplayName("Create rejects an endpoint that is not an absolute https URI, or that has a fragment")]
         [InlineData(nameof(OAuth2Options.AuthorizationEndpoint), "http://accounts.google.com/o/oauth2/v2/auth")]
         [InlineData(nameof(OAuth2Options.TokenEndpoint), "http://oauth2.googleapis.com/token")]
         [InlineData(nameof(OAuth2Options.UserInfoEndpoint), "/userinfo")]
         [InlineData(nameof(OAuth2Options.TokenEndpoint), "")]
+        [InlineData(nameof(OAuth2Options.AuthorizationEndpoint), "https://accounts.google.com/o/oauth2/v2/auth#fragment")]
+        [InlineData(nameof(OAuth2Options.AuthorizationEndpoint), "https://accounts.google.com/o/oauth2/v2/auth?prompt=consent#fragment")]
+        [InlineData(nameof(OAuth2Options.TokenEndpoint), "https://oauth2.googleapis.com/token#")]
+        [InlineData(nameof(OAuth2Options.UserInfoEndpoint), "https://openidconnect.googleapis.com/v1/userinfo#fragment")]
         public void Create_InsecureEndpoint_ThrowsArgumentException(string endpointName, string endpoint)
         {
             var options = new GoogleOAuth2Options();
@@ -80,6 +84,56 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("state-value", LoopbackTestHttp.GetQueryValue(url, "state"));
             Assert.Equal("challenge-value", LoopbackTestHttp.GetQueryValue(url, "code_challenge"));
             Assert.Equal("S256", LoopbackTestHttp.GetQueryValue(url, "code_challenge_method"));
+        }
+
+        [Theory]
+        [DisplayName("The authorization URL keeps the query of the authorization endpoint and adds its parameters after it")]
+        [InlineData("https://tenant.auth0.com/authorize?audience=https%3A%2F%2Fapi.example.com", "https://tenant.auth0.com/authorize?audience=https%3A%2F%2Fapi.example.com&client_id=")]
+        [InlineData("https://tenant.auth0.com/authorize?audience=a&prompt=login", "https://tenant.auth0.com/authorize?audience=a&prompt=login&client_id=")]
+        [InlineData("https://tenant.auth0.com/authorize?", "https://tenant.auth0.com/authorize?client_id=")]
+        [InlineData("https://tenant.auth0.com/authorize?audience=a&", "https://tenant.auth0.com/authorize?audience=a&client_id=")]
+        [InlineData("https://tenant.auth0.com/authorize", "https://tenant.auth0.com/authorize?client_id=")]
+        public void GetAuthorizationUrl_EndpointWithQuery_KeepsQuery(string endpoint, string expectedStart)
+        {
+            var options = new Auth0OAuth2Options { Domain = "tenant.auth0.com", ClientId = "client-id", RedirectUri = RedirectUri };
+            options.AuthorizationEndpoint = endpoint;
+            var provider = OAuth2Provider.Create(options, httpClient: null);
+
+            string url = provider.GetAuthorizationUrl("state-1", RedirectUri, "challenge-1");
+
+            Assert.StartsWith(expectedStart, url, StringComparison.Ordinal);
+            Assert.Equal(1, url.Count(c => c == '?'));
+            Assert.Equal("client-id", LoopbackTestHttp.GetQueryValue(url, "client_id"));
+            Assert.Equal("state-1", LoopbackTestHttp.GetQueryValue(url, "state"));
+            Assert.Equal("challenge-1", LoopbackTestHttp.GetQueryValue(url, "code_challenge"));
+        }
+
+        [Fact]
+        [DisplayName("Facebook keeps the query of the user information endpoint and adds the fields after it")]
+        public async Task Facebook_GetUserInfoAsync_EndpointWithQuery_KeepsQuery()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"id":"1"}""");
+            var options = new FacebookOAuth2Options { ClientId = "client-id", RedirectUri = RedirectUri };
+            options.UserInfoEndpoint += "?locale=en_US";
+            var provider = OAuth2Provider.Create(options, handler.CreateClient());
+
+            await provider.GetUserInfoAsync(new TokenResponse("access"), CancellationToken.None);
+
+            Assert.Equal("?locale=en_US&fields=id%2Cname%2Cemail", handler.Requests[0].Uri.Query);
+        }
+
+        [Fact]
+        [DisplayName("The token request goes to the token endpoint with its query")]
+        public async Task ExchangeCodeAsync_TokenEndpointWithQuery_KeepsQuery()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
+            var options = new GoogleOAuth2Options { ClientId = "client-id", RedirectUri = RedirectUri };
+            options.TokenEndpoint += "?tenant=a";
+            var provider = OAuth2Provider.Create(options, handler.CreateClient());
+
+            await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            Assert.Equal(options.TokenEndpoint, handler.Requests[0].Uri.AbsoluteUri);
         }
 
         [Fact]

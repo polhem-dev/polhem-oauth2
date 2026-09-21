@@ -17,13 +17,13 @@ namespace Polhem.OAuth2
         /// <param name="options">The OAuth2 options.</param>
         /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
-        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI.</exception>
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
         protected OAuth2Provider(OAuth2Options options, HttpClient? httpClient)
         {
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
-            if (options.FindInsecureEndpoint() is { } endpoint)
-                throw new ArgumentException($"{endpoint} must be an absolute https URI.", nameof(options));
+            if (options.GetEndpointError() is { } error)
+                throw new ArgumentException(error, nameof(options));
 
             Options = options;
             _httpClient = httpClient ?? SharedHttpClient.Instance;
@@ -56,7 +56,7 @@ namespace Polhem.OAuth2
         /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
         /// <returns>The provider.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
-        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI.</exception>
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
         /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public static OAuth2Provider Create(OAuth2Options options, HttpClient? httpClient)
         {
@@ -92,7 +92,7 @@ namespace Polhem.OAuth2
         {
             var parameters = GetAuthorizationParameters(state, redirectUri, codeChallenge);
             string query = string.Join("&", parameters.Select(parameter => parameter.Key + "=" + Uri.EscapeDataString(parameter.Value)));
-            return Options.AuthorizationEndpoint + "?" + query;
+            return AppendQuery(Options.AuthorizationEndpoint, query);
         }
 
         /// <summary>
@@ -238,6 +238,23 @@ namespace Polhem.OAuth2
         protected virtual string GetTokenRedirectUri(string redirectUri)
         {
             return redirectUri;
+        }
+
+        /// <summary>
+        /// Adds parameters to an endpoint, after the query that the endpoint already has. RFC 6749, section 3.1, lets an
+        /// endpoint include a query, which must be retained.
+        /// </summary>
+        /// <param name="endpoint">The endpoint, without a fragment.</param>
+        /// <param name="query">The encoded parameters to add, without a leading separator.</param>
+        /// <returns>The endpoint with the parameters.</returns>
+        protected static string AppendQuery(string endpoint, string query)
+        {
+            int start = endpoint.IndexOf('?');
+            if (start < 0)
+                return endpoint + "?" + query;
+
+            char last = endpoint[endpoint.Length - 1];
+            return last == '?' || last == '&' ? endpoint + query : endpoint + "&" + query;
         }
 
         /// <summary>

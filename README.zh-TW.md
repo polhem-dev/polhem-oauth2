@@ -31,7 +31,8 @@ dotnet add package Polhem.OAuth2
 - Auth0 與 Okta 需要 `Domain`，例如 `your-tenant.auth0.com`。Okta 預設使用 `default` 授權伺服器，
   可用 `AuthorizationServerId` 指定其他伺服器；設為空值時改用 org 授權伺服器。
 - Microsoft Entra ID 預設使用 `common` tenant。只註冊在單一 tenant 的應用程式，要把 `Tenant` 設成該 tenant 的 ID 或網域名稱。
-- 所有端點都必須是絕對的 `https` URI。
+- 所有端點都必須是絕對的 `https` URI，而且不能有 fragment。端點自帶的 query 會被保留，所以可以在端點上加 provider 的參數，
+  例如 `https://tenant.auth0.com/authorize?audience=...`。
 - `UsePkce` 預設為 `true`。
 
 ## 桌面與主控台應用程式

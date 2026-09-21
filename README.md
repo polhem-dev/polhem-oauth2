@@ -34,7 +34,8 @@ Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Op
   `AuthorizationServerId` names another one; an empty value selects the org authorization server.
 - Microsoft Entra ID uses the `common` tenant. An application registered for a single tenant sets `Tenant` to the tenant
   ID or domain name.
-- Every endpoint must be an absolute `https` URI.
+- Every endpoint must be an absolute `https` URI without a fragment. A query is kept, so an endpoint can carry a parameter of the
+  provider, such as `https://tenant.auth0.com/authorize?audience=...`.
 - `UsePkce` is `true` by default.
 
 ## Desktop and console applications

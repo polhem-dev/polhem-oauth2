@@ -67,7 +67,7 @@ namespace Polhem.OAuth2
         protected override string GetUserInfoUrl()
         {
             // The Graph API returns only the fields that are asked for.
-            return Options.UserInfoEndpoint + "?fields=" + Uri.EscapeDataString("id,name,email");
+            return AppendQuery(Options.UserInfoEndpoint, "fields=" + Uri.EscapeDataString("id,name,email"));
         }
 
         // True for fb<digits>://<host> with no path, query or fragment, the form Facebook requires of an application.

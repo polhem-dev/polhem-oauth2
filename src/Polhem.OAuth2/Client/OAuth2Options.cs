@@ -44,18 +44,24 @@ namespace Polhem.OAuth2
         public string[] Scopes { get; set; } = new[] { "openid", "email", "profile" };
 
         /// <summary>
-        /// Gets or sets the authorization endpoint. It must be an absolute https URI.
+        /// Gets or sets the authorization endpoint. It must be an absolute https URI without a fragment.
         /// </summary>
+        /// <remarks>
+        /// A query is kept, and the parameters of the authorization request are added after it (RFC 6749, section 3.1). Do not
+        /// put a parameter there that the client sends itself, such as <c>scope</c> or <c>state</c>, because a parameter must
+        /// not appear twice.
+        /// </remarks>
         public string AuthorizationEndpoint { get; set; } = string.Empty;
 
         /// <summary>
-        /// Gets or sets the token endpoint, where the authorization code is exchanged for tokens. It must be an absolute https URI.
+        /// Gets or sets the token endpoint, where the authorization code is exchanged for tokens. It must be an absolute https URI
+        /// without a fragment. A query is kept.
         /// </summary>
         public string TokenEndpoint { get; set; } = string.Empty;
 
         /// <summary>
         /// Gets or sets the user information endpoint, which returns details such as the user's name and email address.
-        /// It must be an absolute https URI.
+        /// It must be an absolute https URI without a fragment. A query is kept.
         /// </summary>
         public string UserInfoEndpoint { get; set; } = string.Empty;
 
@@ -94,29 +100,29 @@ namespace Polhem.OAuth2
                 return $"{nameof(RedirectUri)} must be an absolute http or https URI.";
             if (Scopes is null || Scopes.Any(string.IsNullOrWhiteSpace))
                 return $"{nameof(Scopes)} cannot be null or contain an empty scope.";
-            return FindInsecureEndpoint() is { } endpoint ? $"{endpoint} must be an absolute https URI." : null;
+            return GetEndpointError();
         }
 
         /// <summary>
-        /// Finds an endpoint that is not an absolute https URI. The client secret, authorization codes and tokens travel to
-        /// these endpoints, so none of them may be sent unencrypted.
+        /// Checks that every endpoint is an absolute https URI without a fragment. The client secret, authorization codes and
+        /// tokens travel to these endpoints, so none of them may be sent unencrypted, and RFC 6749, section 3.1, allows an
+        /// endpoint a query but no fragment, which would swallow the parameters added after it.
         /// </summary>
-        /// <returns>The name of the first such endpoint property, or null if every endpoint is an absolute https URI.</returns>
-        internal string? FindInsecureEndpoint()
+        /// <returns>A message that names the first endpoint property that is not valid, or null if every endpoint is valid.</returns>
+        internal string? GetEndpointError()
         {
-            if (!IsHttpsUri(AuthorizationEndpoint))
-                return nameof(AuthorizationEndpoint);
-            if (!IsHttpsUri(TokenEndpoint))
-                return nameof(TokenEndpoint);
-            if (!IsHttpsUri(UserInfoEndpoint))
-                return nameof(UserInfoEndpoint);
-            return null;
+            string? endpoint = !IsEndpointUri(AuthorizationEndpoint) ? nameof(AuthorizationEndpoint)
+                : !IsEndpointUri(TokenEndpoint) ? nameof(TokenEndpoint)
+                : !IsEndpointUri(UserInfoEndpoint) ? nameof(UserInfoEndpoint)
+                : null;
+            return endpoint is null ? null : $"{endpoint} must be an absolute https URI without a fragment.";
         }
 
-        private static bool IsHttpsUri(string endpoint)
+        private static bool IsEndpointUri(string endpoint)
         {
             return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
-                && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal);
+                && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
+                && endpoint.IndexOf('#') < 0;
         }
 
         /// <summary>

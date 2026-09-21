@@ -48,7 +48,7 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">
         /// The redirect URI is not an absolute http URI on localhost or a loopback address, the client ID is empty, a scope is
-        /// empty, or an endpoint is not an absolute https URI.
+        /// empty, or an endpoint is not an absolute https URI without a fragment.
         /// </exception>
         /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public LoopbackOAuth2Client(OAuth2Options options, HttpClient? httpClient = null)
