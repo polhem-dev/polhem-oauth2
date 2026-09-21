@@ -49,12 +49,7 @@ namespace Polhem.OAuth2
             if (state is null || state.Length == 0 || state.Length > MaxStateLength)
                 return null;
 
-            foreach (char c in state)
-            {
-                if (!IsBase64UrlCharacter(c))
-                    return null;
-            }
-            return NamePrefix + state;
+            return Base64UrlText.IsBase64Url(state) ? NamePrefix + state : null;
         }
 
         /// <summary>
@@ -138,12 +133,12 @@ namespace Polhem.OAuth2
                         throw new OAuth2Exception(InvalidMessage);
                     }
 
-                    clientName = GetString(root, "client");
-                    state = GetString(root, "state");
-                    codeVerifier = GetString(root, "verifier");
-                    redirectUri = GetString(root, "redirectUri");
-                    appRedirectUri = GetString(root, "appRedirectUri");
-                    appCodeChallenge = GetString(root, "appChallenge");
+                    clientName = root.GetStringProperty("client");
+                    state = root.GetStringProperty("state");
+                    codeVerifier = root.GetStringProperty("verifier");
+                    redirectUri = root.GetStringProperty("redirectUri");
+                    appRedirectUri = root.GetStringProperty("appRedirectUri");
+                    appCodeChallenge = root.GetStringProperty("appChallenge");
                 }
             }
             catch (JsonException ex)
@@ -163,16 +158,6 @@ namespace Polhem.OAuth2
                 throw new OAuth2Exception("The sign-in was started too long ago. Start it again.");
 
             return (clientName, new PendingAuthorization(state, codeVerifier, redirectUri));
-        }
-
-        private static string? GetString(JsonElement obj, string propertyName)
-        {
-            return obj.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
-        }
-
-        private static bool IsBase64UrlCharacter(char c)
-        {
-            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_';
         }
     }
 }

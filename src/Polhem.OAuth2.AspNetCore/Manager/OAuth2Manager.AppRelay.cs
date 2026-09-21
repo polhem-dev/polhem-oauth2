@@ -207,7 +207,7 @@ namespace Polhem.OAuth2.AspNetCore
                 throw new ArgumentNullException(nameof(codeVerifier));
             RequireRelay();
 
-            if (code.Length == 0 || code.Length > 256 || !IsBase64Url(code)
+            if (code.Length == 0 || code.Length > 256 || !Base64UrlText.IsBase64Url(code)
                 || codeVerifier.Length < MinCodeVerifierLength || codeVerifier.Length > MaxCodeVerifierLength || !IsCodeVerifier(codeVerifier))
             {
                 return null;
@@ -271,17 +271,17 @@ namespace Polhem.OAuth2.AspNetCore
                 using (var document = JsonDocument.Parse(entry))
                 {
                     var root = document.RootElement;
-                    string? challenge = GetString(root, "challenge");
-                    if (!string.Equals(GetString(root, "client"), clientName, StringComparison.Ordinal)
+                    string? challenge = root.GetStringProperty("challenge");
+                    if (!string.Equals(root.GetStringProperty("client"), clientName, StringComparison.Ordinal)
                         || challenge is null
                         || !root.TryGetProperty("expiresAt", out var expires) || !expires.TryGetInt64(out long expiresAt)
                         || now.ToUnixTimeMilliseconds() >= expiresAt
                         || !MatchesChallenge(codeVerifier, challenge)
-                        || GetString(root, "raw") is not { } raw)
+                        || root.GetStringProperty("raw") is not { } raw)
                     {
                         return null;
                     }
-                    return new UserInfo(GetString(root, "userId"), GetString(root, "userName"), GetString(root, "email"), raw);
+                    return new UserInfo(root.GetStringProperty("userId"), root.GetStringProperty("userName"), root.GetStringProperty("email"), raw);
                 }
             }
             catch (JsonException)
@@ -296,32 +296,18 @@ namespace Polhem.OAuth2.AspNetCore
             return CryptographicOperations.FixedTimeEquals(computed, Encoding.ASCII.GetBytes(challenge));
         }
 
-        private static string? GetString(JsonElement obj, string propertyName)
-        {
-            return obj.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
-        }
-
         private static bool IsCodeChallenge(string value)
         {
-            return value.Length == CodeChallengeLength && IsBase64Url(value);
+            return value.Length == CodeChallengeLength && Base64UrlText.IsBase64Url(value);
         }
 
-        private static bool IsBase64Url(string value)
-        {
-            foreach (char c in value)
-            {
-                if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_'))
-                    return false;
-            }
-            return true;
-        }
-
-        // RFC 7636, section 4.1: a code verifier uses the unreserved characters.
+        // RFC 7636, section 4.1: a code verifier uses the unreserved characters, which are the base64url alphabet with a
+        // period and a tilde.
         private static bool IsCodeVerifier(string value)
         {
             foreach (char c in value)
             {
-                if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~'))
+                if (!(Base64UrlText.IsBase64UrlCharacter(c) || c == '.' || c == '~'))
                     return false;
             }
             return true;

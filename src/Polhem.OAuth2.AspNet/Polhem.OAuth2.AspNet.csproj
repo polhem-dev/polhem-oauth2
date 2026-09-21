@@ -16,9 +16,9 @@
     <Reference Include="System.Web" />
   </ItemGroup>
 
-  <!-- Both web packages compile the format of the pending sign-in cookie from this one file. -->
+  <!-- Both web packages compile the files of this folder, so the format of the pending sign-in cookie is defined once. -->
   <ItemGroup>
-    <Compile Include="..\Shared\PendingAuthorizationCookie.cs" Link="Shared\PendingAuthorizationCookie.cs" />
+    <Compile Include="..\Shared\*.cs" LinkBase="Shared" />
   </ItemGroup>
 
   <ItemGroup>
