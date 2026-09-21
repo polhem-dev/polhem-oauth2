@@ -29,7 +29,8 @@ dotnet add package Polhem.OAuth2
 
 - `ClientId` 與 `RedirectUri` 為必填。client 建立時會複製並檢查 options，之後再修改原物件不會有影響；options 不合法時當場擲出 `ArgumentException`。
 - Auth0 與 Okta 需要 `Domain`，例如 `your-tenant.auth0.com`。Okta 預設使用 `default` 授權伺服器，
-  可用 `AuthorizationServerId` 指定其他伺服器；設為空值時改用 org 授權伺服器。
+  可用 `AuthorizationServerId` 指定其他伺服器；設為空值時改用 org 授權伺服器。Okta 只在 Integrator Free Plan 的 org，
+  或有 API Access Management 的 org 裡建立 `default` 伺服器，其他 org 請設為空值。
 - Microsoft Entra ID 預設使用 `common` tenant。只註冊在單一 tenant 的應用程式，要把 `Tenant` 設成該 tenant 的 ID 或網域名稱。
 - 所有端點都必須是絕對的 `https` URI，而且不能有 fragment。端點自帶的 query 會被保留，所以可以在端點上加 provider 的參數，
   例如 `https://tenant.auth0.com/authorize?audience=...`。
@@ -63,7 +64,8 @@ else
 - client 一律使用 PKCE。隨桌面應用程式散佈的 client secret 可以被取出，所以不會送出，只有 Google 例外。
 - 逾時（`Timeout`，預設 5 分鐘）、取消、provider 回傳錯誤，都會成為失敗結果。port 無法監聽時擲出 `SocketException`，
   找不到預設瀏覽器時擲出 `Win32Exception`（iOS 無法啟動處理程序，擲出 `PlatformNotSupportedException`）。
-- 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 UI 框架的啟動器寫成 `uri => launcher.LaunchUriAsync(uri)`。
+- 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 Avalonia 的 `ILauncher` 寫成 `uri => launcher.LaunchUriAsync(uri)`，
+  或在 .NET MAUI 裡寫成 `url => Launcher.Default.OpenAsync(url)`。
 - 這段範例使用最上層陳述式。在 .NET Framework 的 Windows Forms 應用程式裡怎麼登入，見 [OAuthWinForms](samples/OAuthWinForms) sample。
 - 目標框架為 .NET Framework 4.7.2、並在開啟 FIPS 模式的機器上執行的應用程式，需要 ASP.NET（System.Web）一節「部署前確認」裡的設定。
 - 要再登入另一個後端時，見[前後端分離的應用程式](#前後端分離的應用程式)。
@@ -120,7 +122,7 @@ AuthorizationResult result = await client.SignInAsync();
 
 - 回呼網址是自訂 scheme 或 `https` 網址。`http`、`javascript`、`data`、`file`、相對網址，以及帶 fragment 的網址都會被拒絕。
 - 每個 provider 要求各自的導回形式與後台登記，例如 Facebook 是 `fb<app id>://authorize`，LINE 在 iOS 上是
-  `line3rdp.<bundle id>://auth`。[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md) 的表格列出每一家，以及實測過的平台。
+  `line3rdp.<bundle id>://auth`。Microsoft Entra ID 只能登記兩個斜線的自訂 scheme，也就是 `<scheme>://<path>`。[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md) 的表格列出每一家，以及實測過的平台。
 - 不要設定 client secret：隨應用程式散佈的任何內容都能被取出。
 - 使用者中途關閉登入，會成為帶 `OperationCanceledException` 的失敗結果；provider 回傳錯誤（例如 `access_denied`）則是帶
   `OAuth2Exception` 的失敗結果。
@@ -164,7 +166,8 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
   任何人都能帶任意值開啟這個端點，所以沒有登記的回呼網址只是一個普通的請求，不是例外狀況。
 - provider 導回後端原本的回呼端點。`CompleteAuthorizationAsync` 之後，
   `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` 會把由應用程式發起的登入，帶著一次性 code
-  導回應用程式並回傳 true；瀏覽器裡的登入則回傳 false。
+  導回應用程式並回傳 true；瀏覽器裡的登入則回傳 false。回傳 true 時直接結束回呼，不要再讓使用者登入網站：
+  這次登入所在的瀏覽器工作階段，可能與裝置上的瀏覽器共用 cookie。
 - 應用程式把 code 與它的 verifier POST 給後端，後端以 `oauth2Manager.RedeemAppCodeAsync` 取得使用者資訊，或得到 null。
   接著由後端發給應用程式自己的 session；provider 的 token 留在後端。
 - code 存在 `IDistributedCache`。有多台伺服器時，改用分散式快取並共用 data protection 金鑰，跟網頁登入一樣。
@@ -213,7 +216,9 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 ```
 
 - `AddOAuth2Client` 會註冊 client、`OAuth2Manager` 與 ASP.NET Core 的 data protection。client 在呼叫當下就建立，
-  所以 options 不合法時應用程式在啟動時就會停下來。另外可以傳入選填的 `HttpClient`。
+  所以 options 不合法時應用程式在啟動時就會停下來。另外可以傳入選填的 `HttpClient`；client 會在應用程式的整個生命週期持有它，
+  所以來自 `IHttpClientFactory` 的 `HttpClient` 會活得比它的 handler 久。除非應用程式需要自己的，否則不要傳：
+  預設的 `HttpClient` 會定期汰換連線池裡的連線以跟上 DNS 變更，`new HttpClient()` 不會。
 - `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
 - ASP.NET Core 自己也有一個 `AuthorizationResult`，位於 `Microsoft.AspNetCore.Authorization`，也就是 `[Authorize]` 所在的命名空間。
   同一個檔案兩個命名空間都匯入、又寫出型別名稱時，會得到 CS0104 錯誤。改用 `var` 宣告變數，或加上
@@ -266,6 +271,8 @@ public class AuthController : Controller
   非同步頁面與作業系統的 TLS 預設值都取決於這個設定。
 - 在 .NET Framework 上，核心套件相依於 System.Text.Json。NuGet 為它及其相依套件加入 `web.config` 的 binding redirect 要保留。
 - 有多台伺服器可能收到回呼時，每一台的 `web.config` 都要設定相同的 `<machineKey>`。
+- 在 .NET Framework 上，預設的 `HttpClient` 會在 provider 允許的範圍內一直沿用同一條連線，在那之前不會跟上 DNS 的變更。
+  長時間執行的應用程式可以對 token 端點的 `ServicePoint` 設定 `ConnectionLeaseTimeout`，或傳入自己的 `HttpClient`。
 - 在開啟 FIPS 模式的機器上，目標框架為 .NET Framework 4.7.2 的應用程式，開始登入時可能擲出 `CryptographicException`：
   對這類應用程式，.NET Framework 會擋下 PKCE 使用的 managed SHA-256 實作。請把目標框架改為 .NET Framework 4.8 或更新的版本，
   或把 `Switch.System.Security.Cryptography.UseLegacyFipsThrow` 開關設為 `false`。
@@ -316,7 +323,9 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - 以 provider 名稱加上 `UserInfo.UserId` 識別使用者，不要用 `Email`：email 可能變更，而且各 provider 是否驗證過 email 並不一致。
 - provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0` 或 `Okta`。
   它與 client 註冊時使用的名稱無關。
-- Microsoft Entra ID 的 `UserId` 是 `sub` claim，同一個使用者登入不同的應用程式時，這個值也不同。
+- Microsoft Entra ID 的 `UserId` 是 `sub` claim，同一個使用者登入不同的應用程式時，這個值也不同。需要跨應用程式一致的識別時，
+  `Token.IdToken` 裡的 `oid` claim 在每個應用程式都相同；使用前要先驗證這個 token。
+- Facebook 的 `UserId` 同樣是每個 app 都不同。LINE 的 `UserId` 則在同一個 provider 底下的每個 channel 都相同。
 - LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token 讀出 email，
   會檢查這個 token 是發給這個 client 的，但不檢查簽章。
 - 函式庫不驗證 ID token。`Token.IdToken` 是 provider 原樣回傳的內容，要依賴其中的 claim 前請先自行驗證。

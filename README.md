@@ -31,7 +31,8 @@ Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Op
 - `ClientId` and `RedirectUri` are required. A client copies and checks the options when it is created, so later changes
   to them have no effect, and invalid options throw `ArgumentException` right away.
 - Auth0 and Okta need `Domain`, such as `your-tenant.auth0.com`. Okta uses the `default` authorization server unless
-  `AuthorizationServerId` names another one; an empty value selects the org authorization server.
+  `AuthorizationServerId` names another one; an empty value selects the org authorization server. Okta creates the `default`
+  server only in an org of the Integrator Free Plan or with API Access Management, so another org sets the empty value.
 - Microsoft Entra ID uses the `common` tenant. An application registered for a single tenant sets `Tenant` to the tenant
   ID or domain name.
 - Every endpoint must be an absolute `https` URI without a fragment. A query is kept, so an endpoint can carry a parameter of the
@@ -69,7 +70,8 @@ else
 - A timeout (`Timeout`, 5 minutes by default), cancellation, or an error from the provider becomes a failed result. A port
   that cannot be listened on throws `SocketException`, and a missing default browser throws `Win32Exception`
   (`PlatformNotSupportedException` on iOS, which cannot start a process).
-- Set `OpenBrowser` to open the URL another way, for example `uri => launcher.LaunchUriAsync(uri)` with the launcher of a UI framework.
+- Set `OpenBrowser` to open the URL another way, for example `uri => launcher.LaunchUriAsync(uri)` with the `ILauncher` of
+  Avalonia, or `url => Launcher.Default.OpenAsync(url)` in .NET MAUI.
 - The snippet uses top-level statements. The [OAuthWinForms](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthWinForms)
   sample shows the same sign-in in a Windows Forms application on .NET Framework.
 - An application that targets .NET Framework 4.7.2 and runs on a machine with FIPS mode enabled needs the setting described
@@ -135,7 +137,8 @@ AuthorizationResult result = await client.SignInAsync();
 - The redirect URI is a custom scheme or an `https` URI. `http`, `javascript`, `data` and `file` URIs, relative URIs, and
   URIs with a fragment are rejected.
 - Each provider needs its own redirect form and registration, such as `fb<app id>://authorize` for Facebook and
-  `line3rdp.<bundle id>://auth` for LINE on iOS. The table in [ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md) lists them with the platforms tested.
+  `line3rdp.<bundle id>://auth` for LINE on iOS. Microsoft Entra ID registers a custom scheme only with two slashes, as
+  `<scheme>://<path>`. The table in [ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md) lists them with the platforms tested.
 - Set no client secret: anything shipped with an application can be extracted.
 - Closing the sign-in becomes a failed result with `OperationCanceledException`, and an error from the provider, such as
   `access_denied`, one with `OAuth2Exception`.
@@ -181,7 +184,9 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
   not registered is an ordinary request, not an exception.
 - The provider returns to the back end's usual callback. After `CompleteAuthorizationAsync`,
   `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` sends a sign-in that an application started
-  back to the application with a single-use code and returns true. For a sign-in in the browser it returns false.
+  back to the application with a single-use code and returns true. For a sign-in in the browser it returns false. When it
+  returns true, return without signing the user in to the web application: the browser session of the sign-in can share its
+  cookies with the browser of the device.
 - The application posts the code and its verifier to the back end, where `oauth2Manager.RedeemAppCodeAsync` returns the
   user information, or null. The back end then issues the application's own session; the provider's tokens stay on the
   back end.
@@ -232,7 +237,9 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 ```
 
 - `AddOAuth2Client` registers the client, `OAuth2Manager` and ASP.NET Core data protection. The client is created by the
-  call, so invalid options stop the application at startup. It takes an optional `HttpClient`.
+  call, so invalid options stop the application at startup. It takes an optional `HttpClient`, which the client keeps for
+  the life of the application, so one from `IHttpClientFactory` would outlive its handler. Pass none unless the application
+  needs its own: the default replaces its pooled connections regularly to follow DNS changes, which `new HttpClient()` does not.
 - `oauth2Manager.GetClient("Google")` returns the client, for example to call `RefreshTokenAsync`.
 - ASP.NET Core has an `AuthorizationResult` of its own, in `Microsoft.AspNetCore.Authorization`, the namespace of `[Authorize]`.
   A file that imports both namespaces and names the type gets error CS0104. Declare the variable with `var`, or add
@@ -287,6 +294,9 @@ Before deploying:
 - On .NET Framework the core package depends on System.Text.Json. Keep the binding redirects that NuGet adds for it and its
   dependencies in `web.config`.
 - When more than one server can receive the callback, set the same `<machineKey>` in `web.config` on each of them.
+- On .NET Framework the default `HttpClient` keeps a connection for as long as the provider allows, and does not follow a DNS
+  change until then. An application that runs for a long time can set `ConnectionLeaseTimeout` on the `ServicePoint` of the token
+  endpoint, or pass its own `HttpClient`.
 - On a machine with FIPS mode enabled, an application that targets .NET Framework 4.7.2 can get a `CryptographicException`
   when a sign-in starts: for such applications .NET Framework blocks the managed SHA-256 implementation that PKCE uses.
   Target .NET Framework 4.8 or later, or set the `Switch.System.Security.Cryptography.UseLegacyFipsThrow` switch to `false`.
@@ -343,7 +353,9 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
   providers differ in whether they verify it.
 - The provider name is `AuthorizationResult.ProviderName`: `Google`, `Facebook`, `LINE`, `Azure` (Microsoft Entra ID),
   `Auth0` or `Okta`. It does not depend on the name a client is registered under.
-- For Microsoft Entra ID, `UserId` is the `sub` claim, which is different for each application the user signs in to.
+- For Microsoft Entra ID, `UserId` is the `sub` claim, which is different for each application the user signs in to. The `oid`
+  claim of `Token.IdToken` is the same in every application, for an application that needs that; validate the token first.
+- For Facebook, `UserId` is also different for each app. For LINE it is the same in every channel of one provider.
 - LINE returns the email address only in the ID token, and only when the channel may read it and the user agreed. The
   library reads it from the ID token that the token endpoint returned, and checks that the token was issued to the client,
   but does not check its signature.
