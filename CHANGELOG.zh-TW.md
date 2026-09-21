@@ -19,6 +19,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - 登入所指的應用程式回呼網址已不在 `OAuth2AppRelayOptions.AppRedirectUris` 裡時，`OAuth2Manager.RedirectToAppAsync` 擲出
   `InvalidOperationException`，不再導向該網址。回呼請求中斷時它也會停止，與 `CompleteAuthorizationAsync` 一致，
   因此不需要再傳入 `HttpContext.RequestAborted`。
+- `OAuth2AppRelayOptions.CodeLifetime` 最長 10 分鐘，也就是 RFC 6749 第 4.1.2 節對授權碼的建議上限。超過時 `AddOAuth2AppRelay` 會拒絕。
 - 端點帶有 fragment 時，建立 client 當下就會拒絕，符合 RFC 6749 第 3.1 節的要求。這種端點原本就無法運作，因為 fragment 會吃掉接在後面的參數。
 
 ### 修正
@@ -27,6 +28,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
   先前像 `https://tenant.auth0.com/authorize?audience=...` 這樣的端點會組出帶兩個問號的網址，被 provider 拒絕。Facebook 的 `UserInfoEndpoint` 同理。
 - Facebook 的 token 端點回傳的錯誤，與其他 provider 一樣成為 `OAuth2Exception`。Facebook 回傳的是 Graph API 的錯誤物件，
   先前被當成沒有錯誤代碼的回應，擲出 `HttpRequestException`。`Error` 是 Graph API 錯誤的數字代碼，`ErrorDescription` 是它的訊息。
+- 兌換代碼的伺服器時鐘比發出代碼的伺服器快（一分鐘以內）時，中轉代碼不會再被提早拒絕。代碼的效期仍由快取在 `CodeLifetime` 到期時結束。
 
 ### 安全性
 

@@ -6,8 +6,8 @@
 
 Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with the library are under "Test results".
 Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it; the relay
-protects its cache entries, checks the application redirect URI again when it returns the sign-in, and can start a sign-in
-from the values of a request without throwing.
+protects its cache entries, checks the application redirect URI again when it returns the sign-in, can start a sign-in
+from the values of a request without throwing, and bounds the lifetime of a code.
 
 ## Context
 
@@ -119,6 +119,11 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
   servers receive callbacks. No storage abstraction of the package's own is added. An entry is protected with ASP.NET Core
   data protection, under a purpose of its own, so the cache is not trusted: reading it does not reveal the user information,
   and an entry written without the keys is not redeemed. The key of an entry is a hash of the code.
+- The cache ends the lifetime of a code, on its own clock, at `CodeLifetime`, which is at most the 10 minutes that RFC 6749,
+  section 4.1.2, recommends for an authorization code. The entry also holds the time it expires, for a cache that returns an
+  entry it should have dropped. That second check tolerates one minute, as the pending sign-in cookie does, so that a server
+  whose clock runs ahead of the server that issued the code does not end the lifetime early. `OAuth2Manager` reads the time
+  from `TimeProvider` when one is registered, which is how the tests move the clock.
 - `RedirectToAppAsync` checks again that the application redirect URI of the sign-in is registered, because it may have been
   removed since the sign-in started. If it is not, the method throws `InvalidOperationException`, like a sign-in cookie that
   names a client that is no longer registered (ADR-003), and does not redirect. It stops when the callback request is

@@ -195,6 +195,30 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Empty(handler.Requests);
         }
 
+        [Theory]
+        [DisplayName("CompleteAuthorizationAsync turns a sign-in that started more than 10 minutes ago into a failed result, without a request to the provider")]
+        [InlineData(600, true)]
+        [InlineData(601, false)]
+        public async Task CompleteAuthorizationAsync_CookieAge_DecidesResult(int seconds, bool succeeds)
+        {
+            var clock = new AspNetCoreTestClock();
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1"}""");
+            var manager = CreateManager(handler, new EphemeralDataProtectionProvider(), clock);
+            var signIn = StartSignIn(manager, "Google");
+
+            clock.Advance(TimeSpan.FromSeconds(seconds));
+            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie));
+
+            Assert.Equal(succeeds, result.IsSuccess);
+            if (!succeeds)
+            {
+                Assert.IsType<OAuth2Exception>(result.Exception);
+                Assert.Empty(handler.Requests);
+            }
+        }
+
         [Fact]
         [DisplayName("CompleteAuthorizationAsync turns a state without a sign-in cookie into a failed result")]
         public async Task CompleteAuthorizationAsync_NoCookie_ReturnsFailedResult()
@@ -303,12 +327,19 @@ namespace Polhem.OAuth2.UnitTests
 
         private static OAuth2Manager CreateManager(StubHttpMessageHandler handler, IDataProtectionProvider dataProtection, params string[] clientNames)
         {
+            return CreateManager(handler, dataProtection, clock: null, clientNames);
+        }
+
+        private static OAuth2Manager CreateManager(StubHttpMessageHandler handler, IDataProtectionProvider dataProtection, TimeProvider? clock, params string[] clientNames)
+        {
             var services = new ServiceCollection();
             foreach (string clientName in clientNames.Length == 0 ? new[] { "Google" } : clientNames)
                 services.AddOAuth2Client(clientName, CreateOptions(clientName), handler.CreateClient());
 
             // Registered last, so the manager uses keys in memory instead of the key ring that AddDataProtection keeps on disk.
             services.AddSingleton(dataProtection);
+            if (clock is not null)
+                services.AddSingleton(clock);
             return services.BuildServiceProvider().GetRequiredService<OAuth2Manager>();
         }
 

@@ -49,7 +49,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 provider.GetServices<OAuth2ClientRegistration>(),
                 provider.GetRequiredService<IDataProtectionProvider>(),
                 provider.GetService<AppRelaySettings>(),
-                provider.GetService<IDistributedCache>()));
+                provider.GetService<IDistributedCache>(),
+                provider.GetService<TimeProvider>()));
             return services;
         }
 
@@ -69,7 +70,7 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <exception cref="ArgumentNullException"><paramref name="services"/> or <paramref name="configure"/> is null.</exception>
         /// <exception cref="ArgumentException">
         /// No application redirect URI is set, one of them is not an absolute https URI or custom scheme URI without a
-        /// fragment, or the code lifetime is not positive.
+        /// fragment, or the code lifetime is not positive or is longer than 10 minutes.
         /// </exception>
         /// <exception cref="InvalidOperationException">The relay is already registered.</exception>
         public static IServiceCollection AddOAuth2AppRelay(this IServiceCollection services, Action<OAuth2AppRelayOptions> configure)

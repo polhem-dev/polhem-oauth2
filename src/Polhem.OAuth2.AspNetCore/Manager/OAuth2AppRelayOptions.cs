@@ -19,8 +19,9 @@ namespace Polhem.OAuth2.AspNetCore
 
         /// <summary>
         /// Gets or sets how long the code that a relayed sign-in returns to the application can be redeemed. The default is
-        /// one minute.
+        /// one minute, and the longest is 10 minutes, which RFC 6749, section 4.1.2, recommends for an authorization code.
         /// </summary>
+        /// <remarks>An application redeems the code as soon as it receives it, so a short lifetime costs nothing.</remarks>
         public TimeSpan CodeLifetime { get; set; } = TimeSpan.FromMinutes(1);
     }
 }

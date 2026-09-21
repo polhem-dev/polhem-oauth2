@@ -21,6 +21,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - `OAuth2Manager.RedirectToAppAsync` throws `InvalidOperationException` when the sign-in names an application redirect URI
   that is no longer in `OAuth2AppRelayOptions.AppRedirectUris`, instead of redirecting to it. It also stops when the callback
   request is aborted, as `CompleteAuthorizationAsync` does, so passing `HttpContext.RequestAborted` is no longer needed.
+- `OAuth2AppRelayOptions.CodeLifetime` can be at most 10 minutes, which RFC 6749, section 4.1.2, recommends for an authorization
+  code. A longer value is rejected by `AddOAuth2AppRelay`.
 - An endpoint with a fragment is rejected when the client is created, as RFC 6749, section 3.1, requires. Such an endpoint never
   worked, because the fragment swallowed the parameters added after it.
 
@@ -32,6 +34,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - An error from the token endpoint of Facebook becomes an `OAuth2Exception`, as for every other provider. Facebook reports a
   Graph API error object, which was read as a response without an error code and thrown as an `HttpRequestException`. `Error`
   holds the numeric code of the Graph API error, and `ErrorDescription` its message.
+- A relay code is no longer refused early on a server whose clock runs up to a minute ahead of the server that issued it. The
+  cache still ends the lifetime of the code at `CodeLifetime`.
 
 ### Security
 

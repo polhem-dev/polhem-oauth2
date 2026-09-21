@@ -31,18 +31,21 @@ namespace Polhem.OAuth2.AspNetCore
         private readonly IDataProtector _relayProtector;
         private readonly AppRelaySettings? _relay;
         private readonly IDistributedCache? _relayCache;
+        private readonly TimeProvider _timeProvider;
 
         internal OAuth2Manager(
             IEnumerable<OAuth2ClientRegistration> registrations,
             IDataProtectionProvider dataProtectionProvider,
             AppRelaySettings? relay = null,
-            IDistributedCache? relayCache = null)
+            IDistributedCache? relayCache = null,
+            TimeProvider? timeProvider = null)
         {
             _clients = registrations.ToDictionary(registration => registration.Name, registration => registration.Client, StringComparer.Ordinal);
             _protector = dataProtectionProvider.CreateProtector(PendingAuthorizationCookie.ProtectionPurpose);
             _relayProtector = dataProtectionProvider.CreateProtector(RelayProtectionPurpose);
             _relay = relay;
             _relayCache = relayCache;
+            _timeProvider = timeProvider ?? TimeProvider.System;
         }
 
         /// <summary>
@@ -159,7 +162,7 @@ namespace Polhem.OAuth2.AspNetCore
                 ?? throw new InvalidOperationException($"No OAuth2 client is registered under the name '{clientName}'.");
 
             var request = client.CreateAuthorizationRequest();
-            byte[] payload = PendingAuthorizationCookie.Serialize(clientName, request.Pending, DateTimeOffset.UtcNow, appRedirectUri, appCodeChallenge);
+            byte[] payload = PendingAuthorizationCookie.Serialize(clientName, request.Pending, _timeProvider.GetUtcNow(), appRedirectUri, appCodeChallenge);
             string cookieName = PendingAuthorizationCookie.NamePrefix + request.Pending.State;
             context.Response.Cookies.Append(cookieName, WebEncoders.Base64UrlEncode(_protector.Protect(payload)), CreateCookieOptions(PendingAuthorizationCookie.Lifetime));
             return request.Url;
@@ -180,7 +183,7 @@ namespace Polhem.OAuth2.AspNetCore
                 ?? throw new OAuth2Exception("No sign-in started in this browser matches the state. It may have expired.");
 
             context.Response.Cookies.Delete(cookieName, CreateCookieOptions(maxAge: null));
-            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), DateTimeOffset.UtcNow, out appRedirectUri, out appCodeChallenge);
+            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), _timeProvider.GetUtcNow(), out appRedirectUri, out appCodeChallenge);
         }
 
         // A cookie that is not valid base64url is reported like one that fails decryption, because both mean it was altered.

@@ -39,7 +39,7 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Web" />
     <Using Include="System.Net.Http" />
-    <Compile Remove="AspNetCoreOAuth2ManagerTests.cs;AspNetCoreAppRelayTests.cs" />
+    <Compile Remove="AspNetCoreOAuth2ManagerTests.cs;AspNetCoreAppRelayTests.cs;AspNetCoreTestClock.cs" />
   </ItemGroup>
 
 </Project>

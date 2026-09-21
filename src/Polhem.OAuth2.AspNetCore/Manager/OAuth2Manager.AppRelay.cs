@@ -22,6 +22,11 @@ namespace Polhem.OAuth2.AspNetCore
         private const int MinCodeVerifierLength = 43;
         private const int MaxCodeVerifierLength = 128;
 
+        // The cache ends the lifetime of a code, on its own clock. The time in the entry is checked as well, for a cache that
+        // returns an entry it should have dropped, and that check tolerates a server whose clock runs ahead of the server
+        // that issued the code, which would otherwise end the lifetime early.
+        private static readonly TimeSpan s_clockSkew = TimeSpan.FromMinutes(1);
+
         private static readonly object s_appSignInKey = new();
 
         /// <summary>
@@ -161,7 +166,7 @@ namespace Polhem.OAuth2.AspNetCore
             }
 
             string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-            byte[] entry = _relayProtector.Protect(SerializeRelayEntry(signIn, result.UserInfo, DateTimeOffset.UtcNow + relay.CodeLifetime));
+            byte[] entry = _relayProtector.Protect(SerializeRelayEntry(signIn, result.UserInfo, _timeProvider.GetUtcNow() + relay.CodeLifetime));
             var entryOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = relay.CodeLifetime };
             using (var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.RequestAborted))
             {
@@ -221,7 +226,7 @@ namespace Polhem.OAuth2.AspNetCore
 
             try
             {
-                return ReadRelayEntry(_relayProtector.Unprotect(entry), clientName, codeVerifier, DateTimeOffset.UtcNow);
+                return ReadRelayEntry(_relayProtector.Unprotect(entry), clientName, codeVerifier, _timeProvider.GetUtcNow());
             }
             catch (CryptographicException)
             {
@@ -275,7 +280,7 @@ namespace Polhem.OAuth2.AspNetCore
                     if (!string.Equals(root.GetStringProperty("client"), clientName, StringComparison.Ordinal)
                         || challenge is null
                         || !root.TryGetProperty("expiresAt", out var expires) || !expires.TryGetInt64(out long expiresAt)
-                        || now.ToUnixTimeMilliseconds() >= expiresAt
+                        || now.ToUnixTimeMilliseconds() >= expiresAt + (long)s_clockSkew.TotalMilliseconds
                         || !MatchesChallenge(codeVerifier, challenge)
                         || root.GetStringProperty("raw") is not { } raw)
                     {

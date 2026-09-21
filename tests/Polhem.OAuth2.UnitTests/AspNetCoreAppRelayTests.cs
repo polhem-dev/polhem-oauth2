@@ -19,7 +19,7 @@ namespace Polhem.OAuth2.UnitTests
         private const string UserJson = """{"sub":"user-1","name":"User","email":"user@example.com"}""";
 
         [Theory]
-        [DisplayName("AddOAuth2AppRelay rejects missing or invalid application redirect URIs and a code lifetime that is not positive")]
+        [DisplayName("AddOAuth2AppRelay rejects missing or invalid application redirect URIs and a code lifetime that is not positive or is longer than 10 minutes")]
         [InlineData(null, 60)]
         [InlineData("http://app.example.com/signin", 60)]
         [InlineData("com.example.app:/signin#fragment", 60)]
@@ -30,6 +30,8 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("signin", 60)]
         [InlineData("/signin", 60)]
         [InlineData(AppRedirectUri, 0)]
+        [InlineData(AppRedirectUri, -1)]
+        [InlineData(AppRedirectUri, 601)]
         public void AddOAuth2AppRelay_InvalidOptions_ThrowsArgumentException(string? appRedirectUri, int lifetimeSeconds)
         {
             var services = new ServiceCollection();
@@ -272,13 +274,55 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("RedeemAppCodeAsync rejects an expired code even when the cache still returns it")]
         public async Task RedeemAppCodeAsync_Expired_ReturnsNull()
         {
-            var cache = new DictionaryCache();
-            var (manager, _) = CreateManager(SuccessfulProvider(), options => options.CodeLifetime = TimeSpan.FromMilliseconds(1), cache);
+            var clock = new AspNetCoreTestClock();
+            var (manager, _) = CreateManager(SuccessfulProvider(), cache: new DictionaryCache(), clock: clock);
             var (verifier, challenge) = CreateChallenge();
             var callback = await CompleteRelayedSignInAsync(manager, AppRedirectUri, challenge, "code=abc");
-            await Task.Delay(50);
+
+            // The lifetime of one minute, and the minute by which the clock of another server may run ahead.
+            clock.Advance(TimeSpan.FromMinutes(2));
 
             Assert.Null(await manager.RedeemAppCodeAsync("Google", LoopbackTestHttp.GetQueryValue(callback.Location, "code")!, verifier));
+        }
+
+        [Fact]
+        [DisplayName("RedeemAppCodeAsync tolerates a server whose clock runs up to a minute ahead of the server that issued the code")]
+        public async Task RedeemAppCodeAsync_ClockAheadWithinSkew_ReturnsUser()
+        {
+            var clock = new AspNetCoreTestClock();
+            var (manager, _) = CreateManager(SuccessfulProvider(), cache: new DictionaryCache(), clock: clock);
+            var (verifier, challenge) = CreateChallenge();
+            var callback = await CompleteRelayedSignInAsync(manager, AppRedirectUri, challenge, "code=abc");
+
+            clock.Advance(TimeSpan.FromMinutes(2) - TimeSpan.FromMilliseconds(1));
+
+            var user = await manager.RedeemAppCodeAsync("Google", LoopbackTestHttp.GetQueryValue(callback.Location, "code")!, verifier);
+            Assert.Equal("user-1", user?.UserId);
+        }
+
+        [Fact]
+        [DisplayName("The cache ends the lifetime of a code at the code lifetime, without the tolerance for another clock")]
+        public async Task RelayedSignIn_CacheEntry_ExpiresAtCodeLifetime()
+        {
+            var cache = new DictionaryCache();
+            var (manager, _) = CreateManager(SuccessfulProvider(), options => options.CodeLifetime = TimeSpan.FromSeconds(90), cache);
+
+            await CompleteRelayedSignInAsync(manager, AppRedirectUri, CreateChallenge().Challenge, "code=abc");
+
+            Assert.Equal(TimeSpan.FromSeconds(90), Assert.Single(cache.Options).AbsoluteExpirationRelativeToNow);
+        }
+
+        [Fact]
+        [DisplayName("AddOAuth2AppRelay accepts a code lifetime of 10 minutes")]
+        public void AddOAuth2AppRelay_LongestCodeLifetime_IsAccepted()
+        {
+            var services = new ServiceCollection().AddOAuth2AppRelay(options =>
+            {
+                options.AppRedirectUris.Add(AppRedirectUri);
+                options.CodeLifetime = TimeSpan.FromMinutes(10);
+            });
+
+            Assert.Contains(services, descriptor => descriptor.ServiceType == typeof(IDistributedCache));
         }
 
         [Theory]
@@ -500,7 +544,7 @@ namespace Polhem.OAuth2.UnitTests
 
         private static (OAuth2Manager Manager, IServiceProvider Services) CreateManager(
             StubHttpMessageHandler handler, Action<OAuth2AppRelayOptions>? configure = null, IDistributedCache? cache = null,
-            IDataProtectionProvider? dataProtection = null)
+            IDataProtectionProvider? dataProtection = null, TimeProvider? clock = null)
         {
             var services = new ServiceCollection();
             if (cache is not null)
@@ -513,6 +557,8 @@ namespace Polhem.OAuth2.UnitTests
             });
             // Registered last, so the manager uses keys in memory instead of the key ring that AddDataProtection keeps on disk.
             services.AddSingleton(dataProtection ?? new EphemeralDataProtectionProvider());
+            if (clock is not null)
+                services.AddSingleton(clock);
             var provider = services.BuildServiceProvider();
             return (provider.GetRequiredService<OAuth2Manager>(), provider);
         }
@@ -550,6 +596,8 @@ namespace Polhem.OAuth2.UnitTests
 
             public IReadOnlyCollection<byte[]> Values => _entries.Values;
 
+            public List<DistributedCacheEntryOptions> Options { get; } = [];
+
             public byte[]? Get(string key) => _entries.TryGetValue(key, out var value) ? value : null;
 
             public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromResult(Get(key));
@@ -568,7 +616,11 @@ namespace Polhem.OAuth2.UnitTests
                 return Task.CompletedTask;
             }
 
-            public void Set(string key, byte[] value, DistributedCacheEntryOptions options) => _entries[key] = value;
+            public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
+            {
+                _entries[key] = value;
+                Options.Add(options);
+            }
 
             public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
             {

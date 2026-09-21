@@ -5,6 +5,9 @@ namespace Polhem.OAuth2.AspNetCore
     /// </summary>
     internal sealed class AppRelaySettings
     {
+        // RFC 6749, section 4.1.2, recommends at most 10 minutes for an authorization code, which a relay code stands in for.
+        private static readonly TimeSpan s_maxCodeLifetime = TimeSpan.FromMinutes(10);
+
         private readonly HashSet<string> _appRedirectUris;
 
         private AppRelaySettings(HashSet<string> appRedirectUris, TimeSpan codeLifetime)
@@ -24,7 +27,8 @@ namespace Polhem.OAuth2.AspNetCore
         /// <param name="options">The options.</param>
         /// <returns>The settings.</returns>
         /// <exception cref="ArgumentException">
-        /// No application redirect URI is registered, one of them is not valid, or the code lifetime is not positive.
+        /// No application redirect URI is registered, one of them is not valid, or the code lifetime is not positive or is
+        /// longer than 10 minutes.
         /// </exception>
         public static AppRelaySettings Create(OAuth2AppRelayOptions options)
         {
@@ -35,8 +39,8 @@ namespace Polhem.OAuth2.AspNetCore
                 if (!OAuth2Options.IsAppRedirectUri(uri))
                     throw new ArgumentException($"'{uri}' is not an absolute https URI or custom scheme URI without a fragment.", nameof(options));
             }
-            if (options.CodeLifetime <= TimeSpan.Zero)
-                throw new ArgumentException("The code lifetime must be positive.", nameof(options));
+            if (options.CodeLifetime <= TimeSpan.Zero || options.CodeLifetime > s_maxCodeLifetime)
+                throw new ArgumentException($"The code lifetime must be positive and at most {s_maxCodeLifetime.TotalMinutes:0} minutes.", nameof(options));
 
             return new AppRelaySettings(new HashSet<string>(options.AppRedirectUris, StringComparer.Ordinal), options.CodeLifetime);
         }
