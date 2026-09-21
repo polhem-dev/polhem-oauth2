@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件。
+已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`。
 
 ## 背景
 
@@ -25,8 +25,9 @@
   - ASP.NET 與 ASP.NET Core 的 manager 另外還有：沒有 cookie 對應到 state 或登入太久以前開始時的 `OAuth2Exception`，
     以及 cookie 無法解密時的 `CryptographicException`。
   - `LoopbackOAuth2Client.SignInAsync` 另外還有：ADR-004 描述的失敗。
+  - `AppOAuth2Client.SignInAsync` 另外還有：ADR-006 描述的失敗。
 - 呼叫端的取消，會從 `OAuth2Client` 與網頁 manager 以 `OperationCanceledException` 往外拋；ASP.NET Core 在請求中斷時也一樣。
-  取消代表沒有人在等這個結果，而不是登入失敗。loopback client 則如 ADR-004 所述，把取消轉成失敗結果。
+  取消代表沒有人在等這個結果，而不是登入失敗。loopback client 與應用程式 client 則如 ADR-004 與 ADR-006 所述，把取消轉成失敗結果。
 - 其他例外一律往外拋。設定或程式錯誤擲出 `InvalidOperationException`：client 名稱沒有註冊、登入 cookie 裡的 client 已不再註冊、
   沒有目前的 HTTP context。options 不合法時，在建立 client 時擲出 `ArgumentException`。
 - `RefreshTokenAsync` 沒有結果型別：成功時回傳新的 token，失敗時擲出例外。

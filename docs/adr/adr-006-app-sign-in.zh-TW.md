@@ -68,14 +68,15 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 - `authenticate` 接收授權網址、回呼網址與取消 token，開啟授權網址，並回傳 provider 導回的網址。
   因此核心套件不相依 MAUI：使用 `WebAuthenticator` 時，這個委派回傳 `WebAuthenticatorResult.CallbackUri`。
 - 回傳的網址由 client 自己解析：從 query 或 fragment 讀取 `code`、`state`、`error` 與 `error_description`，
-  解開百分比編碼並把 `+` 視為空白，同名參數取第一個值。
+  解開百分比編碼並把 `+` 視為空白，同名參數取第一個值。網頁的 manager 則把重複的參數視為不存在。
+  兩種做法都安全，因為 state 相符之前不會用到其他值；做法不同是因為網頁框架會把同名的值全部交出來，而把它們接在一起什麼都比對不到。
 - 回呼網址：接受 `https` 或自訂 scheme 的絕對 URI；拒絕 `http`、`javascript`、`data`、`file`、相對 URI，
   以及帶 fragment 的 URI。自訂 scheme 不要求含有句點，因為 Facebook（`fb<app id>`）與 Android 上 Entra ID（`msauth`）
   規定的形式都沒有句點。`OAuth2Client` 維持只接受 `http` 與 `https`，網頁應用程式不會多出新的回呼形式。
   這條規則是公開的 `OAuth2Options.IsAppRedirectUri`，後端中轉對它的應用程式回呼網址也呼叫同一個方法，兩邊因此共用一份定義。
   ADR-005 排除的是核心套件的 internal 成員，不是它的公開 API。
 - 一律使用 PKCE；沒設 client secret 就不送，設了則與 loopback client 相同，依 `OAuth2Provider.RequiresClientSecret` 決定。
-- 失敗的處理，補充 ADR-003：`authenticate` 擲出的 `TaskCanceledException`（`WebAuthenticator` 以此表示使用者關閉了登入）
+- 失敗的處理，補充 ADR-003：`authenticate` 擲出的 `OperationCanceledException`（例如 `WebAuthenticator` 用來表示使用者關閉了登入的 `TaskCanceledException`）
   與呼叫端 token 的取消，轉成帶 `OperationCanceledException` 的失敗結果。state 不符、provider 回傳錯誤、缺少授權碼，
   轉成帶 `OAuth2Exception` 的失敗結果。`authenticate` 擲出的其他例外往外拋；同一個 client 同時第二次登入
   （`InvalidOperationException`）也往外拋。
@@ -173,4 +174,5 @@ Mac Catalyst 的 loopback 結果來自實測應用程式裡自寫的監聽程式
 - 1.1.0 沒有保護這些資料。兩個版本的伺服器共用同一個快取的期間，一個版本發出的代碼不會被另一個版本兌換，應用程式需要重新登入；
   影響的時間長度就是一個代碼的效期。
 - 中轉登入與網頁登入一樣，必須在 HTTPS 頁面開始與結束，並在登入 cookie 的效期內完成。
-- 新增的 API 寫進 `PublicAPI.Unshipped.txt`；public API analyzer 用來比對既有 API 的 `PublicAPI.Shipped.txt` 不會變動。
+- 新增的 API 先宣告在 `PublicAPI.Unshipped.txt`，發佈 1.1.0 時移進 `PublicAPI.Shipped.txt`，所有新增的 API 都是這樣處理：
+  public API analyzer 以 shipped 檔比對既有的 API。

@@ -4,6 +4,9 @@ namespace Polhem.OAuth2
     /// The base class for OAuth2 options: the client credentials, the redirect URI and the provider endpoints. Each supported
     /// provider has its own derived type.
     /// </summary>
+    /// <remarks>
+    /// Only this package derives from the class, so the options of an application always select one of its providers.
+    /// </remarks>
     public abstract class OAuth2Options
     {
         // Schemes an application redirect URI cannot use. Uri reports the scheme in lower case.
@@ -68,7 +71,11 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Gets or sets a value indicating whether the flow uses PKCE. The default is <see langword="true"/>.
         /// </summary>
-        /// <remarks><see cref="LoopbackOAuth2Client"/> and <see cref="AppOAuth2Client"/> always use PKCE, whatever this property is set to.</remarks>
+        /// <remarks>
+        /// <see cref="LoopbackOAuth2Client"/> and <see cref="AppOAuth2Client"/> always use PKCE, whatever this property is set to.
+        /// RFC 9700, section 2.1.1, asks every client to use PKCE, confidential ones as well, and this library sends no
+        /// <c>nonce</c> in its place. Turn it off only for a provider that refuses the parameters.
+        /// </remarks>
         public bool UsePkce { get; set; } = true;
 
         /// <summary>

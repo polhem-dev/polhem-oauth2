@@ -5,7 +5,8 @@
 ## Status
 
 Accepted (2026-09-14). Revised on 2026-09-14, before the first release, for `OAuth2Client`, the client secret rule, and the
-listener. Revised on 2026-09-19 to name the platforms the flow has been tested on and the exception on iOS.
+listener. Revised on 2026-09-19 to name the platforms the flow has been tested on and the exception on iOS, and on 2026-09-21 to
+say where accepting `localhost` departs from RFC 8252.
 
 ## Context
 
@@ -37,7 +38,9 @@ That approach has several problems:
   http.sys, which needs a URL reservation for prefixes such as `http://127.0.0.1:53682/`, and it cannot pick a free port.
 - Listening rules:
   - Only loopback addresses are bound. The redirect URI must use `http` with `localhost` or a loopback address; any other
-    URI is rejected when the client is created.
+    URI is rejected when the client is created. RFC 8252, section 8.3, recommends against `localhost`, which this client
+    accepts all the same: Facebook refuses `127.0.0.1`, and Microsoft Entra ID registers only `http://localhost`, as the
+    provider test results below record. Comparing the `Host` header of a request answers the concern of that section.
   - For `localhost`, both the IPv4 and the IPv6 loopback addresses are bound, because the browser may resolve the name to
     either. The IPv6 address is skipped only when the machine does not support it. If another program already uses the
     port there, starting fails, because that program could otherwise receive the authorization code.

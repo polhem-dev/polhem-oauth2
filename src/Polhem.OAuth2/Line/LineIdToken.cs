@@ -7,8 +7,10 @@ namespace Polhem.OAuth2
     /// Reads claims from a LINE ID token.
     /// </summary>
     /// <remarks>
-    /// The signature is not verified. The token arrives straight from the token endpoint over TLS, which OpenID Connect Core 1.0,
-    /// section 3.1.3.7, accepts in place of checking the signature. The audience is still compared with the client ID.
+    /// Only the audience is compared with the client ID. The signature is not verified: the token arrives straight from the
+    /// token endpoint over TLS, which item 6 of OpenID Connect Core 1.0, section 3.1.3.7, accepts in place of checking the
+    /// signature. The issuer and the expiry, which that section also asks for, are not checked, because the claim read here
+    /// only fills in the email address of the user. Do not pass a token that arrived any other way, such as in a redirect.
     /// </remarks>
     internal static class LineIdToken
     {

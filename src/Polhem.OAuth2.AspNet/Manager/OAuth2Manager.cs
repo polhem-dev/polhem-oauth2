@@ -35,7 +35,6 @@ namespace Polhem.OAuth2.AspNet
         /// </exception>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public static void RegisterClient(string clientName, OAuth2Options options, HttpClient? httpClient = null)
         {
             if (string.IsNullOrWhiteSpace(clientName))

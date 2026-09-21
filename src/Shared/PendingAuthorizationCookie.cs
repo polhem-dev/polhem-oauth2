@@ -20,7 +20,8 @@ namespace Polhem.OAuth2
 
         /// <summary>
         /// The purpose that keeps the protected payload apart from other data protected with the same keys. The version
-        /// changes when the format changes.
+        /// changes when the format changes in a way that an earlier version cannot read. An optional value, as the relay added
+        /// in 1.1.0, does not change it, so that a cookie written by one version is still read by the other during an upgrade.
         /// </summary>
         public const string ProtectionPurpose = "Polhem.OAuth2.PendingAuthorization.v1";
 

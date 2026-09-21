@@ -147,7 +147,7 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("SignInAsync turns a TaskCanceledException from the authenticate function, as when the user closes the sign-in, into a failed result")]
+        [DisplayName("SignInAsync turns an OperationCanceledException from the authenticate function, such as the TaskCanceledException of a closed sign-in, into a failed result")]
         public async Task SignInAsync_AuthenticateCanceled_ReturnsFailure()
         {
             var client = new AppOAuth2Client(CreateOptions("Auth0"), (_, _, _) => Task.FromException<Uri>(new TaskCanceledException()));

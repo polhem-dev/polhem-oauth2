@@ -32,7 +32,6 @@ namespace Polhem.OAuth2
         /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope is empty, or an endpoint is
         /// not an absolute https URI without a fragment.
         /// </exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public OAuth2Client(OAuth2Options options, HttpClient? httpClient = null) : this(options, httpClient, publicClient: false)
         {
         }

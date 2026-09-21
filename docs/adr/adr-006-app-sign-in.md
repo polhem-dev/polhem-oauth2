@@ -78,7 +78,9 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
   URI the provider redirected to. The core package therefore does not depend on MAUI: with `WebAuthenticator` the delegate
   returns `WebAuthenticatorResult.CallbackUri`.
 - The client parses the returned URI itself: `code`, `state`, `error` and `error_description` from the query or the
-  fragment, percent-decoded with `+` read as a space, taking the first value of a repeated parameter.
+  fragment, percent-decoded with `+` read as a space, taking the first value of a repeated parameter. The web managers treat a
+  repeated parameter as missing instead. Both are safe, because the state must match before any other value is used; they
+  differ because the web frameworks hand over every value of a name, and joining them would match nothing.
 - Redirect URIs: the client accepts an absolute URI with the `https` scheme or a custom scheme, and rejects `http`,
   `javascript`, `data` and `file`, relative URIs, and URIs with a fragment. A custom scheme is not required to contain a
   period, because the forms that Facebook (`fb<app id>`) and Entra ID on Android (`msauth`) require have none.
@@ -87,8 +89,8 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
   one definition. ADR-005 rules out internal members of the core package, not its public API.
 - The client always uses PKCE and sends no client secret unless one is set, in which case it follows
   `OAuth2Provider.RequiresClientSecret`, as the loopback client does.
-- Failures, in addition to ADR-003: a `TaskCanceledException` from `authenticate`, which is how `WebAuthenticator` reports
-  that the user closed the sign-in, and cancellation of the caller's token become a failed result with
+- Failures, in addition to ADR-003: an `OperationCanceledException` from `authenticate`, such as the `TaskCanceledException`
+  with which `WebAuthenticator` reports that the user closed the sign-in, and cancellation of the caller's token become a failed result with
   `OperationCanceledException`. A state mismatch, a provider error and a missing code become a failed result with
   `OAuth2Exception`. Any other exception from `authenticate` propagates, and so does a second sign-in on the same client
   (`InvalidOperationException`).
@@ -203,5 +205,5 @@ Android on an emulator with Android 15.
   not redeemed by the other, and the application has to sign in again. That lasts for the lifetime of a code.
 - A relayed sign-in, like a web sign-in, must start and end on HTTPS pages and complete within the lifetime of the pending
   sign-in cookie.
-- The additions go into `PublicAPI.Unshipped.txt`; `PublicAPI.Shipped.txt`, which the public API analyzer checks the
-  existing API against, stays unchanged.
+- The additions were declared in `PublicAPI.Unshipped.txt` and moved to `PublicAPI.Shipped.txt` with the release of 1.1.0, as
+  every addition is: the public API analyzer checks the existing API against the shipped file.

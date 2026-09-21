@@ -5,7 +5,7 @@
 ## 狀態
 
 已採納（2026-09-14）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client`、client secret 的規則與監聽程式。2026-09-19 修訂，
-寫明這個流程實際測過的平台，以及 iOS 上的例外。
+寫明這個流程實際測過的平台，以及 iOS 上的例外。2026-09-21 修訂，說明接受 `localhost` 與 RFC 8252 不同之處。
 
 ## 背景
 
@@ -32,6 +32,8 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
   `http://127.0.0.1:53682/` 這類字首需要先保留 URL，而且它無法自動挑選可用的 port。
 - 監聽規則：
   - 只綁定 loopback 位址。回呼網址必須是 `http`，主機必須是 `localhost` 或 loopback 位址；其他網址在建立 client 時就會被拒絕。
+    RFC 8252 第 8.3 節不建議使用 `localhost`，這個 client 仍然接受：Facebook 拒絕 `127.0.0.1`，Microsoft Entra ID 只能登記
+    `http://localhost`，下方的 provider 實測結果都有記錄。比對請求的 `Host` 標頭，回應了該節所顧慮的問題。
   - `localhost` 會同時綁定 IPv4 與 IPv6 的 loopback 位址，因為瀏覽器可能把這個名稱解析成其中任何一個。
     只有在機器不支援 IPv6 時才略過 IPv6；如果另一個程式已經在那裡使用同一個 port，就直接啟動失敗，
     否則授權碼可能被送到那個程式手上。

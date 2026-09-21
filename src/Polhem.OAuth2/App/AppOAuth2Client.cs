@@ -48,7 +48,6 @@ namespace Polhem.OAuth2
         /// The redirect URI is not an absolute https URI or custom scheme URI without a fragment, the client ID is empty, a
         /// scope is empty, or an endpoint is not an absolute https URI without a fragment.
         /// </exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public AppOAuth2Client(
             OAuth2Options options, Func<Uri, Uri, CancellationToken, Task<Uri>> authenticate, HttpClient? httpClient = null)
         {

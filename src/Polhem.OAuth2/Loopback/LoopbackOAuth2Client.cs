@@ -14,8 +14,8 @@ namespace Polhem.OAuth2
     /// </para>
     /// <para>
     /// A client secret distributed with a desktop application can be extracted from it, so it cannot be kept confidential.
-    /// For that reason the client always uses PKCE, whatever <see cref="OAuth2Options.UsePkce"/> is set to, and does not send
-    /// the client secret, except to Google.
+    /// For that reason the client always uses PKCE, whatever <see cref="OAuth2Options.UsePkce"/> is set to, and sends a
+    /// client secret that is set only to a provider that requires one from a public client, which at present is Google.
     /// </para>
     /// <para>The options are copied when the client is created, so later changes to them have no effect.</para>
     /// </remarks>
@@ -50,7 +50,6 @@ namespace Polhem.OAuth2
         /// The redirect URI is not an absolute http URI on localhost or a loopback address, the client ID is empty, a scope is
         /// empty, or an endpoint is not an absolute https URI without a fragment.
         /// </exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public LoopbackOAuth2Client(OAuth2Options options, HttpClient? httpClient = null)
         {
             if (options is null)
@@ -145,7 +144,8 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Obtains new tokens with a refresh token. The client secret is not sent, except to Google.
+        /// Obtains new tokens with a refresh token. A client secret that is set is sent only to a provider that requires one
+        /// from a public client.
         /// </summary>
         /// <param name="refreshToken">The refresh token from an earlier <see cref="TokenResponse"/>.</param>
         /// <param name="cancellationToken">Cancels the request.</param>

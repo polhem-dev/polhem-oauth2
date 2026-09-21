@@ -31,7 +31,6 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <paramref name="clientName"/> is null, empty or white space, or <paramref name="options"/> is not valid.
         /// </exception>
         /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public static IServiceCollection AddOAuth2Client(
             this IServiceCollection services, string clientName, OAuth2Options options, HttpClient? httpClient = null)
         {

@@ -5,7 +5,7 @@
 ## Status
 
 Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAuth2Client` and the web sign-in cookie, and on
-2026-09-21 for the error object of Facebook.
+2026-09-21 for the error object of Facebook and for `AppOAuth2Client`, which ADR-006 added.
 
 ## Context
 
@@ -28,9 +28,10 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
   - The ASP.NET and ASP.NET Core managers also: `OAuth2Exception` when no sign-in cookie matches the state or the sign-in
     is too old, and `CryptographicException` when the cookie cannot be decrypted.
   - `LoopbackOAuth2Client.SignInAsync` also: the failures described in ADR-004.
+  - `AppOAuth2Client.SignInAsync` also: the failures described in ADR-006.
 - Cancellation by the caller propagates from `OAuth2Client` and the web managers as `OperationCanceledException`, and in
   ASP.NET Core also when the request is aborted. Cancellation means that nobody waits for the result, not that the sign-in
-  failed. The loopback client turns it into a failed result instead, as ADR-004 describes.
+  failed. The loopback client and the application client turn it into a failed result instead, as ADR-004 and ADR-006 describe.
 - Every other exception propagates. Configuration and programming errors throw `InvalidOperationException`: an
   unregistered client name, a sign-in cookie that names a client that is no longer registered, and a missing current HTTP
   context. Invalid options throw `ArgumentException` when the client is created.
