@@ -11,6 +11,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 - `OAuth2Options.IsAppRedirectUri`：檢查一個回呼網址能否把登入結果送回應用程式。這就是 `AppOAuth2Client` 原本套用的規則；
   Polhem.OAuth2.AspNetCore 的後端中轉現在對 `OAuth2AppRelayOptions.AppRedirectUris` 呼叫它，不再複寫一份。
+- `OAuth2Manager.TryRedirectToAppAuthorization`：以請求帶來的值開始一次中轉登入；client 名稱、回呼網址或 code challenge 不合法時
+  回傳 false，而不是擲例外。應用程式開啟的端點不必再靠 catch 例外來回應 400。
 
 ### 變更
 

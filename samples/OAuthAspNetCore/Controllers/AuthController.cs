@@ -22,19 +22,10 @@ namespace OAuthAspNetCore.Controllers
         [HttpGet("/auth/app/{clientName}")]
         public IActionResult AppLogin(string clientName, [FromQuery(Name = "redirect_uri")] string redirectUri, [FromQuery(Name = "code_challenge")] string codeChallenge)
         {
-            try
-            {
-                _oauth2Manager.RedirectToAppAuthorization(HttpContext, clientName, redirectUri ?? string.Empty, codeChallenge ?? string.Empty);
-                return new EmptyResult();
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(ex.Message);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            // Anyone can open this URL with any values, so a value that is not valid is answered with 400, not thrown.
+            return _oauth2Manager.TryRedirectToAppAuthorization(HttpContext, clientName, redirectUri, codeChallenge)
+                ? new EmptyResult()
+                : BadRequest("The client, the redirect URI or the code challenge is not valid.");
         }
 
         [HttpGet("/auth/callback")]

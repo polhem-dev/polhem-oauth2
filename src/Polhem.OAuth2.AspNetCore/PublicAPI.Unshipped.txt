@@ -1,1 +1,2 @@
 #nullable enable
+Polhem.OAuth2.AspNetCore.OAuth2Manager.TryRedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge) -> bool

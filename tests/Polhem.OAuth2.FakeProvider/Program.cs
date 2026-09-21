@@ -41,16 +41,9 @@ new FakeAuthorizationServer(WebClientId, WebClientSecret).Map(app);
 
 app.MapGet("/auth/app/{clientName}", (HttpContext context, OAuth2Manager manager, string clientName) =>
 {
-    try
-    {
-        manager.RedirectToAppAuthorization(context, clientName,
-            context.Request.Query["redirect_uri"].ToString(), context.Request.Query["code_challenge"].ToString());
-        return Results.Empty;
-    }
-    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
-    {
-        return Results.BadRequest(ex.Message);
-    }
+    return manager.TryRedirectToAppAuthorization(context, clientName, context.Request.Query["redirect_uri"], context.Request.Query["code_challenge"])
+        ? Results.Empty
+        : Results.BadRequest("The client, the redirect URI or the code challenge is not valid.");
 });
 
 app.MapGet("/auth/callback", async (HttpContext context, OAuth2Manager manager) =>

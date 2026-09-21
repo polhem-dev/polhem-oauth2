@@ -41,7 +41,8 @@ namespace Polhem.OAuth2.AspNetCore
         /// <remarks>
         /// The application redirect URI and the code challenge are kept in the protected sign-in cookie, so the application
         /// must open this request in the browser session that later follows the redirect to the provider and back, as
-        /// <c>WebAuthenticator</c> does.
+        /// <c>WebAuthenticator</c> does. When the values come from the request, as they do in an endpoint that an application
+        /// opens, call <see cref="TryRedirectToAppAuthorization"/>, which reports a value that is not valid without an exception.
         /// </remarks>
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
         /// <exception cref="ArgumentException">
@@ -62,10 +63,46 @@ namespace Polhem.OAuth2.AspNetCore
             var relay = RequireRelay();
             if (!relay.IsRegistered(appRedirectUri))
                 throw new ArgumentException("The application redirect URI is not registered with the relay.", nameof(appRedirectUri));
-            if (codeChallenge.Length != CodeChallengeLength || !IsBase64Url(codeChallenge))
+            if (!IsCodeChallenge(codeChallenge))
                 throw new ArgumentException("The code challenge must be 43 base64url characters.", nameof(codeChallenge));
 
             context.Response.Redirect(StartSignIn(context, clientName, appRedirectUri, codeChallenge));
+        }
+
+        /// <summary>
+        /// Starts a sign-in relayed to a mobile application, as <see cref="RedirectToAppAuthorization"/> does, with values that
+        /// come from the request: it returns false for a value that is not valid, instead of throwing.
+        /// </summary>
+        /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
+        /// <param name="clientName">The requested client name, or null if the request has none.</param>
+        /// <param name="appRedirectUri">The requested application redirect URI, or null if the request has none.</param>
+        /// <param name="codeChallenge">The requested code challenge, or null if the request has none.</param>
+        /// <returns>
+        /// True if the response now redirects to the authorization URL. False, with the response left unchanged, if no client
+        /// is registered under <paramref name="clientName"/>, <paramref name="appRedirectUri"/> is not one of
+        /// <see cref="OAuth2AppRelayOptions.AppRedirectUris"/>, <paramref name="codeChallenge"/> is not 43 base64url
+        /// characters, or one of them is null. Answer such a request with status 400.
+        /// </returns>
+        /// <remarks>
+        /// Anyone can open the endpoint with any values, so a value that is not valid is an ordinary request, not an error of
+        /// the application. A relay that is not registered is one, and throws.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
+        public bool TryRedirectToAppAuthorization(HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge)
+        {
+            if (context is null)
+                throw new ArgumentNullException(nameof(context));
+
+            var relay = RequireRelay();
+            if (clientName is null || appRedirectUri is null || codeChallenge is null
+                || GetClient(clientName) is null || !relay.IsRegistered(appRedirectUri) || !IsCodeChallenge(codeChallenge))
+            {
+                return false;
+            }
+
+            context.Response.Redirect(StartSignIn(context, clientName, appRedirectUri, codeChallenge));
+            return true;
         }
 
         /// <summary>
@@ -262,6 +299,11 @@ namespace Polhem.OAuth2.AspNetCore
         private static string? GetString(JsonElement obj, string propertyName)
         {
             return obj.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+        }
+
+        private static bool IsCodeChallenge(string value)
+        {
+            return value.Length == CodeChallengeLength && IsBase64Url(value);
         }
 
         private static bool IsBase64Url(string value)

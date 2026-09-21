@@ -176,7 +176,9 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
 ```
 
 - The application creates a PKCE code verifier and opens a URL of the back end with its redirect URI and the S256 code
-  challenge. That endpoint calls `oauth2Manager.RedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`.
+  challenge. That endpoint calls `oauth2Manager.TryRedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`
+  and answers with status 400 when it returns false: anyone can open the endpoint with any values, so a redirect URI that is
+  not registered is an ordinary request, not an exception.
 - The provider returns to the back end's usual callback. After `CompleteAuthorizationAsync`,
   `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` sends a sign-in that an application started
   back to the application with a single-use code and returns true. For a sign-in in the browser it returns false.

@@ -6,7 +6,8 @@
 
 Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with the library are under "Test results".
 Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it; the relay
-protects its cache entries, and checks the application redirect URI again when it returns the sign-in.
+protects its cache entries, checks the application redirect URI again when it returns the sign-in, and can start a sign-in
+from the values of a request without throwing.
 
 ## Context
 
@@ -103,7 +104,10 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
 - `OAuth2Manager.RedirectToAppAuthorization(context, clientName, appRedirectUri, codeChallenge)` starts a relayed sign-in.
   It rejects an application redirect URI that is not registered, keeps the redirect URI and the S256 code challenge with the
   pending sign-in in the protected cookie of ADR-005, and redirects to the provider with the client's web redirect URI, so
-  no additional redirect URI is registered with the provider.
+  no additional redirect URI is registered with the provider. The three values come from the request in an endpoint that an
+  application opens, so `TryRedirectToAppAuthorization` takes the same values and returns false when the client name, the
+  redirect URI or the code challenge is not valid, for the endpoint to answer with status 400. The method that throws stays
+  for values that the back end chooses itself, where a value that is not valid is a programming error (ADR-003).
 - The provider returns to the existing web callback. After `CompleteAuthorizationAsync`,
   `OAuth2Manager.RedirectToAppAsync(context, result)` returns false for a web sign-in. For a relayed sign-in it stores the
   user information under a new random code, redirects to the application redirect URI with that code, or with the error of a

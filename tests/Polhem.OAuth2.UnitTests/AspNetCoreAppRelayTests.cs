@@ -14,6 +14,8 @@ namespace Polhem.OAuth2.UnitTests
         private const string RedirectUri = "https://app.example.com/auth/callback";
         private const string AppRedirectUri = "com.example.app:/signin";
         private const string OtherAppRedirectUri = "com.example.other:/signin";
+        // The S256 challenge of the verifier in RFC 7636, appendix B.
+        private const string ValidChallenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
         private const string UserJson = """{"sub":"user-1","name":"User","email":"user@example.com"}""";
 
         [Theory]
@@ -88,6 +90,8 @@ namespace Polhem.OAuth2.UnitTests
             var manager = services.BuildServiceProvider().GetRequiredService<OAuth2Manager>();
 
             Assert.Throws<InvalidOperationException>(() => manager.RedirectToAppAuthorization(CreateContext(), "Google", AppRedirectUri, CreateChallenge().Challenge));
+            Assert.Throws<InvalidOperationException>(() => manager.TryRedirectToAppAuthorization(CreateContext(), "Google", AppRedirectUri, CreateChallenge().Challenge));
+            Assert.Throws<InvalidOperationException>(() => manager.TryRedirectToAppAuthorization(CreateContext(), "Unknown", "not registered", "not a challenge"));
             await Assert.ThrowsAsync<InvalidOperationException>(() => manager.RedeemAppCodeAsync("Google", "code", Pkce.GenerateCodeVerifier()));
         }
 
@@ -132,6 +136,63 @@ namespace Polhem.OAuth2.UnitTests
             Assert.True(cookie.Secure);
             Assert.True(cookie.HttpOnly);
             Assert.DoesNotContain(AppRedirectUri, cookie.Value.Value, StringComparison.Ordinal);
+        }
+
+        [Theory]
+        [DisplayName("TryRedirectToAppAuthorization returns false for a value of the request that is not valid, and leaves the response unchanged")]
+        [InlineData("Unknown", AppRedirectUri, ValidChallenge)]
+        [InlineData("google", AppRedirectUri, ValidChallenge)]
+        [InlineData("", AppRedirectUri, ValidChallenge)]
+        [InlineData(null, AppRedirectUri, ValidChallenge)]
+        [InlineData("Google", OtherAppRedirectUri, ValidChallenge)]
+        [InlineData("Google", "COM.EXAMPLE.APP:/signin", ValidChallenge)]
+        [InlineData("Google", AppRedirectUri + "/", ValidChallenge)]
+        [InlineData("Google", "", ValidChallenge)]
+        [InlineData("Google", null, ValidChallenge)]
+        [InlineData("Google", AppRedirectUri, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-c")]
+        [InlineData("Google", AppRedirectUri, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cMM")]
+        [InlineData("Google", AppRedirectUri, "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw+cM")]
+        [InlineData("Google", AppRedirectUri, "")]
+        [InlineData("Google", AppRedirectUri, null)]
+        public void TryRedirectToAppAuthorization_InvalidRequestValue_ReturnsFalse(string? clientName, string? appRedirectUri, string? codeChallenge)
+        {
+            var (manager, _) = CreateManager(new StubHttpMessageHandler());
+            var context = CreateContext();
+
+            bool started = manager.TryRedirectToAppAuthorization(context, clientName, appRedirectUri, codeChallenge);
+
+            Assert.False(started);
+            Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
+            Assert.Empty(context.Response.Headers.Location.ToString());
+            Assert.Empty(context.Response.GetTypedHeaders().SetCookie);
+        }
+
+        [Fact]
+        [DisplayName("TryRedirectToAppAuthorization starts the same relayed sign-in as RedirectToAppAuthorization")]
+        public async Task TryRedirectToAppAuthorization_ValidRequest_StartsRelayedSignIn()
+        {
+            var (manager, _) = CreateManager(SuccessfulProvider());
+            var (verifier, challenge) = CreateChallenge();
+            var context = CreateContext();
+
+            Assert.True(manager.TryRedirectToAppAuthorization(context, "Google", AppRedirectUri, challenge));
+
+            string location = context.Response.Headers.Location.ToString();
+            Assert.Equal(RedirectUri, LoopbackTestHttp.GetQueryValue(location, "redirect_uri"));
+            var cookie = Assert.Single(context.Response.GetTypedHeaders().SetCookie);
+            var callback = await FinishRelayedSignInAsync(
+                manager, new RelayStart(LoopbackTestHttp.GetQueryValue(location, "state")!, $"{cookie.Name}={cookie.Value}"), "code=abc");
+            string code = LoopbackTestHttp.GetQueryValue(callback.Location, "code")!;
+            Assert.Equal("user-1", (await manager.RedeemAppCodeAsync("Google", code, verifier))?.UserId);
+        }
+
+        [Fact]
+        [DisplayName("TryRedirectToAppAuthorization rejects a null HTTP context")]
+        public void TryRedirectToAppAuthorization_NullContext_ThrowsArgumentNullException()
+        {
+            var (manager, _) = CreateManager(new StubHttpMessageHandler());
+
+            Assert.Throws<ArgumentNullException>(() => manager.TryRedirectToAppAuthorization(null!, "Google", AppRedirectUri, ValidChallenge));
         }
 
         [Fact]

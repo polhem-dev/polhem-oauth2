@@ -160,7 +160,8 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
 ```
 
 - 應用程式產生 PKCE 的 code verifier，帶著自己的回呼網址與 S256 code challenge 開啟後端的網址。該端點呼叫
-  `oauth2Manager.RedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`。
+  `oauth2Manager.TryRedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`，回傳 false 時回應 400：
+  任何人都能帶任意值開啟這個端點，所以沒有登記的回呼網址只是一個普通的請求，不是例外狀況。
 - provider 導回後端原本的回呼端點。`CompleteAuthorizationAsync` 之後，
   `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` 會把由應用程式發起的登入，帶著一次性 code
   導回應用程式並回傳 true；瀏覽器裡的登入則回傳 false。

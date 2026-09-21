@@ -12,6 +12,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - `OAuth2Options.IsAppRedirectUri` checks whether a redirect URI can return a sign-in to an application. It is the rule that
   `AppOAuth2Client` already applied, and the back-end relay of Polhem.OAuth2.AspNetCore now calls it for
   `OAuth2AppRelayOptions.AppRedirectUris` instead of repeating it.
+- `OAuth2Manager.TryRedirectToAppAuthorization` starts a relayed sign-in with values that come from the request, and returns false
+  for a client name, a redirect URI or a code challenge that is not valid, instead of throwing. An endpoint that an application
+  opens no longer has to catch exceptions to answer with status 400.
 
 ### Changed
 
