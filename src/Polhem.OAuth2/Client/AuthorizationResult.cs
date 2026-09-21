@@ -6,6 +6,11 @@ namespace Polhem.OAuth2
     /// The outcome of a sign-in: the provider name, tokens and user information when it succeeded, or the exception that
     /// made it fail.
     /// </summary>
+    /// <remarks>
+    /// ASP.NET Core has a type of the same name in <c>Microsoft.AspNetCore.Authorization</c>. A file that imports both
+    /// namespaces and names the type gets error CS0104: declare the variable with <c>var</c>, or add
+    /// <c>using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;</c>.
+    /// </remarks>
     public sealed class AuthorizationResult
     {
         private AuthorizationResult(bool isSuccess, string? providerName, TokenResponse? token, UserInfo? userInfo, Exception? exception)

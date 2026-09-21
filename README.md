@@ -232,6 +232,9 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 - `AddOAuth2Client` registers the client, `OAuth2Manager` and ASP.NET Core data protection. The client is created by the
   call, so invalid options stop the application at startup. It takes an optional `HttpClient`.
 - `oauth2Manager.GetClient("Google")` returns the client, for example to call `RefreshTokenAsync`.
+- ASP.NET Core has an `AuthorizationResult` of its own, in `Microsoft.AspNetCore.Authorization`, the namespace of `[Authorize]`.
+  A file that imports both namespaces and names the type gets error CS0104. Declare the variable with `var`, or add
+  `using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;`.
 
 ## ASP.NET (System.Web)
 

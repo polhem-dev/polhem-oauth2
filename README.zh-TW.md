@@ -214,6 +214,9 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 - `AddOAuth2Client` 會註冊 client、`OAuth2Manager` 與 ASP.NET Core 的 data protection。client 在呼叫當下就建立，
   所以 options 不合法時應用程式在啟動時就會停下來。另外可以傳入選填的 `HttpClient`。
 - `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
+- ASP.NET Core 自己也有一個 `AuthorizationResult`，位於 `Microsoft.AspNetCore.Authorization`，也就是 `[Authorize]` 所在的命名空間。
+  同一個檔案兩個命名空間都匯入、又寫出型別名稱時，會得到 CS0104 錯誤。改用 `var` 宣告變數，或加上
+  `using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;`。
 
 ## ASP.NET（System.Web）
 
