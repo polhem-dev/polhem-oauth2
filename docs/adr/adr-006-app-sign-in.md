@@ -5,6 +5,7 @@
 ## Status
 
 Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with the library are under "Test results".
+Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it.
 
 ## Context
 
@@ -79,7 +80,9 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
 - Redirect URIs: the client accepts an absolute URI with the `https` scheme or a custom scheme, and rejects `http`,
   `javascript`, `data` and `file`, relative URIs, and URIs with a fragment. A custom scheme is not required to contain a
   period, because the forms that Facebook (`fb<app id>`) and Entra ID on Android (`msauth`) require have none.
-  `OAuth2Client` keeps accepting only `http` and `https`, so web applications gain no new redirect forms.
+  `OAuth2Client` keeps accepting only `http` and `https`, so web applications gain no new redirect forms. The rule is the
+  public `OAuth2Options.IsAppRedirectUri`, which the back-end relay calls for its application redirect URIs, so both apply
+  one definition. ADR-005 rules out internal members of the core package, not its public API.
 - The client always uses PKCE and sends no client secret unless one is set, in which case it follows
   `OAuth2Provider.RequiresClientSecret`, as the loopback client does.
 - Failures, in addition to ADR-003: a `TaskCanceledException` from `authenticate`, which is how `WebAuthenticator` reports

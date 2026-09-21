@@ -7,6 +7,11 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ## [Unreleased]
 
+### 新增
+
+- `OAuth2Options.IsAppRedirectUri`：檢查一個回呼網址能否把登入結果送回應用程式。這就是 `AppOAuth2Client` 原本套用的規則；
+  Polhem.OAuth2.AspNetCore 的後端中轉現在對 `OAuth2AppRelayOptions.AppRedirectUris` 呼叫它，不再複寫一份。
+
 ### 修正
 
 - Facebook 的 token 端點回傳的錯誤，與其他 provider 一樣成為 `OAuth2Exception`。Facebook 回傳的是 Graph API 的錯誤物件，

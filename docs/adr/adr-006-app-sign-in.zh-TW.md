@@ -5,6 +5,7 @@
 ## 狀態
 
 已採納（2026-09-19）。2026-09-19 實作完成；以函式庫登入的結果見「實測結果」。
+2026-09-21 修訂：回呼網址的規則改為公開，後端中轉改為呼叫它，不再複寫一份。
 
 ## 背景
 
@@ -71,6 +72,8 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 - 回呼網址：接受 `https` 或自訂 scheme 的絕對 URI；拒絕 `http`、`javascript`、`data`、`file`、相對 URI，
   以及帶 fragment 的 URI。自訂 scheme 不要求含有句點，因為 Facebook（`fb<app id>`）與 Android 上 Entra ID（`msauth`）
   規定的形式都沒有句點。`OAuth2Client` 維持只接受 `http` 與 `https`，網頁應用程式不會多出新的回呼形式。
+  這條規則是公開的 `OAuth2Options.IsAppRedirectUri`，後端中轉對它的應用程式回呼網址也呼叫同一個方法，兩邊因此共用一份定義。
+  ADR-005 排除的是核心套件的 internal 成員，不是它的公開 API。
 - 一律使用 PKCE；沒設 client secret 就不送，設了則與 loopback client 相同，依 `OAuth2Provider.RequiresClientSecret` 決定。
 - 失敗的處理，補充 ADR-003：`authenticate` 擲出的 `TaskCanceledException`（`WebAuthenticator` 以此表示使用者關閉了登入）
   與呼叫端 token 的取消，轉成帶 `OperationCanceledException` 的失敗結果。state 不符、provider 回傳錯誤、缺少授權碼，

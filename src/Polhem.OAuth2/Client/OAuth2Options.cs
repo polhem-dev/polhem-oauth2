@@ -120,17 +120,24 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Checks the redirect URI of an application (ADR-006): https or a custom scheme, but not http, a scheme that runs or
-        /// embeds content, or a local file, and no fragment, which the provider could not append its parameters after.
+        /// Checks whether a redirect URI can return a sign-in to an application, such as a .NET MAUI application: an absolute
+        /// URI with the https scheme or a custom scheme, such as <c>com.example.app:/oauth2redirect</c>, without a fragment.
         /// </summary>
-        /// <param name="value">The redirect URI.</param>
-        /// <returns>True if an application can use the redirect URI.</returns>
-        internal static bool IsAppRedirectUri(string value)
+        /// <param name="redirectUri">The redirect URI, or null.</param>
+        /// <returns>
+        /// True if an application can use the redirect URI; false if it is null or relative, has a fragment, which a provider
+        /// could not append its parameters after, or uses the http scheme, a scheme that runs or embeds content, or the file scheme.
+        /// </returns>
+        /// <remarks>
+        /// <see cref="AppOAuth2Client"/> applies this rule to <see cref="RedirectUri"/>, and the back-end relay of
+        /// Polhem.OAuth2.AspNetCore applies it to the application redirect URIs it may return to (ADR-006). Whether a provider
+        /// accepts a redirect URI that passes depends on the provider and the platform.
+        /// </remarks>
+        public static bool IsAppRedirectUri(string? redirectUri)
         {
-            if (value.IndexOf('#') >= 0 || !Uri.TryCreate(value, UriKind.Absolute, out var uri))
+            if (redirectUri is null || redirectUri.IndexOf('#') >= 0 || !Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
                 return false;
             // A custom scheme needs no period: Facebook requires fb<app id>, and Entra ID on Android requires msauth.
-            // AppRelaySettings in Polhem.OAuth2.AspNetCore repeats this rule for the relay's application redirect URIs.
             // On Unix a path such as /callback parses as an absolute file URI, which the file scheme rejects.
             return !s_nonAppSchemes.Contains(uri.Scheme);
         }

@@ -21,6 +21,10 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("http://app.example.com/signin", 60)]
         [InlineData("com.example.app:/signin#fragment", 60)]
         [InlineData("javascript:alert(1)", 60)]
+        [InlineData("data:text/html,x", 60)]
+        [InlineData("file:///tmp/signin", 60)]
+        [InlineData("", 60)]
+        [InlineData("signin", 60)]
         [InlineData("/signin", 60)]
         [InlineData(AppRedirectUri, 0)]
         public void AddOAuth2AppRelay_InvalidOptions_ThrowsArgumentException(string? appRedirectUri, int lifetimeSeconds)
@@ -33,6 +37,20 @@ namespace Polhem.OAuth2.UnitTests
                     options.AppRedirectUris.Add(appRedirectUri);
                 options.CodeLifetime = TimeSpan.FromSeconds(lifetimeSeconds);
             }));
+        }
+
+        [Theory]
+        [DisplayName("AddOAuth2AppRelay accepts the application redirect URIs that OAuth2Options.IsAppRedirectUri accepts")]
+        [InlineData("https://app.example.com/signin")]
+        [InlineData("com.example.app:/signin?source=app")]
+        [InlineData("msauth://com.example.app/2jmj7l5rSw0yVb%2FvlWAYkK%2FYBwk%3D")]
+        [InlineData("line3rdp.com.example.app://auth")]
+        [InlineData("fb1234567890://authorize")]
+        public void AddOAuth2AppRelay_AppRedirectUri_IsAccepted(string appRedirectUri)
+        {
+            Assert.True(OAuth2Options.IsAppRedirectUri(appRedirectUri));
+
+            new ServiceCollection().AddOAuth2AppRelay(options => options.AppRedirectUris.Add(appRedirectUri));
         }
 
         [Fact]

@@ -1,1 +1,2 @@
 #nullable enable
+static Polhem.OAuth2.OAuth2Options.IsAppRedirectUri(string? redirectUri) -> bool

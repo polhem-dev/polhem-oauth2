@@ -12,8 +12,8 @@ namespace Polhem.OAuth2.AspNetCore
         /// <c>com.example.app:/signin</c>. A requested URI must equal one of them exactly.
         /// </summary>
         /// <remarks>
-        /// Each URI must be an absolute https URI or a custom scheme URI without a fragment, the same rule that
-        /// <see cref="AppOAuth2Client"/> applies to its redirect URI.
+        /// Each URI must pass <see cref="OAuth2Options.IsAppRedirectUri"/>, the rule that <see cref="AppOAuth2Client"/> applies
+        /// to its redirect URI.
         /// </remarks>
         public IList<string> AppRedirectUris { get; } = [];
 

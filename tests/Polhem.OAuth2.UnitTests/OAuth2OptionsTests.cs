@@ -132,6 +132,40 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("https://login.microsoftonline.com/common/oauth2/v2.0/token", options.TokenEndpoint);
         }
 
+        [Theory]
+        [DisplayName("IsAppRedirectUri accepts https and custom scheme URIs, including schemes without a period")]
+        [InlineData("https://app.example.com/oauth2redirect")]
+        [InlineData("com.example.app:/oauth2redirect")]
+        [InlineData("com.example.app:/oauth2redirect?source=app")]
+        [InlineData("com.googleusercontent.apps.123-abc:/oauthredirect")]
+        [InlineData("msauth://com.example.app/2jmj7l5rSw0yVb%2FvlWAYkK%2FYBwk%3D")]
+        [InlineData("msauth.com.example.app://auth")]
+        [InlineData("line3rdp.com.example.app://auth")]
+        [InlineData("fb1234567890://authorize")]
+        public void IsAppRedirectUri_AppRedirectUri_ReturnsTrue(string redirectUri)
+        {
+            Assert.True(OAuth2Options.IsAppRedirectUri(redirectUri));
+        }
+
+        [Theory]
+        [DisplayName("IsAppRedirectUri rejects null, http, script, data and file URIs, relative URIs and URIs with a fragment")]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("http://app.example.com/oauth2redirect")]
+        [InlineData("http://127.0.0.1:53682/callback")]
+        [InlineData("HTTP://app.example.com/oauth2redirect")]
+        [InlineData("javascript:alert(1)")]
+        [InlineData("JavaScript:alert(1)")]
+        [InlineData("data:text/html,x")]
+        [InlineData("file:///tmp/callback")]
+        [InlineData("/oauth2redirect")]
+        [InlineData("oauth2redirect")]
+        [InlineData("com.example.app:/oauth2redirect#fragment")]
+        public void IsAppRedirectUri_OtherValue_ReturnsFalse(string? redirectUri)
+        {
+            Assert.False(OAuth2Options.IsAppRedirectUri(redirectUri));
+        }
+
         [Fact]
         [DisplayName("Facebook uses the same Graph API version for every endpoint")]
         public void Facebook_Endpoints_ShareGraphApiVersion()

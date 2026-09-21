@@ -7,6 +7,12 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ## [Unreleased]
 
+### Added
+
+- `OAuth2Options.IsAppRedirectUri` checks whether a redirect URI can return a sign-in to an application. It is the rule that
+  `AppOAuth2Client` already applied, and the back-end relay of Polhem.OAuth2.AspNetCore now calls it for
+  `OAuth2AppRelayOptions.AppRedirectUris` instead of repeating it.
+
 ### Fixed
 
 - An error from the token endpoint of Facebook becomes an `OAuth2Exception`, as for every other provider. Facebook reports a

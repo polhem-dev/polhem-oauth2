@@ -5,10 +5,6 @@ namespace Polhem.OAuth2.AspNetCore
     /// </summary>
     internal sealed class AppRelaySettings
     {
-        // Schemes an application redirect URI cannot use, as in OAuth2Options.IsAppRedirectUri of the core package, which
-        // this package does not call because it accepts any later version of the core package (ADR-005).
-        private static readonly HashSet<string> s_nonAppSchemes = new(StringComparer.Ordinal) { "http", "javascript", "data", "file" };
-
         private readonly HashSet<string> _appRedirectUris;
 
         private AppRelaySettings(HashSet<string> appRedirectUris, TimeSpan codeLifetime)
@@ -36,7 +32,7 @@ namespace Polhem.OAuth2.AspNetCore
                 throw new ArgumentException("Register at least one application redirect URI.", nameof(options));
             foreach (string uri in options.AppRedirectUris)
             {
-                if (!IsAppRedirectUri(uri))
+                if (!OAuth2Options.IsAppRedirectUri(uri))
                     throw new ArgumentException($"'{uri}' is not an absolute https URI or custom scheme URI without a fragment.", nameof(options));
             }
             if (options.CodeLifetime <= TimeSpan.Zero)
@@ -53,14 +49,6 @@ namespace Polhem.OAuth2.AspNetCore
         public bool IsRegistered(string appRedirectUri)
         {
             return _appRedirectUris.Contains(appRedirectUri);
-        }
-
-        private static bool IsAppRedirectUri(string? value)
-        {
-            return value is not null
-                && value.IndexOf('#') < 0
-                && Uri.TryCreate(value, UriKind.Absolute, out var uri)
-                && !s_nonAppSchemes.Contains(uri.Scheme);
         }
     }
 }
