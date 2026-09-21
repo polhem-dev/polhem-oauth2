@@ -13,6 +13,10 @@ namespace Polhem.OAuth2.AspNetCore
     {
         private const string RelayCacheKeyPrefix = "Polhem.OAuth2.AppRelay.";
 
+        // Keeps a protected relay entry apart from other data protected with the same keys. The version changes when the
+        // format changes in a way that an earlier version cannot read.
+        private const string RelayProtectionPurpose = "Polhem.OAuth2.AppRelayEntry.v1";
+
         // RFC 7636: an S256 challenge of 32 random bytes is 43 base64url characters, and a verifier has 43 to 128 characters.
         private const int CodeChallengeLength = 43;
         private const int MinCodeVerifierLength = 43;
@@ -70,7 +74,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// </summary>
         /// <param name="context">The HTTP context of the callback request, after <see cref="CompleteAuthorizationAsync"/>.</param>
         /// <param name="result">The result that <see cref="CompleteAuthorizationAsync"/> returned for this request.</param>
-        /// <param name="cancellationToken">Cancels storing the code.</param>
+        /// <param name="cancellationToken">Cancels storing the code. It is also canceled when the callback request is aborted.</param>
         /// <returns>
         /// True if the sign-in was relayed and the response now redirects to the application; false for a web sign-in, whose
         /// response is left unchanged.
@@ -84,9 +88,16 @@ namespace Polhem.OAuth2.AspNetCore
         /// A callback whose sign-in cookie is missing or altered cannot be recognized as relayed, so it is handled as a web
         /// sign-in and this method returns false.
         /// </para>
+        /// <para>
+        /// The user information is kept in the cache protected with ASP.NET Core data protection, so reading the cache does
+        /// not reveal it, and an entry written by anyone without the keys is not redeemed.
+        /// </para>
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="result"/> is null.</exception>
-        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// The relay is not registered, or the sign-in names an application redirect URI that is no longer registered.
+        /// </exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
         public async Task<bool> RedirectToAppAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
         {
             if (context is null)
@@ -98,6 +109,10 @@ namespace Polhem.OAuth2.AspNetCore
 
             context.Items.Remove(s_appSignInKey);
             var relay = RequireRelay();
+            // The cookie is protected, so the URI was registered when the sign-in started. It may have been removed since.
+            if (!relay.IsRegistered(signIn.AppRedirectUri))
+                throw new InvalidOperationException("The sign-in was started with an application redirect URI that is no longer registered with the relay.");
+
             string separator = signIn.AppRedirectUri.IndexOf('?') >= 0 ? "&" : "?";
 
             if (!result.IsSuccess || result.UserInfo is null)
@@ -109,10 +124,12 @@ namespace Polhem.OAuth2.AspNetCore
             }
 
             string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-            byte[] entry = SerializeRelayEntry(signIn, result.UserInfo, DateTimeOffset.UtcNow + relay.CodeLifetime);
-            await _relayCache!.SetAsync(
-                GetRelayCacheKey(code), entry, new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = relay.CodeLifetime }, cancellationToken)
-                .ConfigureAwait(false);
+            byte[] entry = _relayProtector.Protect(SerializeRelayEntry(signIn, result.UserInfo, DateTimeOffset.UtcNow + relay.CodeLifetime));
+            var entryOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = relay.CodeLifetime };
+            using (var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.RequestAborted))
+            {
+                await _relayCache!.SetAsync(GetRelayCacheKey(code), entry, entryOptions, requestCancellation.Token).ConfigureAwait(false);
+            }
 
             context.Response.Redirect(signIn.AppRedirectUri + separator + "code=" + code);
             return true;
@@ -127,7 +144,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <param name="cancellationToken">Cancels the cache requests.</param>
         /// <returns>
         /// The user information, or null when the code is unknown, expired or already redeemed, belongs to another client,
-        /// or the verifier does not match.
+        /// the verifier does not match, or the entry in the cache was not protected with the keys of this application.
         /// </returns>
         /// <remarks>
         /// <para>
@@ -165,7 +182,15 @@ namespace Polhem.OAuth2.AspNetCore
                 return null;
             await _relayCache.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
 
-            return ReadRelayEntry(entry, clientName, codeVerifier, DateTimeOffset.UtcNow);
+            try
+            {
+                return ReadRelayEntry(_relayProtector.Unprotect(entry), clientName, codeVerifier, DateTimeOffset.UtcNow);
+            }
+            catch (CryptographicException)
+            {
+                // Not written by this application with the current keys, so not an entry that can be redeemed.
+                return null;
+            }
         }
 
         private AppRelaySettings RequireRelay()
@@ -175,7 +200,8 @@ namespace Polhem.OAuth2.AspNetCore
                 : throw new InvalidOperationException("The application relay is not registered. Call AddOAuth2AppRelay.");
         }
 
-        // The cache holds a hash of the code, so a reader of the cache cannot learn a code that can be redeemed.
+        // The cache holds a hash of the code, so a reader of the cache cannot learn a code that can be redeemed. The entry
+        // itself is protected, which keeps the user information from that reader.
         private static string GetRelayCacheKey(string code)
         {
             return RelayCacheKeyPrefix + WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(code)));

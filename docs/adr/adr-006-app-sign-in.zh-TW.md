@@ -5,7 +5,7 @@
 ## 狀態
 
 已採納（2026-09-19）。2026-09-19 實作完成；以函式庫登入的結果見「實測結果」。
-2026-09-21 修訂：回呼網址的規則改為公開，後端中轉改為呼叫它，不再複寫一份。
+2026-09-21 修訂：回呼網址的規則改為公開，後端中轉改為呼叫它，不再複寫一份；中轉會保護它的快取資料，並在把登入結果送回時再確認一次應用程式回呼網址。
 
 ## 背景
 
@@ -95,6 +95,11 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 - `OAuth2Manager.RedeemAppCodeAsync(clientName, code, codeVerifier, cancellationToken)` 在代碼存在、未過期、屬於該 client，
   且 verifier 與存下的 challenge 相符時回傳使用者資訊，並移除這個代碼；否則回傳 null。
 - 中轉代碼存放在 `IDistributedCache`：單台伺服器用記憶體快取，多台伺服器接收回呼時改用分散式快取。套件不另設自己的儲存抽象層。
+  每筆資料都以 ASP.NET Core data protection 保護，使用自己的 purpose，因此不需要信任快取：讀得到快取也看不到使用者資訊，
+  沒有金鑰的人寫進去的資料也不會被兌換。資料的 key 是代碼的雜湊。
+- `RedirectToAppAsync` 會再確認一次這次登入的應用程式回呼網址仍然有註冊，因為登入開始之後它可能已被移除。沒有註冊時擲出
+  `InvalidOperationException`，與登入 cookie 裡的 client 已不再註冊的情況相同（ADR-003），而且不會導向。回呼請求中斷時它會停止，
+  與 `CompleteAuthorizationAsync` 一致。
 - 導回應用程式的網址與兌換的回應，都不帶任何 provider token。
 
 ### .NET 10 的平台對照
@@ -159,6 +164,8 @@ Mac Catalyst 的 loopback 結果來自實測應用程式裡自寫的監聽程式
   verifier 才能兌換。
 - `IDistributedCache` 沒有原子性的「讀取並移除」。同一個代碼的兩個兌換請求若同時抵達，可能都會成功；
   但兩者都需要發起登入的應用程式所持有的 verifier。
-- 每台可能接收中轉回呼的伺服器，都必須共用 data protection 金鑰環（同 ADR-005）與中轉快取。
+- 每台可能接收中轉回呼的伺服器，都必須共用 data protection 金鑰環（同 ADR-005）與中轉快取。金鑰環同時保護中轉快取裡的資料。
+- 1.1.0 沒有保護這些資料。兩個版本的伺服器共用同一個快取的期間，一個版本發出的代碼不會被另一個版本兌換，應用程式需要重新登入；
+  影響的時間長度就是一個代碼的效期。
 - 中轉登入與網頁登入一樣，必須在 HTTPS 頁面開始與結束，並在登入 cookie 的效期內完成。
 - 新增的 API 寫進 `PublicAPI.Unshipped.txt`；public API analyzer 用來比對既有 API 的 `PublicAPI.Shipped.txt` 不會變動。

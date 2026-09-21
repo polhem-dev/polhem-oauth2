@@ -28,6 +28,7 @@ namespace Polhem.OAuth2.AspNetCore
     {
         private readonly Dictionary<string, OAuth2Client> _clients;
         private readonly IDataProtector _protector;
+        private readonly IDataProtector _relayProtector;
         private readonly AppRelaySettings? _relay;
         private readonly IDistributedCache? _relayCache;
 
@@ -39,6 +40,7 @@ namespace Polhem.OAuth2.AspNetCore
         {
             _clients = registrations.ToDictionary(registration => registration.Name, registration => registration.Client, StringComparer.Ordinal);
             _protector = dataProtectionProvider.CreateProtector(PendingAuthorizationCookie.ProtectionPurpose);
+            _relayProtector = dataProtectionProvider.CreateProtector(RelayProtectionPurpose);
             _relay = relay;
             _relayCache = relayCache;
         }

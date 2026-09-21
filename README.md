@@ -183,7 +183,7 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
   user information, or null. The back end then issues the application's own session; the provider's tokens stay on the
   back end.
 - The codes are kept in `IDistributedCache`. With several servers, use a distributed cache and share the data protection
-  keys, as for web sign-ins.
+  keys, as for web sign-ins. The keys also protect the user information that the cache holds until the code is redeemed.
 - The [OAuthAspNetCore](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthAspNetCore) and
   [OAuthMaui](https://github.com/polhem-dev/polhem-oauth2/tree/main/samples/OAuthMaui) samples show both sides.
 

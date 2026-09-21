@@ -63,8 +63,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <returns>The service collection.</returns>
         /// <remarks>
         /// Relay codes are kept in <see cref="IDistributedCache"/>. When several servers receive callbacks, register a
-        /// distributed cache that they share, as well as a shared data protection key ring. The options are validated and
-        /// copied by this call.
+        /// distributed cache that they share, as well as a shared data protection key ring, which also protects the user
+        /// information in the cache. The options are validated and copied by this call.
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="services"/> or <paramref name="configure"/> is null.</exception>
         /// <exception cref="ArgumentException">

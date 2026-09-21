@@ -13,11 +13,24 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
   `AppOAuth2Client` already applied, and the back-end relay of Polhem.OAuth2.AspNetCore now calls it for
   `OAuth2AppRelayOptions.AppRedirectUris` instead of repeating it.
 
+### Changed
+
+- `OAuth2Manager.RedirectToAppAsync` throws `InvalidOperationException` when the sign-in names an application redirect URI
+  that is no longer in `OAuth2AppRelayOptions.AppRedirectUris`, instead of redirecting to it. It also stops when the callback
+  request is aborted, as `CompleteAuthorizationAsync` does, so passing `HttpContext.RequestAborted` is no longer needed.
+
 ### Fixed
 
 - An error from the token endpoint of Facebook becomes an `OAuth2Exception`, as for every other provider. Facebook reports a
   Graph API error object, which was read as a response without an error code and thrown as an `HttpRequestException`. `Error`
   holds the numeric code of the Graph API error, and `ErrorDescription` its message.
+
+### Security
+
+- The back-end relay protects its entries in `IDistributedCache` with ASP.NET Core data protection. Version 1.1.0 stored the
+  user information of a relayed sign-in unprotected until the code was redeemed, and trusted whatever the cache returned, so
+  the cache had to be as trusted as the application. While servers of both versions share a cache, a code issued by one version
+  is not redeemed by the other.
 
 ## [1.1.0] - 2026-09-19
 

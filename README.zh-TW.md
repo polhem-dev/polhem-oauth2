@@ -166,6 +166,7 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
 - 應用程式把 code 與它的 verifier POST 給後端，後端以 `oauth2Manager.RedeemAppCodeAsync` 取得使用者資訊，或得到 null。
   接著由後端發給應用程式自己的 session；provider 的 token 留在後端。
 - code 存在 `IDistributedCache`。有多台伺服器時，改用分散式快取並共用 data protection 金鑰，跟網頁登入一樣。
+  code 兌換之前，快取裡的使用者資訊也由這組金鑰保護。
 - [OAuthAspNetCore](samples/OAuthAspNetCore) 與 [OAuthMaui](samples/OAuthMaui) 兩個 sample 示範了兩端的寫法。
 
 ## ASP.NET Core

@@ -5,7 +5,8 @@
 ## Status
 
 Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with the library are under "Test results".
-Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it.
+Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it; the relay
+protects its cache entries, and checks the application redirect URI again when it returns the sign-in.
 
 ## Context
 
@@ -111,7 +112,13 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
   the code exists, has not expired, belongs to the client, and the verifier matches the stored challenge, and removes the
   code. Otherwise it returns null.
 - Relay codes are stored in `IDistributedCache`: the in-memory cache for a single server, a distributed cache when several
-  servers receive callbacks. No storage abstraction of the package's own is added.
+  servers receive callbacks. No storage abstraction of the package's own is added. An entry is protected with ASP.NET Core
+  data protection, under a purpose of its own, so the cache is not trusted: reading it does not reveal the user information,
+  and an entry written without the keys is not redeemed. The key of an entry is a hash of the code.
+- `RedirectToAppAsync` checks again that the application redirect URI of the sign-in is registered, because it may have been
+  removed since the sign-in started. If it is not, the method throws `InvalidOperationException`, like a sign-in cookie that
+  names a client that is no longer registered (ADR-003), and does not redirect. It stops when the callback request is
+  aborted, as `CompleteAuthorizationAsync` does.
 - Neither the redirect to the application nor the redeem response carries a provider token.
 
 ### Platforms on .NET 10
@@ -182,7 +189,9 @@ Android on an emulator with Android 15.
 - `IDistributedCache` has no atomic read-and-remove. Two redeem requests for the same code that arrive at the same moment
   could both succeed; both need the verifier of the application that started the sign-in.
 - Every server that can receive a relayed callback must share the data protection key ring, as in ADR-005, and the relay
-  cache.
+  cache. The key ring also protects the entries of the relay cache.
+- Version 1.1.0 did not protect the entries. While servers of both versions share a cache, a code issued by one version is
+  not redeemed by the other, and the application has to sign in again. That lasts for the lifetime of a code.
 - A relayed sign-in, like a web sign-in, must start and end on HTTPS pages and complete within the lifetime of the pending
   sign-in cookie.
 - The additions go into `PublicAPI.Unshipped.txt`; `PublicAPI.Shipped.txt`, which the public API analyzer checks the

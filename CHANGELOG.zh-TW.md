@@ -12,10 +12,22 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - `OAuth2Options.IsAppRedirectUri`：檢查一個回呼網址能否把登入結果送回應用程式。這就是 `AppOAuth2Client` 原本套用的規則；
   Polhem.OAuth2.AspNetCore 的後端中轉現在對 `OAuth2AppRelayOptions.AppRedirectUris` 呼叫它，不再複寫一份。
 
+### 變更
+
+- 登入所指的應用程式回呼網址已不在 `OAuth2AppRelayOptions.AppRedirectUris` 裡時，`OAuth2Manager.RedirectToAppAsync` 擲出
+  `InvalidOperationException`，不再導向該網址。回呼請求中斷時它也會停止，與 `CompleteAuthorizationAsync` 一致，
+  因此不需要再傳入 `HttpContext.RequestAborted`。
+
 ### 修正
 
 - Facebook 的 token 端點回傳的錯誤，與其他 provider 一樣成為 `OAuth2Exception`。Facebook 回傳的是 Graph API 的錯誤物件，
   先前被當成沒有錯誤代碼的回應，擲出 `HttpRequestException`。`Error` 是 Graph API 錯誤的數字代碼，`ErrorDescription` 是它的訊息。
+
+### 安全性
+
+- 後端中轉以 ASP.NET Core data protection 保護它存進 `IDistributedCache` 的資料。1.1.0 在代碼兌換之前，把中轉登入的使用者資訊
+  未加保護地存在快取裡，並且信任快取回傳的任何內容，因此快取必須跟應用程式本身一樣可信。兩個版本的伺服器共用同一個快取的期間，
+  一個版本發出的代碼不會被另一個版本兌換。
 
 ## [1.1.0] - 2026-09-19
 

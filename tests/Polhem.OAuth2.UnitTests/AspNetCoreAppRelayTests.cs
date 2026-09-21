@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Net;
+using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
@@ -246,6 +247,88 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("The cache holds the user information protected, so reading the cache does not reveal it")]
+        public async Task RelayedSignIn_CacheValue_DoesNotRevealUserInformation()
+        {
+            var cache = new DictionaryCache();
+            var (manager, _) = CreateManager(SuccessfulProvider(), cache: cache);
+            var (verifier, challenge) = CreateChallenge();
+
+            var callback = await CompleteRelayedSignInAsync(manager, AppRedirectUri, challenge, "code=abc");
+
+            string value = Encoding.UTF8.GetString(Assert.Single(cache.Values));
+            Assert.DoesNotContain("user@example.com", value, StringComparison.Ordinal);
+            Assert.DoesNotContain("user-1", value, StringComparison.Ordinal);
+            Assert.DoesNotContain(challenge, value, StringComparison.Ordinal);
+            var user = await manager.RedeemAppCodeAsync("Google", LoopbackTestHttp.GetQueryValue(callback.Location, "code")!, verifier);
+            Assert.Equal("user@example.com", user?.Email);
+        }
+
+        [Fact]
+        [DisplayName("RedeemAppCodeAsync does not redeem an entry that someone wrote to the cache without the keys, and removes it")]
+        public async Task RedeemAppCodeAsync_ForgedEntry_ReturnsNull()
+        {
+            var cache = new DictionaryCache();
+            var (manager, _) = CreateManager(SuccessfulProvider(), cache: cache);
+            var (verifier, challenge) = CreateChallenge();
+            var callback = await CompleteRelayedSignInAsync(manager, AppRedirectUri, challenge, "code=abc");
+            string code = LoopbackTestHttp.GetQueryValue(callback.Location, "code")!;
+            long expiresAt = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeMilliseconds();
+            string forged = $$"""{"client":"Google","challenge":"{{challenge}}","expiresAt":{{expiresAt}},"userId":"someone-else","raw":"{}"}""";
+            cache.Set(Assert.Single(cache.Keys), Encoding.UTF8.GetBytes(forged), new DistributedCacheEntryOptions());
+
+            Assert.Null(await manager.RedeemAppCodeAsync("Google", code, verifier));
+            Assert.Empty(cache.Keys);
+        }
+
+        [Theory]
+        [DisplayName("RedirectToAppAsync throws when the sign-in names an application redirect URI that is no longer registered, and does not redirect to it")]
+        [InlineData("code=abc")]
+        [InlineData("error=access_denied")]
+        public async Task RedirectToAppAsync_AppRedirectUriNoLongerRegistered_ThrowsInvalidOperationException(string parameters)
+        {
+            var dataProtection = new EphemeralDataProtectionProvider();
+            var cache = new DictionaryCache();
+            var (before, _) = CreateManager(new StubHttpMessageHandler(), dataProtection: dataProtection);
+            var (after, _) = CreateManager(
+                SuccessfulProvider(),
+                options =>
+                {
+                    options.AppRedirectUris.Clear();
+                    options.AppRedirectUris.Add(OtherAppRedirectUri);
+                },
+                cache,
+                dataProtection);
+            var start = StartRelayedSignIn(before, AppRedirectUri, CreateChallenge().Challenge);
+            var context = CreateContext("?" + parameters + "&state=" + start.State, start.Cookie);
+            var result = await after.CompleteAuthorizationAsync(context);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => after.RedirectToAppAsync(context, result));
+
+            Assert.Empty(context.Response.Headers.Location.ToString());
+            Assert.Empty(cache.Keys);
+        }
+
+        [Fact]
+        [DisplayName("RedirectToAppAsync stops storing the code when the request is aborted, without a token from the caller")]
+        public async Task RedirectToAppAsync_RequestAborted_ThrowsOperationCanceledException()
+        {
+            var cache = new DictionaryCache();
+            var (manager, _) = CreateManager(SuccessfulProvider(), cache: cache);
+            var start = StartRelayedSignIn(manager, AppRedirectUri, CreateChallenge().Challenge);
+            var context = CreateContext("?code=abc&state=" + start.State, start.Cookie);
+            var result = await manager.CompleteAuthorizationAsync(context);
+            using var aborted = new CancellationTokenSource();
+            context.RequestAborted = aborted.Token;
+            await aborted.CancelAsync();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => manager.RedirectToAppAsync(context, result));
+
+            Assert.Empty(cache.Keys);
+            Assert.Empty(context.Response.Headers.Location.ToString());
+        }
+
+        [Fact]
         [DisplayName("A relayed sign-in that the provider refused returns its error code to the application, without a code")]
         public async Task RelayedSignIn_ProviderError_RedirectsWithError()
         {
@@ -355,7 +438,8 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         private static (OAuth2Manager Manager, IServiceProvider Services) CreateManager(
-            StubHttpMessageHandler handler, Action<OAuth2AppRelayOptions>? configure = null, IDistributedCache? cache = null)
+            StubHttpMessageHandler handler, Action<OAuth2AppRelayOptions>? configure = null, IDistributedCache? cache = null,
+            IDataProtectionProvider? dataProtection = null)
         {
             var services = new ServiceCollection();
             if (cache is not null)
@@ -367,7 +451,7 @@ namespace Polhem.OAuth2.UnitTests
                 configure?.Invoke(options);
             });
             // Registered last, so the manager uses keys in memory instead of the key ring that AddDataProtection keeps on disk.
-            services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+            services.AddSingleton(dataProtection ?? new EphemeralDataProtectionProvider());
             var provider = services.BuildServiceProvider();
             return (provider.GetRequiredService<OAuth2Manager>(), provider);
         }
@@ -394,13 +478,16 @@ namespace Polhem.OAuth2.UnitTests
         private sealed record RelayCallback(bool Relayed, string Location);
 
         /// <summary>
-        /// A distributed cache that ignores expiration, so that the relay's own expiry check is tested, and that exposes its keys.
+        /// A distributed cache that ignores expiration, so that the relay's own expiry check is tested, that exposes its
+        /// entries, and that observes the cancellation token as a cache on the network does.
         /// </summary>
         private sealed class DictionaryCache : IDistributedCache
         {
             private readonly Dictionary<string, byte[]> _entries = new(StringComparer.Ordinal);
 
             public IReadOnlyCollection<string> Keys => _entries.Keys;
+
+            public IReadOnlyCollection<byte[]> Values => _entries.Values;
 
             public byte[]? Get(string key) => _entries.TryGetValue(key, out var value) ? value : null;
 
@@ -424,6 +511,7 @@ namespace Polhem.OAuth2.UnitTests
 
             public Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default)
             {
+                token.ThrowIfCancellationRequested();
                 Set(key, value, options);
                 return Task.CompletedTask;
             }
