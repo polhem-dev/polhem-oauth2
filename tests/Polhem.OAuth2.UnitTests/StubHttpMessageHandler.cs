@@ -25,6 +25,20 @@ namespace Polhem.OAuth2.UnitTests
             return this;
         }
 
+        /// <summary>
+        /// Queues a response, and runs an action when the request that it answers arrives, so that a test can observe what
+        /// had already happened by then.
+        /// </summary>
+        public StubHttpMessageHandler Respond(HttpStatusCode statusCode, string body, Action whenRequested)
+        {
+            _responses.Enqueue(_ =>
+            {
+                whenRequested();
+                return Task.FromResult(new HttpResponseMessage(statusCode) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+            });
+            return this;
+        }
+
         public StubHttpMessageHandler Fail(Exception exception)
         {
             _responses.Enqueue(_ => Task.FromException<HttpResponseMessage>(exception));

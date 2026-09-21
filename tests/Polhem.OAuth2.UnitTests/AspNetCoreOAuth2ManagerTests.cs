@@ -119,6 +119,47 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("CompleteAuthorizationAsync removes the sign-in cookie before it sends the token request")]
+        public async Task CompleteAuthorizationAsync_TokenRequest_IsSentAfterCookieRemoval()
+        {
+            DefaultHttpContext? callback = null;
+            string?[] removedWhenRequested = [];
+            var handler = new StubHttpMessageHandler()
+                .Respond(
+                    HttpStatusCode.OK,
+                    """{"access_token":"access"}""",
+                    () => removedWhenRequested = callback!.Response.GetTypedHeaders().SetCookie.Select(cookie => cookie.Name.Value).ToArray())
+                .Respond(HttpStatusCode.OK, """{"sub":"1","name":"Ada"}""");
+            var manager = CreateManager(handler);
+            var signIn = StartSignIn(manager, "Google");
+            callback = CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie);
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(signIn.CookieName, Assert.Single(removedWhenRequested));
+        }
+
+        [Theory]
+        [DisplayName("CompleteAuthorizationAsync removes the sign-in cookie when the sign-in fails, after an error redirect or an error from the token endpoint")]
+        [InlineData("error=access_denied")]
+        [InlineData("code=abc")]
+        public async Task CompleteAuthorizationAsync_FailedSignIn_StillRemovesCookie(string parameters)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
+            var manager = CreateManager(handler);
+            var signIn = StartSignIn(manager, "Google");
+            var callback = CreateContext($"?{parameters}&state={signIn.State}", signIn.Cookie);
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            var removal = Assert.Single(callback.Response.GetTypedHeaders().SetCookie);
+            Assert.Equal(signIn.CookieName, removal.Name.Value);
+            Assert.True(removal.Expires < DateTimeOffset.UtcNow);
+        }
+
+        [Fact]
         [DisplayName("Two sign-ins started in the same browser do not affect each other")]
         public async Task CompleteAuthorizationAsync_TwoPendingSignIns_CompletesTheOneThatReturns()
         {

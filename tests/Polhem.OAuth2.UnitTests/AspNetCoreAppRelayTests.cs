@@ -116,6 +116,33 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("A relayed sign-in sends the provider the PKCE values of the web client, not the code challenge of the application")]
+        public async Task RelayedSignIn_ProviderRequests_UseWebClientPkce()
+        {
+            var handler = SuccessfulProvider();
+            var (manager, _) = CreateManager(handler);
+            var (appVerifier, appChallenge) = CreateChallenge();
+            var start = CreateContext();
+
+            manager.RedirectToAppAuthorization(start, "Google", AppRedirectUri, appChallenge);
+
+            string location = start.Response.Headers.Location.ToString();
+            string? providerChallenge = LoopbackTestHttp.GetQueryValue(location, "code_challenge");
+            Assert.NotNull(providerChallenge);
+            Assert.NotEqual(appChallenge, providerChallenge);
+            Assert.DoesNotContain(appChallenge, location, StringComparison.Ordinal);
+
+            var cookie = Assert.Single(start.Response.GetTypedHeaders().SetCookie);
+            var callback = await FinishRelayedSignInAsync(
+                manager, new RelayStart(LoopbackTestHttp.GetQueryValue(location, "state")!, $"{cookie.Name}={cookie.Value}"), "code=abc");
+
+            Assert.True(callback.Relayed);
+            string providerVerifier = handler.Requests[0].FormValue("code_verifier")!;
+            Assert.NotEqual(appVerifier, providerVerifier);
+            Assert.Equal(providerChallenge, Pkce.GenerateCodeChallenge(providerVerifier));
+        }
+
+        [Fact]
         [DisplayName("A relayed sign-in returns a code to the application, which redeems it once for the user information")]
         public async Task RelayedSignIn_Success_RedeemsCodeOnce()
         {

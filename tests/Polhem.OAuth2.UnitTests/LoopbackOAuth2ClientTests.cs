@@ -216,6 +216,24 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("SignInAsync lets an exception from OpenBrowser propagate, and the client can sign in again afterwards")]
+        public async Task SignInAsync_OpenBrowserThrows_PropagatesAndEndsSignIn()
+        {
+            var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
+            {
+                OpenBrowser = _ => Task.FromException(new InvalidOperationException("no browser"))
+            };
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => client.SignInAsync());
+
+            Assert.Equal("no browser", ex.Message);
+            using var canceled = new CancellationTokenSource();
+            canceled.Cancel();
+            var next = await client.SignInAsync(canceled.Token);
+            Assert.IsAssignableFrom<OperationCanceledException>(next.Exception);
+        }
+
+        [Fact]
         [DisplayName("SignInAsync refuses to start a second sign-in on the same client")]
         public async Task SignInAsync_WhileInProgress_ThrowsInvalidOperationException()
         {

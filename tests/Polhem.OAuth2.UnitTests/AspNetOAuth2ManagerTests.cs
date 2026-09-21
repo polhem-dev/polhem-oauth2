@@ -96,6 +96,45 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("CompleteAuthorizationAsync removes the sign-in cookie before it sends the token request")]
+        public async Task CompleteAuthorizationAsync_TokenRequest_IsSentAfterCookieRemoval()
+        {
+            FakeHttpContext? callback = null;
+            var removedWhenRequested = new List<string>();
+            var handler = new StubHttpMessageHandler()
+                .Respond(
+                    HttpStatusCode.OK,
+                    """{"access_token":"access"}""",
+                    () => removedWhenRequested.AddRange(GetCookies(callback!.Response.Cookies).Select(cookie => cookie.Name)))
+                .Respond(HttpStatusCode.OK, """{"sub":"1","name":"Ada"}""");
+            var signIn = StartSignIn(RegisterClient(handler));
+            callback = new FakeHttpContext($"code=abc&state={signIn.State}", signIn.Cookie);
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(callback);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(signIn.Cookie.Name, Assert.Single(removedWhenRequested));
+        }
+
+        [Theory]
+        [DisplayName("CompleteAuthorizationAsync removes the sign-in cookie when the sign-in fails, after an error redirect or an error from the token endpoint")]
+        [InlineData("error=access_denied")]
+        [InlineData("code=abc")]
+        public async Task CompleteAuthorizationAsync_FailedSignIn_StillRemovesCookie(string parameters)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
+            var signIn = StartSignIn(RegisterClient(handler));
+            var callback = new FakeHttpContext($"{parameters}&state={signIn.State}", signIn.Cookie);
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(callback);
+
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            var removal = Assert.Single(GetCookies(callback.Response.Cookies));
+            Assert.Equal(signIn.Cookie.Name, removal.Name);
+            Assert.True(removal.Expires < DateTime.UtcNow);
+        }
+
+        [Fact]
         [DisplayName("CompleteAuthorizationAsync exchanges the code with the kept values and removes the sign-in cookie")]
         public async Task CompleteAuthorizationAsync_MatchingCookie_ReturnsSuccessAndRemovesCookie()
         {
