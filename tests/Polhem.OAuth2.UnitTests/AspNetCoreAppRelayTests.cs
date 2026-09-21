@@ -36,12 +36,14 @@ namespace Polhem.OAuth2.UnitTests
         {
             var services = new ServiceCollection();
 
-            Assert.Throws<ArgumentException>(() => services.AddOAuth2AppRelay(options =>
+            var exception = Assert.Throws<ArgumentException>(() => services.AddOAuth2AppRelay(options =>
             {
                 if (appRedirectUri is not null)
                     options.AppRedirectUris.Add(appRedirectUri);
                 options.CodeLifetime = TimeSpan.FromSeconds(lifetimeSeconds);
             }));
+
+            Assert.Equal("configure", exception.ParamName);
         }
 
         [Theory]
@@ -326,16 +328,57 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
-        [DisplayName("RedeemAppCodeAsync returns null for a malformed code or verifier")]
-        [InlineData("", "verifier")]
-        [InlineData("not base64url!", "verifier")]
-        [InlineData("code", "short")]
-        [InlineData("code", "has a space in the verifier, which RFC 7636 does not allow at all")]
-        public async Task RedeemAppCodeAsync_MalformedInput_ReturnsNull(string code, string verifier)
+        [DisplayName("RedeemAppCodeAsync returns null for a code that is not 43 base64url characters, without asking the cache")]
+        [InlineData("")]
+        [InlineData("not base64url!")]
+        [InlineData("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-c")]
+        [InlineData("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cMM")]
+        [InlineData("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw+cM")]
+        public async Task RedeemAppCodeAsync_MalformedCode_ReturnsNullWithoutCacheRead(string code)
         {
-            var (manager, _) = CreateManager(new StubHttpMessageHandler());
+            var cache = new DictionaryCache();
+            var (manager, _) = CreateManager(new StubHttpMessageHandler(), cache: cache);
 
-            Assert.Null(await manager.RedeemAppCodeAsync("Google", code, verifier));
+            Assert.Null(await manager.RedeemAppCodeAsync("Google", code, Pkce.GenerateCodeVerifier()));
+            Assert.Equal(0, cache.Reads);
+        }
+
+        [Theory]
+        [DisplayName("RedeemAppCodeAsync returns null for a verifier that RFC 7636 does not allow, and does not use up the code")]
+        [InlineData("short")]
+        [InlineData("has a space in the verifier, which RFC 7636 does not allow at all")]
+        [InlineData("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjX+")]
+        [InlineData("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+        public async Task RedeemAppCodeAsync_MalformedVerifier_ReturnsNullAndKeepsCode(string malformedVerifier)
+        {
+            var (manager, _) = CreateManager(SuccessfulProvider());
+            var (verifier, challenge) = CreateChallenge();
+            var callback = await CompleteRelayedSignInAsync(manager, AppRedirectUri, challenge, "code=abc");
+            string code = LoopbackTestHttp.GetQueryValue(callback.Location, "code")!;
+
+            Assert.Null(await manager.RedeemAppCodeAsync("Google", code, malformedVerifier));
+
+            Assert.Equal("user-1", (await manager.RedeemAppCodeAsync("Google", code, verifier))?.UserId);
+        }
+
+        [Fact]
+        [DisplayName("RedeemAppCodeAsync accepts a verifier of 128 characters with a period and a tilde, as RFC 7636 allows")]
+        public async Task RedeemAppCodeAsync_LongestVerifierWithUnreservedCharacters_ReturnsUser()
+        {
+            var (manager, _) = CreateManager(SuccessfulProvider());
+            string verifier = new string('a', 126) + ".~";
+            var callback = await CompleteRelayedSignInAsync(manager, AppRedirectUri, Pkce.GenerateCodeChallenge(verifier), "code=abc");
+
+            var user = await manager.RedeemAppCodeAsync("Google", LoopbackTestHttp.GetQueryValue(callback.Location, "code")!, verifier);
+
+            Assert.Equal("user-1", user?.UserId);
+        }
+
+        [Fact]
+        [DisplayName("The code lifetime is one minute by default, as the documentation of CodeLifetime says")]
+        public void CodeLifetime_Default_IsOneMinute()
+        {
+            Assert.Equal(TimeSpan.FromMinutes(1), new OAuth2AppRelayOptions().CodeLifetime);
         }
 
         [Fact]
@@ -598,7 +641,13 @@ namespace Polhem.OAuth2.UnitTests
 
             public List<DistributedCacheEntryOptions> Options { get; } = [];
 
-            public byte[]? Get(string key) => _entries.TryGetValue(key, out var value) ? value : null;
+            public int Reads { get; private set; }
+
+            public byte[]? Get(string key)
+            {
+                Reads++;
+                return _entries.TryGetValue(key, out var value) ? value : null;
+            }
 
             public Task<byte[]?> GetAsync(string key, CancellationToken token = default) => Task.FromResult(Get(key));
 

@@ -206,6 +206,24 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("secret", Assert.Single(handler.Requests).FormValue("client_secret"));
         }
 
+        [Theory]
+        [DisplayName("Of the providers, only Google receives a client secret that is set from a public client")]
+        [InlineData("Google", true)]
+        [InlineData("LINE", false)]
+        [InlineData("Azure", false)]
+        [InlineData("Facebook", false)]
+        [InlineData("Auth0", false)]
+        [InlineData("Okta", false)]
+        public async Task ExchangeCodeAsync_PublicClientWithSecret_SendsSecretOnlyToGoogle(string providerName, bool sendsSecret)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
+            var provider = CreateProvider(providerName, handler, clientSecret: "secret");
+
+            await provider.ExchangeCodeAsync("code", RedirectUri, "verifier", publicClient: true, CancellationToken.None);
+
+            Assert.Equal(sendsSecret ? "secret" : null, handler.Requests[0].FormValue("client_secret"));
+        }
+
         [Fact]
         [DisplayName("The token request omits the client secret and the code verifier when neither is set")]
         public async Task ExchangeCodeAsync_NoSecretNoVerifier_OmitsBoth()

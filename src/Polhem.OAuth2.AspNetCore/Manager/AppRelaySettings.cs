@@ -25,22 +25,23 @@ namespace Polhem.OAuth2.AspNetCore
         /// Validates and copies the options.
         /// </summary>
         /// <param name="options">The options.</param>
+        /// <param name="paramName">The name of the parameter of the caller that produced the options, for the exception.</param>
         /// <returns>The settings.</returns>
         /// <exception cref="ArgumentException">
         /// No application redirect URI is registered, one of them is not valid, or the code lifetime is not positive or is
         /// longer than 10 minutes.
         /// </exception>
-        public static AppRelaySettings Create(OAuth2AppRelayOptions options)
+        public static AppRelaySettings Create(OAuth2AppRelayOptions options, string paramName)
         {
             if (options.AppRedirectUris.Count == 0)
-                throw new ArgumentException("Register at least one application redirect URI.", nameof(options));
+                throw new ArgumentException("Register at least one application redirect URI.", paramName);
             foreach (string uri in options.AppRedirectUris)
             {
                 if (!OAuth2Options.IsAppRedirectUri(uri))
-                    throw new ArgumentException($"'{uri}' is not an absolute https URI or custom scheme URI without a fragment.", nameof(options));
+                    throw new ArgumentException($"'{uri}' is not an absolute https URI or custom scheme URI without a fragment.", paramName);
             }
             if (options.CodeLifetime <= TimeSpan.Zero || options.CodeLifetime > s_maxCodeLifetime)
-                throw new ArgumentException($"The code lifetime must be positive and at most {s_maxCodeLifetime.TotalMinutes:0} minutes.", nameof(options));
+                throw new ArgumentException($"The code lifetime must be positive and at most {s_maxCodeLifetime.TotalMinutes:0} minutes.", paramName);
 
             return new AppRelaySettings(new HashSet<string>(options.AppRedirectUris, StringComparer.Ordinal), options.CodeLifetime);
         }

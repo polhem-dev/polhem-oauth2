@@ -22,6 +22,10 @@ namespace Polhem.OAuth2.AspNetCore
         private const int MinCodeVerifierLength = 43;
         private const int MaxCodeVerifierLength = 128;
 
+        // A relay code is this many random bytes in base64url, which is always 43 characters.
+        private const int RelayCodeBytes = 32;
+        private const int RelayCodeLength = 43;
+
         // The cache ends the lifetime of a code, on its own clock. The time in the entry is checked as well, for a cache that
         // returns an entry it should have dropped, and that check tolerates a server whose clock runs ahead of the server
         // that issued the code, which would otherwise end the lifetime early.
@@ -69,7 +73,7 @@ namespace Polhem.OAuth2.AspNetCore
             if (!relay.IsRegistered(appRedirectUri))
                 throw new ArgumentException("The application redirect URI is not registered with the relay.", nameof(appRedirectUri));
             if (!IsCodeChallenge(codeChallenge))
-                throw new ArgumentException("The code challenge must be 43 base64url characters.", nameof(codeChallenge));
+                throw new ArgumentException($"The code challenge must be {CodeChallengeLength} base64url characters.", nameof(codeChallenge));
 
             context.Response.Redirect(StartSignIn(context, clientName, appRedirectUri, codeChallenge));
         }
@@ -131,6 +135,11 @@ namespace Polhem.OAuth2.AspNetCore
         /// sign-in and this method returns false.
         /// </para>
         /// <para>
+        /// When this method returns true, return from the callback without signing the user in to the web application. The
+        /// sign-in ran in a browser session that the application opened, which can share its cookies with the browser of the
+        /// device, so a session created there would sign the user in to the web application as well.
+        /// </para>
+        /// <para>
         /// The user information is kept in the cache protected with ASP.NET Core data protection, so reading the cache does
         /// not reveal it, and an entry written by anyone without the keys is not redeemed.
         /// </para>
@@ -165,7 +174,7 @@ namespace Polhem.OAuth2.AspNetCore
                 return true;
             }
 
-            string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+            string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(RelayCodeBytes));
             byte[] entry = _relayProtector.Protect(SerializeRelayEntry(signIn, result.UserInfo, _timeProvider.GetUtcNow() + relay.CodeLifetime));
             var entryOptions = new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = relay.CodeLifetime };
             using (var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.RequestAborted))
@@ -212,7 +221,7 @@ namespace Polhem.OAuth2.AspNetCore
                 throw new ArgumentNullException(nameof(codeVerifier));
             RequireRelay();
 
-            if (code.Length == 0 || code.Length > 256 || !Base64UrlText.IsBase64Url(code)
+            if (code.Length != RelayCodeLength || !Base64UrlText.IsBase64Url(code)
                 || codeVerifier.Length < MinCodeVerifierLength || codeVerifier.Length > MaxCodeVerifierLength || !IsCodeVerifier(codeVerifier))
             {
                 return null;

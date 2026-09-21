@@ -83,7 +83,7 @@ namespace Microsoft.Extensions.DependencyInjection
 
             var options = new OAuth2AppRelayOptions();
             configure(options);
-            services.AddSingleton(AppRelaySettings.Create(options));
+            services.AddSingleton(AppRelaySettings.Create(options, nameof(configure)));
             services.AddDistributedMemoryCache();
             return services;
         }

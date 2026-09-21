@@ -216,6 +216,18 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Timeout is 5 minutes by default, as its documentation says, and rejects a value that is not positive or is too long")]
+        public void Timeout_DefaultAndInvalidValues()
+        {
+            var client = new LoopbackOAuth2Client(CreateOptions());
+
+            Assert.Equal(TimeSpan.FromMinutes(5), client.Timeout);
+            Assert.Throws<ArgumentOutOfRangeException>(() => client.Timeout = TimeSpan.Zero);
+            Assert.Throws<ArgumentOutOfRangeException>(() => client.Timeout = TimeSpan.FromSeconds(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => client.Timeout = TimeSpan.FromMilliseconds((double)int.MaxValue + 1));
+        }
+
+        [Fact]
         [DisplayName("SignInAsync lets an exception from OpenBrowser propagate, and the client can sign in again afterwards")]
         public async Task SignInAsync_OpenBrowserThrows_PropagatesAndEndsSignIn()
         {
