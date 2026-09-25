@@ -40,10 +40,20 @@ jobs:
       - name: Test
         run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build
 
-      # Coverage is measured once, on Linux and net10.0, where the tests of both measured packages run, with the collector
-      # that the test SDK includes. The floors are in the script.
+      # Coverage is measured with the collector that the test SDK includes: the core and ASP.NET Core packages on Linux and
+      # net10.0, and the System.Web package on Windows and net48, where its tests run. The floors are in the script.
       - name: Check coverage
         if: runner.os == 'Linux'
         run: |
           dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build --framework net10.0 --collect "Code Coverage;Format=cobertura" --results-directory coverage
-          python3 .github/scripts/check_coverage.py coverage
+          python3 .github/scripts/check_coverage.py coverage net10.0
+
+      - name: Check coverage of the System.Web package
+        if: runner.os == 'Windows'
+        run: |
+          dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build --framework net48 --collect "Code Coverage;Format=cobertura" --results-directory coverage-net48
+          python .github/scripts/check_coverage.py coverage-net48 net48
+
+      - name: Check the OAuthMaui settings generator
+        if: runner.os == 'Linux'
+        run: bash .github/scripts/check_oauthmaui_generator.sh

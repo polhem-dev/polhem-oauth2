@@ -186,6 +186,32 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Dispose clears the pending accepts before it cancels them, so a wait that the cancellation wakes finds the listener gone")]
+        public async Task Dispose_PendingAccept_IsClearedBeforeItIsCanceled()
+        {
+            var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
+            bool? pendingWhenCanceled = null;
+            listener.ReplaceAcceptForTest((_, stopping) =>
+            {
+                var accept = new TaskCompletionSource<TcpClient>(TaskCreationOptions.RunContinuationsAsynchronously);
+                stopping.Register(() =>
+                {
+                    pendingWhenCanceled = listener.HasPendingAccept;
+                    accept.TrySetCanceled(stopping);
+                });
+                return accept.Task;
+            });
+            Task<TcpClient> wait = listener.AcceptClientAsync(CancellationToken.None);
+            Assert.True(listener.HasPendingAccept);
+
+            listener.Dispose();
+
+            // A wait resumed while the slot still held the accept would report the canceled accept instead of the disposal.
+            Assert.False(pendingWhenCanceled);
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => wait.WithTimeout());
+        }
+
+        [Fact]
         [DisplayName("Dispose ends a wait in AcceptClientAsync with ObjectDisposedException, and a second Dispose does nothing")]
         public async Task AcceptClientAsync_DisposedWhileWaiting_ThrowsObjectDisposedException()
         {

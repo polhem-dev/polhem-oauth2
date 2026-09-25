@@ -20,6 +20,8 @@ namespace Polhem.OAuth2
         // Canceled by Dispose. It ends a pending accept natively where the framework can, and Stop ends it everywhere else.
         private readonly CancellationTokenSource _stopping = new();
 
+        private Func<TcpListener, CancellationToken, Task<TcpClient>> _accept = AcceptAsync;
+
         private LoopbackListener(List<TcpListener> listeners, Uri redirectUri)
         {
             _listeners = listeners;
@@ -107,7 +109,7 @@ namespace Polhem.OAuth2
         public async Task<TcpClient> AcceptClientAsync(CancellationToken cancellationToken)
         {
             for (int i = 0; i < _listeners.Count; i++)
-                _pendingAccepts[i] ??= AcceptAsync(_listeners[i], _stopping.Token);
+                _pendingAccepts[i] ??= _accept(_listeners[i], _stopping.Token);
 
             // An accept outlives this wait: the one that loses the race on a listener with two addresses is kept for the next
             // call, because a connection it completes with may be the redirect. The wait therefore races a task that the token
@@ -136,6 +138,21 @@ namespace Polhem.OAuth2
 
                 return await accept.ConfigureAwait(false);
             }
+        }
+
+        /// <summary>
+        /// Gets a value indicating whether an accept is kept for a later wait.
+        /// </summary>
+        internal bool HasPendingAccept => Array.Exists(_pendingAccepts, accept => accept is not null);
+
+        /// <summary>
+        /// Replaces how a connection is accepted, so that a test can complete an accept at a moment of its choosing, such as
+        /// while <see cref="Dispose"/> cancels the token. Call it before the first <see cref="AcceptClientAsync"/>.
+        /// </summary>
+        /// <param name="accept">Accepts a connection on a listener, observing the token that <see cref="Dispose"/> cancels.</param>
+        internal void ReplaceAcceptForTest(Func<TcpListener, CancellationToken, Task<TcpClient>> accept)
+        {
+            _accept = accept;
         }
 
         /// <summary>
