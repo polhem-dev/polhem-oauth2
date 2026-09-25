@@ -16,6 +16,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - `OAuth2Client.Create(options, httpClientFactory)` 建立的 client 會為每一次對 provider 的請求索取 `HttpClient`；
   `AddOAuth2ClientWithHttpClientFactory` 則在 ASP.NET Core 以服務提供者給的 `HttpClient` 註冊 client，例如來自 `IHttpClientFactory` 的，
   這樣它的 handler 輪替才會生效。
+- `OAuth2Manager.CreateAppAuthorizationUrl`、`TryCreateAppAuthorizationUrl` 與 `CreateAppRedirectUrlAsync` 回傳中轉登入的網址而不是導向回應，
+  與網頁登入的 `CreateAuthorizationUrl` 相同，給想自己導向的呼叫端使用，例如 minimal API。會導向的那幾個方法仍然保留。
 
 ### 變更
 

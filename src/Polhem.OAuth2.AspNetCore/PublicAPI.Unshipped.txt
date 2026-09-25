@@ -1,3 +1,6 @@
 #nullable enable
 Polhem.OAuth2.AspNetCore.OAuth2Manager.TryRedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge) -> bool
 static Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2ClientWithHttpClientFactory(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, string! clientName, Polhem.OAuth2.OAuth2Options! options, System.Func<System.IServiceProvider!, System.Net.Http.HttpClient!>! httpClientFactory) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> string!
+Polhem.OAuth2.AspNetCore.OAuth2Manager.TryCreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge, out string? url) -> bool
+Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAppRedirectUrlAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!

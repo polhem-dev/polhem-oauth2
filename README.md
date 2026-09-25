@@ -186,7 +186,8 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
   `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` sends a sign-in that an application started
   back to the application with a single-use code and returns true. For a sign-in in the browser it returns false. When it
   returns true, return without signing the user in to the web application: the browser session of the sign-in can share its
-  cookies with the browser of the device.
+  cookies with the browser of the device. `CreateAppAuthorizationUrl`, `TryCreateAppAuthorizationUrl` and
+  `CreateAppRedirectUrlAsync` return the URL instead of redirecting, for a handler that redirects in its own way.
 - The application posts the code and its verifier to the back end, where `oauth2Manager.RedeemAppCodeAsync` returns the
   user information, or null. The back end then issues the application's own session; the provider's tokens stay on the
   back end.

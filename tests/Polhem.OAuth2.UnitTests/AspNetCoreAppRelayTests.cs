@@ -191,6 +191,49 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("CreateAppAuthorizationUrl and TryCreateAppAuthorizationUrl return the URL and set the cookie without redirecting the response")]
+        public void CreateAppAuthorizationUrl_ValidRequest_ReturnsUrlWithoutRedirect()
+        {
+            var (manager, _) = CreateManager(new StubHttpMessageHandler());
+            var context = CreateContext();
+            var tried = CreateContext();
+
+            string url = manager.CreateAppAuthorizationUrl(context, "Google", AppRedirectUri, ValidChallenge);
+            bool started = manager.TryCreateAppAuthorizationUrl(tried, "Google", AppRedirectUri, ValidChallenge, out string? triedUrl);
+
+            Assert.True(started);
+            foreach (var (response, location) in new[] { (context.Response, url), (tried.Response, triedUrl!) })
+            {
+                Assert.Equal(RedirectUri, LoopbackTestHttp.GetQueryValue(location, "redirect_uri"));
+                Assert.Empty(response.Headers.Location.ToString());
+                Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
+                Assert.Single(response.GetTypedHeaders().SetCookie);
+            }
+            Assert.False(manager.TryCreateAppAuthorizationUrl(CreateContext(), "Unknown", AppRedirectUri, ValidChallenge, out string? none));
+            Assert.Null(none);
+            Assert.Throws<ArgumentException>(() => manager.CreateAppAuthorizationUrl(CreateContext(), "Google", OtherAppRedirectUri, ValidChallenge));
+        }
+
+        [Fact]
+        [DisplayName("CreateAppRedirectUrlAsync returns the URL of the application with the code, or null for a web sign-in, without redirecting")]
+        public async Task CreateAppRedirectUrlAsync_ReturnsUrlWithoutRedirect()
+        {
+            var (manager, _) = CreateManager(SuccessfulProvider());
+            var (verifier, challenge) = CreateChallenge();
+            var start = StartRelayedSignIn(manager, AppRedirectUri, challenge);
+            var context = CreateContext("?code=abc&state=" + start.State, start.Cookie);
+            var result = await manager.CompleteAuthorizationAsync(context);
+
+            string? url = await manager.CreateAppRedirectUrlAsync(context, result);
+
+            Assert.NotNull(url);
+            Assert.StartsWith(AppRedirectUri + "?code=", url, StringComparison.Ordinal);
+            Assert.Empty(context.Response.Headers.Location.ToString());
+            Assert.Equal("user-1", (await manager.RedeemAppCodeAsync("Google", LoopbackTestHttp.GetQueryValue(url, "code")!, verifier))?.UserId);
+            Assert.Null(await manager.CreateAppRedirectUrlAsync(CreateContext(), result));
+        }
+
+        [Fact]
         [DisplayName("TryRedirectToAppAuthorization rejects a null HTTP context")]
         public void TryRedirectToAppAuthorization_NullContext_ThrowsArgumentNullException()
         {

@@ -92,7 +92,8 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
   它拒絕未登記的應用程式回呼網址，把回呼網址與 S256 code challenge 跟這次登入一起存進 ADR-005 的加密 cookie，
   再以該 client 的網頁回呼網址導向 provider，所以不必在 provider 後台多登記回呼網址。在應用程式開啟的端點裡，這三個值都來自請求，
   因此 `TryRedirectToAppAuthorization` 接受同樣的值，並在 client 名稱、回呼網址或 code challenge 不合法時回傳 false，讓端點回應 400。
-  會擲例外的那個方法保留給後端自己決定這些值的情況，那時值不合法屬於程式錯誤（ADR-003）。
+  會擲例外的那個方法保留給後端自己決定這些值的情況，那時值不合法屬於程式錯誤（ADR-003）。三個會導向的方法各有一個只回傳網址的對應方法：
+  `CreateAppAuthorizationUrl`、`TryCreateAppAuthorizationUrl` 與 `CreateAppRedirectUrlAsync`，就像網頁登入有 `CreateAuthorizationUrl`。
 - provider 導回既有的網頁回呼。呼叫 `CompleteAuthorizationAsync` 之後，`OAuth2Manager.RedirectToAppAsync(context, result)`
   遇到網頁登入回傳 false；遇到中轉登入則把使用者資訊存在一個新的隨機代碼下，帶著這個代碼導回應用程式的回呼網址
   （登入失敗時改帶錯誤），並回傳 true。

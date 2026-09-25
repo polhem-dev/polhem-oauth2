@@ -110,7 +110,9 @@ The same `Polhem.OAuth2.AspNetCore` registration serves browser users and applic
   no additional redirect URI is registered with the provider. The three values come from the request in an endpoint that an
   application opens, so `TryRedirectToAppAuthorization` takes the same values and returns false when the client name, the
   redirect URI or the code challenge is not valid, for the endpoint to answer with status 400. The method that throws stays
-  for values that the back end chooses itself, where a value that is not valid is a programming error (ADR-003).
+  for values that the back end chooses itself, where a value that is not valid is a programming error (ADR-003). Each of the
+  three methods that redirect has a counterpart that returns the URL instead, `CreateAppAuthorizationUrl`,
+  `TryCreateAppAuthorizationUrl` and `CreateAppRedirectUrlAsync`, as the web sign-in has `CreateAuthorizationUrl`.
 - The provider returns to the existing web callback. After `CompleteAuthorizationAsync`,
   `OAuth2Manager.RedirectToAppAsync(context, result)` returns false for a web sign-in. For a relayed sign-in it stores the
   user information under a new random code, redirects to the application redirect URI with that code, or with the error of a

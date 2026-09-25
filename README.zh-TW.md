@@ -167,7 +167,8 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
 - provider 導回後端原本的回呼端點。`CompleteAuthorizationAsync` 之後，
   `oauth2Manager.RedirectToAppAsync(HttpContext, result, cancellationToken)` 會把由應用程式發起的登入，帶著一次性 code
   導回應用程式並回傳 true；瀏覽器裡的登入則回傳 false。回傳 true 時直接結束回呼，不要再讓使用者登入網站：
-  這次登入所在的瀏覽器工作階段，可能與裝置上的瀏覽器共用 cookie。
+  這次登入所在的瀏覽器工作階段，可能與裝置上的瀏覽器共用 cookie。`CreateAppAuthorizationUrl`、`TryCreateAppAuthorizationUrl` 與
+  `CreateAppRedirectUrlAsync` 只回傳網址、不導向，給想自己導向的處理常式使用。
 - 應用程式把 code 與它的 verifier POST 給後端，後端以 `oauth2Manager.RedeemAppCodeAsync` 取得使用者資訊，或得到 null。
   接著由後端發給應用程式自己的 session；provider 的 token 留在後端。
 - code 存在 `IDistributedCache`。有多台伺服器時，改用分散式快取並共用 data protection 金鑰，跟網頁登入一樣。

@@ -18,6 +18,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - `OAuth2Client.Create(options, httpClientFactory)` creates a client that asks for the `HttpClient` of each request to the
   provider, and `AddOAuth2ClientWithHttpClientFactory` registers one in ASP.NET Core with an `HttpClient` from the service
   provider, such as one from `IHttpClientFactory`, whose handler rotation is honored that way.
+- `OAuth2Manager.CreateAppAuthorizationUrl`, `TryCreateAppAuthorizationUrl` and `CreateAppRedirectUrlAsync` return the URL
+  of a relayed sign-in instead of redirecting the response, as `CreateAuthorizationUrl` does for a web sign-in, for a caller
+  that redirects in its own way, such as a minimal API. The methods that redirect remain.
 
 ### Changed
 

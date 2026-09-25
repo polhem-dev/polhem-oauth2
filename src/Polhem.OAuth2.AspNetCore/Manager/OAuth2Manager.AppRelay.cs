@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -64,6 +65,30 @@ namespace Polhem.OAuth2.AspNetCore
         {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
+
+            context.Response.Redirect(CreateAppAuthorizationUrl(context, clientName, appRedirectUri, codeChallenge));
+        }
+
+        /// <summary>
+        /// Starts a sign-in relayed to a mobile application, as <see cref="RedirectToAppAuthorization"/> does, and returns the
+        /// authorization URL instead of redirecting the response, for a caller that redirects in its own way.
+        /// </summary>
+        /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
+        /// <param name="clientName">The name the client is registered under.</param>
+        /// <param name="appRedirectUri">The application redirect URI to return to, one of <see cref="OAuth2AppRelayOptions.AppRedirectUris"/>.</param>
+        /// <param name="codeChallenge">The S256 code challenge of the application, as for <see cref="RedirectToAppAuthorization"/>.</param>
+        /// <returns>The URL to redirect the user to. The response carries the sign-in cookie.</returns>
+        /// <exception cref="ArgumentNullException">An argument is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="appRedirectUri"/> is not registered, or <paramref name="codeChallenge"/> is not 43 base64url characters.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// The relay is not registered, or no client is registered under <paramref name="clientName"/>.
+        /// </exception>
+        public string CreateAppAuthorizationUrl(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
+        {
+            if (context is null)
+                throw new ArgumentNullException(nameof(context));
             if (appRedirectUri is null)
                 throw new ArgumentNullException(nameof(appRedirectUri));
             if (codeChallenge is null)
@@ -75,7 +100,7 @@ namespace Polhem.OAuth2.AspNetCore
             if (!IsCodeChallenge(codeChallenge))
                 throw new ArgumentException($"The code challenge must be {CodeChallengeLength} base64url characters.", nameof(codeChallenge));
 
-            context.Response.Redirect(StartSignIn(context, clientName, appRedirectUri, codeChallenge));
+            return StartSignIn(context, clientName, appRedirectUri, codeChallenge);
         }
 
         /// <summary>
@@ -100,17 +125,44 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
         public bool TryRedirectToAppAuthorization(HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge)
         {
+            if (!TryCreateAppAuthorizationUrl(context, clientName, appRedirectUri, codeChallenge, out string? url))
+                return false;
+
+            context.Response.Redirect(url);
+            return true;
+        }
+
+        /// <summary>
+        /// Starts a sign-in relayed to a mobile application with values that come from the request, as
+        /// <see cref="TryRedirectToAppAuthorization"/> does, and returns the authorization URL instead of redirecting the
+        /// response.
+        /// </summary>
+        /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
+        /// <param name="clientName">The requested client name, or null if the request has none.</param>
+        /// <param name="appRedirectUri">The requested application redirect URI, or null if the request has none.</param>
+        /// <param name="codeChallenge">The requested code challenge, or null if the request has none.</param>
+        /// <param name="url">The URL to redirect the user to, or null when the method returns false.</param>
+        /// <returns>
+        /// True if the sign-in started, with its cookie on the response. False, with the response left unchanged, for the
+        /// values that <see cref="TryRedirectToAppAuthorization"/> refuses.
+        /// </returns>
+        /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
+        public bool TryCreateAppAuthorizationUrl(
+            HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge, [NotNullWhen(true)] out string? url)
+        {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
             var relay = RequireRelay();
+            url = null;
             if (clientName is null || appRedirectUri is null || codeChallenge is null
                 || GetClient(clientName) is null || !relay.IsRegistered(appRedirectUri) || !IsCodeChallenge(codeChallenge))
             {
                 return false;
             }
 
-            context.Response.Redirect(StartSignIn(context, clientName, appRedirectUri, codeChallenge));
+            url = StartSignIn(context, clientName, appRedirectUri, codeChallenge);
             return true;
         }
 
@@ -151,12 +203,38 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
         public async Task<bool> RedirectToAppAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
         {
+            string? url = await CreateAppRedirectUrlAsync(context, result, cancellationToken).ConfigureAwait(false);
+            if (url is null)
+                return false;
+
+            context.Response.Redirect(url);
+            return true;
+        }
+
+        /// <summary>
+        /// Returns a relayed sign-in to the application, as <see cref="RedirectToAppAsync"/> does, and returns the URL of the
+        /// application to redirect to instead of redirecting the response.
+        /// </summary>
+        /// <param name="context">The HTTP context of the callback request, after <see cref="CompleteAuthorizationAsync"/>.</param>
+        /// <param name="result">The result that <see cref="CompleteAuthorizationAsync"/> returned for this request.</param>
+        /// <param name="cancellationToken">Cancels storing the code. It is also canceled when the callback request is aborted.</param>
+        /// <returns>
+        /// The application redirect URI with the code, or with the error of a failed sign-in, or null for a web sign-in.
+        /// </returns>
+        /// <remarks>The remarks of <see cref="RedirectToAppAsync"/> apply.</remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="result"/> is null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// The relay is not registered, or the sign-in names an application redirect URI that is no longer registered.
+        /// </exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
+        public async Task<string?> CreateAppRedirectUrlAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
+        {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
             if (result is null)
                 throw new ArgumentNullException(nameof(result));
             if (!context.Items.TryGetValue(s_appSignInKey, out object? item) || item is not AppSignIn signIn)
-                return false;
+                return null;
 
             context.Items.Remove(s_appSignInKey);
             var relay = RequireRelay();
@@ -170,8 +248,7 @@ namespace Polhem.OAuth2.AspNetCore
             {
                 // Only the error code of the provider is passed on; any other failure is reported without its details.
                 string error = result.Exception is OAuth2Exception { Error: { Length: > 0 } providerError } ? providerError : "sign_in_failed";
-                context.Response.Redirect(signIn.AppRedirectUri + separator + "error=" + Uri.EscapeDataString(error));
-                return true;
+                return signIn.AppRedirectUri + separator + "error=" + Uri.EscapeDataString(error);
             }
 
             string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(RelayCodeBytes));
@@ -182,8 +259,7 @@ namespace Polhem.OAuth2.AspNetCore
                 await _relayCache!.SetAsync(GetRelayCacheKey(code), entry, entryOptions, requestCancellation.Token).ConfigureAwait(false);
             }
 
-            context.Response.Redirect(signIn.AppRedirectUri + separator + "code=" + code);
-            return true;
+            return signIn.AppRedirectUri + separator + "code=" + code;
         }
 
         /// <summary>
