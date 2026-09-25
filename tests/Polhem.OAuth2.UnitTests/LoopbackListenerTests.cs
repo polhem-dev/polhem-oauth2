@@ -161,7 +161,15 @@ namespace Polhem.OAuth2.UnitTests
                 Assert.Null(request.Target);
             }
 
-            await send.WithTimeout();
+            try
+            {
+                await send.WithTimeout();
+            }
+            catch (IOException)
+            {
+                // The listener closed the connection with the rest of the head unread, which Windows reports to the sender as
+                // a reset. Other systems report a close, and the send finishes.
+            }
         }
 
         [Fact]
