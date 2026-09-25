@@ -41,8 +41,8 @@ public class FakeProviderSignInTests
     [DisplayName("A sign-in through the back-end relay returns the user after the application redeems its code")]
     public async Task RelaySignIn_FakeProvider_RedeemsUser()
     {
-        string verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
-        string challenge = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+        string verifier = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
+        string challenge = Base64Url.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
         var start = FakeProvider.GetUri($"auth/app/{FakeProviderValues.RelayClientName}"
             + $"?redirect_uri={Uri.EscapeDataString(FakeProviderValues.RelayRedirectUri)}&code_challenge={challenge}");
 
@@ -91,10 +91,5 @@ public class FakeProviderSignInTests
             });
             return result.CallbackUri;
         });
-    }
-
-    private static string Base64Url(byte[] bytes)
-    {
-        return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
     }
 }

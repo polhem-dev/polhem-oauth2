@@ -52,7 +52,7 @@ namespace Polhem.OAuth2.FakeProvider
                 }));
             }
 
-            string code = Base64Url(RandomNumberGenerator.GetBytes(24));
+            string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(24));
             _codes[code] = new FakeAuthorizationCode(clientId, redirectUri, challenge);
             return Results.Redirect(QueryHelpers.AddQueryString(redirectUri, new Dictionary<string, string?>
             {
@@ -84,7 +84,7 @@ namespace Polhem.OAuth2.FakeProvider
             if (issued.CodeChallenge is { } challenge)
             {
                 string verifier = form["code_verifier"].ToString();
-                string expected = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
+                string expected = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
                 if (verifier.Length == 0 || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(challenge)))
                     return TokenError("invalid_grant");
             }
@@ -128,11 +128,6 @@ namespace Polhem.OAuth2.FakeProvider
         private static IResult TokenError(string error)
         {
             return Results.Json(new Dictionary<string, string> { ["error"] = error }, statusCode: StatusCodes.Status400BadRequest);
-        }
-
-        private static string Base64Url(byte[] bytes)
-        {
-            return Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
         }
     }
 }

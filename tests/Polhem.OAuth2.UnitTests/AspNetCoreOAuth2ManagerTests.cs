@@ -60,7 +60,7 @@ namespace Polhem.OAuth2.UnitTests
             var manager = services.BuildServiceProvider().GetRequiredService<OAuth2Manager>();
             var signIn = StartSignIn(manager, "Google");
 
-            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", signIn.Cookie));
 
             Assert.True(result.IsSuccess);
             Assert.Equal(2, resolved);
@@ -115,7 +115,7 @@ namespace Polhem.OAuth2.UnitTests
         public void CreateAuthorizationUrl_RegisteredClient_SetsProtectedCookie()
         {
             var manager = CreateManager(new StubHttpMessageHandler());
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
 
             string url = manager.CreateAuthorizationUrl(context, "Google");
 
@@ -137,7 +137,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var manager = CreateManager(new StubHttpMessageHandler());
 
-            Assert.Throws<InvalidOperationException>(() => manager.CreateAuthorizationUrl(CreateContext(), "Unknown"));
+            Assert.Throws<InvalidOperationException>(() => manager.CreateAuthorizationUrl(AspNetCoreTestContext.Create(), "Unknown"));
         }
 
         [Fact]
@@ -145,7 +145,7 @@ namespace Polhem.OAuth2.UnitTests
         public void RedirectToAuthorization_RegisteredClient_RedirectsToAuthorizationUrl()
         {
             var manager = CreateManager(new StubHttpMessageHandler());
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
 
             manager.RedirectToAuthorization(context, "Google");
 
@@ -162,7 +162,7 @@ namespace Polhem.OAuth2.UnitTests
                 .Respond(HttpStatusCode.OK, """{"sub":"1","name":"Ada"}""");
             var manager = CreateManager(handler);
             var signIn = StartSignIn(manager, "Google");
-            var callback = CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie);
+            var callback = AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", signIn.Cookie);
 
             var result = await manager.CompleteAuthorizationAsync(callback);
 
@@ -191,7 +191,7 @@ namespace Polhem.OAuth2.UnitTests
                 .Respond(HttpStatusCode.OK, """{"sub":"1","name":"Ada"}""");
             var manager = CreateManager(handler);
             var signIn = StartSignIn(manager, "Google");
-            callback = CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie);
+            callback = AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", signIn.Cookie);
 
             var result = await manager.CompleteAuthorizationAsync(callback);
 
@@ -208,7 +208,7 @@ namespace Polhem.OAuth2.UnitTests
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
             var manager = CreateManager(handler);
             var signIn = StartSignIn(manager, "Google");
-            var callback = CreateContext($"?{parameters}&state={signIn.State}", signIn.Cookie);
+            var callback = AspNetCoreTestContext.Create($"?{parameters}&state={signIn.State}", signIn.Cookie);
 
             var result = await manager.CompleteAuthorizationAsync(callback);
 
@@ -229,7 +229,7 @@ namespace Polhem.OAuth2.UnitTests
             var first = StartSignIn(manager, "Google");
             var second = StartSignIn(manager, "Line");
 
-            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={first.State}", first.Cookie, second.Cookie));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={first.State}", first.Cookie, second.Cookie));
 
             Assert.NotEqual(first.CookieName, second.CookieName);
             Assert.True(result.IsSuccess);
@@ -248,7 +248,7 @@ namespace Polhem.OAuth2.UnitTests
             var handler = new StubHttpMessageHandler();
             var manager = CreateManager(handler);
 
-            var result = await manager.CompleteAuthorizationAsync(CreateContext(queryString));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create(queryString));
 
             Assert.IsType<OAuth2Exception>(result.Exception);
             Assert.Empty(handler.Requests);
@@ -268,7 +268,7 @@ namespace Polhem.OAuth2.UnitTests
             var signIn = StartSignIn(manager, "Google");
 
             clock.Advance(TimeSpan.FromSeconds(seconds));
-            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", signIn.Cookie));
 
             Assert.Equal(succeeds, result.IsSuccess);
             if (!succeeds)
@@ -286,7 +286,7 @@ namespace Polhem.OAuth2.UnitTests
             var manager = CreateManager(handler);
             var signIn = StartSignIn(manager, "Google");
 
-            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}"));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}"));
 
             Assert.IsType<OAuth2Exception>(result.Exception);
             Assert.Empty(handler.Requests);
@@ -302,7 +302,7 @@ namespace Polhem.OAuth2.UnitTests
             var manager = CreateManager(handler);
             var signIn = StartSignIn(manager, "Google");
 
-            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}", $"{signIn.CookieName}={value}"));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", $"{signIn.CookieName}={value}"));
 
             Assert.IsAssignableFrom<CryptographicException>(result.Exception);
             Assert.Empty(handler.Requests);
@@ -317,7 +317,7 @@ namespace Polhem.OAuth2.UnitTests
             var first = StartSignIn(manager, "Google");
             var second = StartSignIn(manager, "Google");
 
-            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={first.State}", $"{first.CookieName}={second.CookieValue}"));
+            var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={first.State}", $"{first.CookieName}={second.CookieValue}"));
 
             Assert.IsType<OAuth2Exception>(result.Exception);
             Assert.Empty(handler.Requests);
@@ -332,7 +332,7 @@ namespace Polhem.OAuth2.UnitTests
             var signIn = StartSignIn(manager, "Google");
 
             var result = await manager.CompleteAuthorizationAsync(
-                CreateContext($"?error=access_denied&error_description=Denied&state={signIn.State}", signIn.Cookie));
+                AspNetCoreTestContext.Create($"?error=access_denied&error_description=Denied&state={signIn.State}", signIn.Cookie));
 
             Assert.Equal("access_denied", Assert.IsType<OAuth2Exception>(result.Exception).Error);
             Assert.Empty(handler.Requests);
@@ -348,7 +348,7 @@ namespace Polhem.OAuth2.UnitTests
             var signIn = StartSignIn(starter, "Line");
 
             await Assert.ThrowsAsync<InvalidOperationException>(
-                () => completer.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie)));
+                () => completer.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", signIn.Cookie)));
         }
 
         [Fact]
@@ -359,7 +359,7 @@ namespace Polhem.OAuth2.UnitTests
             var manager = CreateManager(handler);
             var signIn = StartSignIn(manager, "Google");
             using var aborted = new CancellationTokenSource();
-            var callback = CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie);
+            var callback = AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", signIn.Cookie);
             callback.RequestAborted = aborted.Token;
 
             var completion = manager.CompleteAuthorizationAsync(callback);
@@ -412,22 +412,10 @@ namespace Polhem.OAuth2.UnitTests
 
         private static SignIn StartSignIn(OAuth2Manager manager, string clientName)
         {
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
             string url = manager.CreateAuthorizationUrl(context, clientName);
             var cookie = Assert.Single(context.Response.GetTypedHeaders().SetCookie);
             return new SignIn(url, LoopbackTestHttp.GetQueryValue(url, "state")!, cookie.Name.Value!, cookie.Value.Value!);
-        }
-
-        private static DefaultHttpContext CreateContext(string? queryString = null, params string[] cookies)
-        {
-            var context = new DefaultHttpContext();
-            context.Request.Scheme = "https";
-            context.Request.Host = new HostString("app.example.com");
-            if (queryString is not null)
-                context.Request.QueryString = new QueryString(queryString);
-            if (cookies.Length > 0)
-                context.Request.Headers.Cookie = string.Join("; ", cookies);
-            return context;
         }
 
         private sealed record SignIn(string Url, string State, string CookieName, string CookieValue)

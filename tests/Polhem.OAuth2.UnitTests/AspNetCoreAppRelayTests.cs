@@ -140,9 +140,9 @@ namespace Polhem.OAuth2.UnitTests
             services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
             var manager = services.BuildServiceProvider().GetRequiredService<OAuth2Manager>();
 
-            Assert.Throws<InvalidOperationException>(() => manager.RedirectToAppAuthorization(CreateContext(), "Google", AppRedirectUri, CreateChallenge().Challenge));
-            Assert.Throws<InvalidOperationException>(() => manager.TryRedirectToAppAuthorization(CreateContext(), "Google", AppRedirectUri, CreateChallenge().Challenge));
-            Assert.Throws<InvalidOperationException>(() => manager.TryRedirectToAppAuthorization(CreateContext(), "Unknown", "not registered", "not a challenge"));
+            Assert.Throws<InvalidOperationException>(() => manager.RedirectToAppAuthorization(AspNetCoreTestContext.Create(), "Google", AppRedirectUri, CreateChallenge().Challenge));
+            Assert.Throws<InvalidOperationException>(() => manager.TryRedirectToAppAuthorization(AspNetCoreTestContext.Create(), "Google", AppRedirectUri, CreateChallenge().Challenge));
+            Assert.Throws<InvalidOperationException>(() => manager.TryRedirectToAppAuthorization(AspNetCoreTestContext.Create(), "Unknown", "not registered", "not a challenge"));
             await Assert.ThrowsAsync<InvalidOperationException>(() => manager.RedeemAppCodeAsync("Google", "code", Pkce.GenerateCodeVerifier()));
         }
 
@@ -155,7 +155,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var (manager, _) = CreateManager(new StubHttpMessageHandler());
 
-            Assert.Throws<ArgumentException>(() => manager.RedirectToAppAuthorization(CreateContext(), "Google", appRedirectUri, CreateChallenge().Challenge));
+            Assert.Throws<ArgumentException>(() => manager.RedirectToAppAuthorization(AspNetCoreTestContext.Create(), "Google", appRedirectUri, CreateChallenge().Challenge));
         }
 
         [Theory]
@@ -168,7 +168,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var (manager, _) = CreateManager(new StubHttpMessageHandler());
 
-            Assert.Throws<ArgumentException>(() => manager.RedirectToAppAuthorization(CreateContext(), "Google", AppRedirectUri, challenge));
+            Assert.Throws<ArgumentException>(() => manager.RedirectToAppAuthorization(AspNetCoreTestContext.Create(), "Google", AppRedirectUri, challenge));
         }
 
         [Fact]
@@ -176,7 +176,7 @@ namespace Polhem.OAuth2.UnitTests
         public void RedirectToAppAuthorization_RegisteredApp_RedirectsWithWebRedirectUri()
         {
             var (manager, _) = CreateManager(new StubHttpMessageHandler());
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
 
             manager.RedirectToAppAuthorization(context, "Google", AppRedirectUri, CreateChallenge().Challenge);
 
@@ -208,7 +208,7 @@ namespace Polhem.OAuth2.UnitTests
         public void TryRedirectToAppAuthorization_InvalidRequestValue_ReturnsFalse(string? clientName, string? appRedirectUri, string? codeChallenge)
         {
             var (manager, _) = CreateManager(new StubHttpMessageHandler());
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
 
             bool started = manager.TryRedirectToAppAuthorization(context, clientName, appRedirectUri, codeChallenge);
 
@@ -224,7 +224,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var (manager, _) = CreateManager(SuccessfulProvider());
             var (verifier, challenge) = CreateChallenge();
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
 
             Assert.True(manager.TryRedirectToAppAuthorization(context, "Google", AppRedirectUri, challenge));
 
@@ -242,8 +242,8 @@ namespace Polhem.OAuth2.UnitTests
         public void CreateAppAuthorizationUrl_ValidRequest_ReturnsUrlWithoutRedirect()
         {
             var (manager, _) = CreateManager(new StubHttpMessageHandler());
-            var context = CreateContext();
-            var tried = CreateContext();
+            var context = AspNetCoreTestContext.Create();
+            var tried = AspNetCoreTestContext.Create();
 
             string url = manager.CreateAppAuthorizationUrl(context, "Google", AppRedirectUri, ValidChallenge);
             bool started = manager.TryCreateAppAuthorizationUrl(tried, "Google", AppRedirectUri, ValidChallenge, out string? triedUrl);
@@ -256,9 +256,9 @@ namespace Polhem.OAuth2.UnitTests
                 Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
                 Assert.Single(response.GetTypedHeaders().SetCookie);
             }
-            Assert.False(manager.TryCreateAppAuthorizationUrl(CreateContext(), "Unknown", AppRedirectUri, ValidChallenge, out string? none));
+            Assert.False(manager.TryCreateAppAuthorizationUrl(AspNetCoreTestContext.Create(), "Unknown", AppRedirectUri, ValidChallenge, out string? none));
             Assert.Null(none);
-            Assert.Throws<ArgumentException>(() => manager.CreateAppAuthorizationUrl(CreateContext(), "Google", OtherAppRedirectUri, ValidChallenge));
+            Assert.Throws<ArgumentException>(() => manager.CreateAppAuthorizationUrl(AspNetCoreTestContext.Create(), "Google", OtherAppRedirectUri, ValidChallenge));
         }
 
         [Fact]
@@ -268,7 +268,7 @@ namespace Polhem.OAuth2.UnitTests
             var (manager, _) = CreateManager(SuccessfulProvider());
             var (verifier, challenge) = CreateChallenge();
             var start = StartRelayedSignIn(manager, AppRedirectUri, challenge);
-            var context = CreateContext("?code=abc&state=" + start.State, start.Cookie);
+            var context = AspNetCoreTestContext.Create("?code=abc&state=" + start.State, start.Cookie);
             var result = await manager.CompleteAuthorizationAsync(context);
 
             string? url = await manager.CreateAppRedirectUrlAsync(context, result);
@@ -277,7 +277,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.StartsWith(AppRedirectUri + "?code=", url, StringComparison.Ordinal);
             Assert.Empty(context.Response.Headers.Location.ToString());
             Assert.Equal("user-1", (await manager.RedeemAppCodeAsync("Google", LoopbackTestHttp.GetQueryValue(url, "code")!, verifier))?.UserId);
-            Assert.Null(await manager.CreateAppRedirectUrlAsync(CreateContext(), result));
+            Assert.Null(await manager.CreateAppRedirectUrlAsync(AspNetCoreTestContext.Create(), result));
         }
 
         [Fact]
@@ -296,7 +296,7 @@ namespace Polhem.OAuth2.UnitTests
             var handler = SuccessfulProvider();
             var (manager, _) = CreateManager(handler);
             var (appVerifier, appChallenge) = CreateChallenge();
-            var start = CreateContext();
+            var start = AspNetCoreTestContext.Create();
 
             manager.RedirectToAppAuthorization(start, "Google", AppRedirectUri, appChallenge);
 
@@ -538,7 +538,7 @@ namespace Polhem.OAuth2.UnitTests
                 cache,
                 dataProtection);
             var start = StartRelayedSignIn(before, AppRedirectUri, CreateChallenge().Challenge);
-            var context = CreateContext("?" + parameters + "&state=" + start.State, start.Cookie);
+            var context = AspNetCoreTestContext.Create("?" + parameters + "&state=" + start.State, start.Cookie);
             var result = await after.CompleteAuthorizationAsync(context);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => after.RedirectToAppAsync(context, result));
@@ -554,7 +554,7 @@ namespace Polhem.OAuth2.UnitTests
             var cache = new DictionaryCache();
             var (manager, _) = CreateManager(SuccessfulProvider(), cache: cache);
             var start = StartRelayedSignIn(manager, AppRedirectUri, CreateChallenge().Challenge);
-            var context = CreateContext("?code=abc&state=" + start.State, start.Cookie);
+            var context = AspNetCoreTestContext.Create("?code=abc&state=" + start.State, start.Cookie);
             var result = await manager.CompleteAuthorizationAsync(context);
             using var aborted = new CancellationTokenSource();
             context.RequestAborted = aborted.Token;
@@ -609,10 +609,10 @@ namespace Polhem.OAuth2.UnitTests
         public async Task RedirectToAppAsync_WebSignIn_ReturnsFalse()
         {
             var (manager, _) = CreateManager(SuccessfulProvider());
-            var start = CreateContext();
+            var start = AspNetCoreTestContext.Create();
             string url = manager.CreateAuthorizationUrl(start, "Google");
             var cookie = Assert.Single(start.Response.GetTypedHeaders().SetCookie);
-            var context = CreateContext("?code=abc&state=" + LoopbackTestHttp.GetQueryValue(url, "state"), $"{cookie.Name}={cookie.Value}");
+            var context = AspNetCoreTestContext.Create("?code=abc&state=" + LoopbackTestHttp.GetQueryValue(url, "state"), $"{cookie.Name}={cookie.Value}");
 
             var result = await manager.CompleteAuthorizationAsync(context);
             bool relayed = await manager.RedirectToAppAsync(context, result);
@@ -628,7 +628,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var (manager, _) = CreateManager(SuccessfulProvider());
             var start = StartRelayedSignIn(manager, AppRedirectUri, CreateChallenge().Challenge);
-            var context = CreateContext("?code=abc&state=" + start.State, start.Cookie);
+            var context = AspNetCoreTestContext.Create("?code=abc&state=" + start.State, start.Cookie);
             await manager.CompleteAuthorizationAsync(context);
 
             context.Request.QueryString = new QueryString("?code=abc&state=another-state");
@@ -678,7 +678,7 @@ namespace Polhem.OAuth2.UnitTests
 
         private static RelayStart StartRelayedSignIn(OAuth2Manager manager, string appRedirectUri, string challenge)
         {
-            var context = CreateContext();
+            var context = AspNetCoreTestContext.Create();
             manager.RedirectToAppAuthorization(context, "Google", appRedirectUri, challenge);
             var cookie = Assert.Single(context.Response.GetTypedHeaders().SetCookie);
             string state = LoopbackTestHttp.GetQueryValue(context.Response.Headers.Location.ToString(), "state")!;
@@ -687,7 +687,7 @@ namespace Polhem.OAuth2.UnitTests
 
         private static async Task<RelayCallback> FinishRelayedSignInAsync(OAuth2Manager manager, RelayStart start, string parameters)
         {
-            var context = CreateContext("?" + parameters + "&state=" + start.State, start.Cookie);
+            var context = AspNetCoreTestContext.Create("?" + parameters + "&state=" + start.State, start.Cookie);
             var result = await manager.CompleteAuthorizationAsync(context);
             bool relayed = await manager.RedirectToAppAsync(context, result);
             return new RelayCallback(relayed, context.Response.Headers.Location.ToString());
@@ -724,18 +724,6 @@ namespace Polhem.OAuth2.UnitTests
         private static OAuth2Options CreateOptions()
         {
             return new GoogleOAuth2Options { ClientId = "client-id", RedirectUri = RedirectUri };
-        }
-
-        private static DefaultHttpContext CreateContext(string? queryString = null, string? cookie = null)
-        {
-            var context = new DefaultHttpContext();
-            context.Request.Scheme = "https";
-            context.Request.Host = new HostString("app.example.com");
-            if (queryString is not null)
-                context.Request.QueryString = new QueryString(queryString);
-            if (cookie is not null)
-                context.Request.Headers.Cookie = cookie;
-            return context;
         }
 
         private sealed record RelayStart(string State, string Cookie);
