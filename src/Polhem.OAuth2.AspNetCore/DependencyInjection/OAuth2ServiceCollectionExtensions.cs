@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Polhem.OAuth2;
 using Polhem.OAuth2.AspNetCore;
@@ -127,12 +128,55 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new ArgumentNullException(nameof(services));
             if (configure is null)
                 throw new ArgumentNullException(nameof(configure));
-            if (services.Any(descriptor => descriptor.ServiceType == typeof(AppRelaySettings)))
-                throw new InvalidOperationException("The OAuth2 application relay is already registered.");
+            ThrowIfRelayRegistered(services);
 
             var options = new OAuth2AppRelayOptions();
             configure(options);
-            services.AddSingleton(AppRelaySettings.Create(options, nameof(configure)));
+            return AddRelay(services, AppRelaySettings.Create(options, nameof(configure)));
+        }
+
+        /// <summary>
+        /// Registers the back-end relay, as <see cref="AddOAuth2AppRelay(IServiceCollection, Action{OAuth2AppRelayOptions})"/>
+        /// does, with the settings of a configuration section, such as <c>builder.Configuration.GetSection("AppRelay")</c>.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configuration">
+        /// The section. <c>AppRedirectUris</c> holds the application redirect URIs, as an array or as one value, and
+        /// <c>CodeLifetime</c>, which may be left out, a time span such as <c>00:01:00</c>.
+        /// </param>
+        /// <returns>The service collection.</returns>
+        /// <remarks>
+        /// The section is read and validated by this call, so a later change to the configuration has no effect. Any other key
+        /// in the section is an error, so that a misspelled setting does not leave its default in place unnoticed.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="services"/> or <paramref name="configuration"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// The section has another key, the code lifetime is not a time span, no application redirect URI is set, one of them
+        /// is not an absolute https URI or custom scheme URI without a fragment, or the code lifetime is not positive or is
+        /// longer than 10 minutes.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">The relay is already registered.</exception>
+        public static IServiceCollection AddOAuth2AppRelay(this IServiceCollection services, IConfiguration configuration)
+        {
+            if (services is null)
+                throw new ArgumentNullException(nameof(services));
+            if (configuration is null)
+                throw new ArgumentNullException(nameof(configuration));
+            ThrowIfRelayRegistered(services);
+
+            var options = OAuth2AppRelayOptions.FromConfiguration(configuration, nameof(configuration));
+            return AddRelay(services, AppRelaySettings.Create(options, nameof(configuration)));
+        }
+
+        private static void ThrowIfRelayRegistered(IServiceCollection services)
+        {
+            if (services.Any(descriptor => descriptor.ServiceType == typeof(AppRelaySettings)))
+                throw new InvalidOperationException("The OAuth2 application relay is already registered.");
+        }
+
+        private static IServiceCollection AddRelay(IServiceCollection services, AppRelaySettings settings)
+        {
+            services.AddSingleton(settings);
             services.AddDistributedMemoryCache();
             return services;
         }

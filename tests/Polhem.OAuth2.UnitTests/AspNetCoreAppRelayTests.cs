@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Polhem.OAuth2.AspNetCore;
 
@@ -68,7 +69,53 @@ namespace Polhem.OAuth2.UnitTests
             services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(AppRedirectUri));
 
             Assert.Throws<InvalidOperationException>(() => services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(AppRedirectUri)));
-            Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddOAuth2AppRelay(null!));
+            Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddOAuth2AppRelay((Action<OAuth2AppRelayOptions>)null!));
+            Assert.Throws<ArgumentNullException>(() => new ServiceCollection().AddOAuth2AppRelay((IConfiguration)null!));
+            Assert.Throws<InvalidOperationException>(() => services.AddOAuth2AppRelay(CreateConfiguration(("AppRedirectUris:0", AppRedirectUri))));
+        }
+
+        [Fact]
+        [DisplayName("AddOAuth2AppRelay reads the application redirect URIs and the code lifetime from a configuration section")]
+        public void AddOAuth2AppRelay_Configuration_ReadsSettings()
+        {
+            var services = new ServiceCollection();
+
+            services.AddOAuth2AppRelay(CreateConfiguration(
+                ("AppRedirectUris:0", AppRedirectUri), ("AppRedirectUris:1", OtherAppRedirectUri), ("CodeLifetime", "00:02:30")));
+
+            var settings = services.BuildServiceProvider().GetRequiredService<AppRelaySettings>();
+            Assert.True(settings.IsRegistered(AppRedirectUri));
+            Assert.True(settings.IsRegistered(OtherAppRedirectUri));
+            Assert.False(settings.IsRegistered("com.example.third:/signin"));
+            Assert.Equal(TimeSpan.FromSeconds(150), settings.CodeLifetime);
+        }
+
+        [Fact]
+        [DisplayName("AddOAuth2AppRelay reads one application redirect URI written as a plain value, and keeps the default code lifetime")]
+        public void AddOAuth2AppRelay_ConfigurationWithOneUri_KeepsDefaultLifetime()
+        {
+            var services = new ServiceCollection();
+
+            services.AddOAuth2AppRelay(CreateConfiguration(("appredirecturis", AppRedirectUri)));
+
+            var settings = services.BuildServiceProvider().GetRequiredService<AppRelaySettings>();
+            Assert.True(settings.IsRegistered(AppRedirectUri));
+            Assert.Equal(new OAuth2AppRelayOptions().CodeLifetime, settings.CodeLifetime);
+        }
+
+        [Theory]
+        [DisplayName("AddOAuth2AppRelay rejects a section with an unknown key, a code lifetime that is not a time span, or no redirect URI")]
+        [InlineData("AppRedirectUri", AppRedirectUri)]
+        [InlineData("CodeLifetime", "two minutes")]
+        [InlineData("CodeLifetime", "00:20:00")]
+        public void AddOAuth2AppRelay_InvalidConfiguration_ThrowsArgumentException(string key, string value)
+        {
+            var configuration = key == "CodeLifetime"
+                ? CreateConfiguration(("AppRedirectUris:0", AppRedirectUri), (key, value))
+                : CreateConfiguration((key, value));
+
+            var exception = Assert.Throws<ArgumentException>(() => new ServiceCollection().AddOAuth2AppRelay(configuration));
+            Assert.Equal("configuration", exception.ParamName);
         }
 
         [Fact]
@@ -665,6 +712,13 @@ namespace Polhem.OAuth2.UnitTests
                 services.AddSingleton(clock);
             var provider = services.BuildServiceProvider();
             return (provider.GetRequiredService<OAuth2Manager>(), provider);
+        }
+
+        private static IConfiguration CreateConfiguration(params (string Key, string Value)[] settings)
+        {
+            return new ConfigurationBuilder()
+                .AddInMemoryCollection(settings.Select(setting => new KeyValuePair<string, string?>(setting.Key, setting.Value)))
+                .Build();
         }
 
         private static OAuth2Options CreateOptions()

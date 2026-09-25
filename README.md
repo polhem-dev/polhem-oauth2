@@ -182,6 +182,9 @@ The back end registers its web clients as in the ASP.NET Core section, and the r
 builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.example.app:/relay"));
 ```
 
+- `AddOAuth2AppRelay(builder.Configuration.GetSection("AppRelay"))` reads the same settings from configuration instead:
+  `AppRedirectUris`, an array or a single value, and `CodeLifetime`, such as `00:01:00`. Any other key in the section is an
+  error, so a misspelled setting is not ignored.
 - The application creates a PKCE code verifier and opens a URL of the back end with its redirect URI and the S256 code
   challenge. That endpoint calls `oauth2Manager.TryRedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`
   and answers with status 400 when it returns false: anyone can open the endpoint with any values, so a redirect URI that is

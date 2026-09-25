@@ -9,6 +9,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 新增
 
+- `AddOAuth2AppRelay(services, configuration)` 以組態區段的設定註冊後端中轉，例如 `builder.Configuration.GetSection("AppRelay")`。
+  `AppRedirectUris` 與 `CodeLifetime` 以外的 key 視為錯誤。
 - `OAuth2Options.ClientAuthentication` 設為 `ClientAuthenticationMethod.ClientSecretBasic` 時，client secret 改放在 HTTP Basic 標頭送出，
   不放在請求本文。Okta 的網頁應用程式預設就註冊為這種方式。
 

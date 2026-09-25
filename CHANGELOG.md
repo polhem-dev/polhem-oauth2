@@ -9,6 +9,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Added
 
+- `AddOAuth2AppRelay(services, configuration)` registers the back-end relay with the settings of a configuration section, such as
+  `builder.Configuration.GetSection("AppRelay")`. A key other than `AppRedirectUris` and `CodeLifetime` is an error.
 - `OAuth2Options.ClientAuthentication` sends the client secret in an HTTP Basic header when set to
   `ClientAuthenticationMethod.ClientSecretBasic`, instead of in the request body. Okta registers a web application for that
   method by default.

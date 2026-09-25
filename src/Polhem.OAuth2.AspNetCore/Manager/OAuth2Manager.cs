@@ -19,7 +19,7 @@ namespace Polhem.OAuth2.AspNetCore
     /// </para>
     /// <para>The cookie is marked Secure, so the sign-in must start and end on HTTPS pages. It expires after 10 minutes.</para>
     /// <para>
-    /// With <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay"/>, the
+    /// With <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(Microsoft.Extensions.DependencyInjection.IServiceCollection, Action{OAuth2AppRelayOptions})"/>, the
     /// same clients also sign in mobile applications through the back-end relay of ADR-006:
     /// <see cref="RedirectToAppAuthorization"/>, <see cref="RedirectToAppAsync"/> and <see cref="RedeemAppCodeAsync"/>.
     /// </para>

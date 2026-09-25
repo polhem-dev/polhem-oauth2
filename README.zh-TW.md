@@ -164,6 +164,8 @@ public class CallbackActivity : WebAuthenticatorCallbackActivity
 builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.example.app:/relay"));
 ```
 
+- 也可以改用 `AddOAuth2AppRelay(builder.Configuration.GetSection("AppRelay"))` 從組態讀取同樣的設定：`AppRedirectUris` 可以是陣列或單一值，
+  `CodeLifetime` 的寫法如 `00:01:00`。區段裡出現其他 key 會視為錯誤，拼錯的設定不會被默默忽略。
 - 應用程式產生 PKCE 的 code verifier，帶著自己的回呼網址與 S256 code challenge 開啟後端的網址。該端點呼叫
   `oauth2Manager.TryRedirectToAppAuthorization(HttpContext, "Google", redirectUri, codeChallenge)`，回傳 false 時回應 400：
   任何人都能帶任意值開啟這個端點，所以沒有登記的回呼網址只是一個普通的請求，不是例外狀況。
