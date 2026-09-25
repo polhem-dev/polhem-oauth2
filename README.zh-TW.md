@@ -217,7 +217,8 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 
 - `AddOAuth2Client` 會註冊 client、`OAuth2Manager` 與 ASP.NET Core 的 data protection。client 在呼叫當下就建立，
   所以 options 不合法時應用程式在啟動時就會停下來。另外可以傳入選填的 `HttpClient`；client 會在應用程式的整個生命週期持有它，
-  所以來自 `IHttpClientFactory` 的 `HttpClient` 會活得比它的 handler 久。除非應用程式需要自己的，否則不要傳：
+  所以來自 `IHttpClientFactory` 的 `HttpClient` 會活得比它的 handler 久；改用 `AddOAuth2ClientWithHttpClientFactory` 傳入
+  每次請求取得 client 的函式，factory 才會生效。除非應用程式需要自己的，否則不要傳：
   預設的 `HttpClient` 會定期汰換連線池裡的連線以跟上 DNS 變更，`new HttpClient()` 不會。
 - `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
 - ASP.NET Core 自己也有一個 `AuthorizationResult`，位於 `Microsoft.AspNetCore.Authorization`，也就是 `[Authorize]` 所在的命名空間。

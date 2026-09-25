@@ -37,6 +37,11 @@ namespace Polhem.OAuth2
         }
 
         internal OAuth2Client(OAuth2Options options, HttpClient? httpClient, bool publicClient, bool appRedirectUri = false)
+            : this(options, OAuth2Provider.HttpClientFactoryFor(httpClient), publicClient, appRedirectUri)
+        {
+        }
+
+        private OAuth2Client(OAuth2Options options, Func<HttpClient>? httpClientFactory, bool publicClient, bool appRedirectUri)
         {
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
@@ -45,7 +50,7 @@ namespace Polhem.OAuth2
             if (copy.GetValidationError(appRedirectUri) is { } error)
                 throw new ArgumentException(error, nameof(options));
 
-            Provider = OAuth2Provider.Create(copy, httpClient);
+            Provider = OAuth2Provider.Create(copy, httpClientFactory);
             IsPublicClient = publicClient;
             // RFC 8252 requires PKCE for native applications, because their client secret cannot be kept confidential.
             UsePkce = publicClient || copy.UsePkce;
@@ -55,6 +60,30 @@ namespace Polhem.OAuth2
         /// Gets the provider name.
         /// </summary>
         public string ProviderName => Provider.ProviderName;
+
+        /// <summary>
+        /// Creates a client that asks for the HTTP client of each request to the provider, for an application that manages
+        /// HTTP clients itself, for example with <c>IHttpClientFactory</c>. A constructor cannot take this parameter, because
+        /// a call that passes null for the HTTP client would no longer compile.
+        /// </summary>
+        /// <param name="options">The OAuth2 options. Their type selects the provider.</param>
+        /// <param name="httpClientFactory">
+        /// Returns the HTTP client for a request to the provider. It is called for each request, so a client that the factory
+        /// replaces from time to time is picked up. The client does not dispose what it returns.
+        /// </param>
+        /// <returns>The client.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> or <paramref name="httpClientFactory"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope is empty, or an endpoint is
+        /// not an absolute https URI without a fragment.
+        /// </exception>
+        public static OAuth2Client Create(OAuth2Options options, Func<HttpClient> httpClientFactory)
+        {
+            if (httpClientFactory is null)
+                throw new ArgumentNullException(nameof(httpClientFactory));
+
+            return new OAuth2Client(options, httpClientFactory, publicClient: false, appRedirectUri: false);
+        }
 
         /// <summary>
         /// Gets the provider, which holds the copied options.

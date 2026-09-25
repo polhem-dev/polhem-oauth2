@@ -41,16 +41,65 @@ namespace Microsoft.Extensions.DependencyInjection
             if (IsRegistered(services, clientName))
                 throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
 
-            var client = new OAuth2Client(options, httpClient);
-            services.AddSingleton(new OAuth2ClientRegistration(clientName, client));
+            return AddRegistration(services, clientName, new OAuth2ClientRegistration(clientName, new OAuth2Client(options, httpClient)));
+        }
+
+        /// <summary>
+        /// Registers an OAuth2 client under a name, as <see cref="AddOAuth2Client"/> does, with an HTTP client that the service
+        /// provider supplies for each request to the provider, for example one from <c>IHttpClientFactory</c>. The name differs
+        /// because an overload of <see cref="AddOAuth2Client"/> would make a call that passes null for the HTTP client ambiguous.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="clientName">The name that identifies the client, such as <c>Google</c>.</param>
+        /// <param name="options">The OAuth2 options. Their type selects the provider, and they are copied.</param>
+        /// <param name="httpClientFactory">
+        /// Returns the HTTP client for a request to the provider, from the service provider. It is called for each request,
+        /// so a factory that rotates its handlers is honored; the client is not disposed.
+        /// </param>
+        /// <returns>The service collection.</returns>
+        /// <remarks>
+        /// The client is created by this call, so invalid options are reported when the application starts. Clients cannot
+        /// be added once the service provider has been built.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="services"/>, <paramref name="options"/> or <paramref name="httpClientFactory"/> is null.</exception>
+        /// <exception cref="ArgumentException">
+        /// <paramref name="clientName"/> is null, empty or white space, or <paramref name="options"/> is not valid.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
+        public static IServiceCollection AddOAuth2ClientWithHttpClientFactory(
+            this IServiceCollection services, string clientName, OAuth2Options options, Func<IServiceProvider, HttpClient> httpClientFactory)
+        {
+            if (services is null)
+                throw new ArgumentNullException(nameof(services));
+            if (httpClientFactory is null)
+                throw new ArgumentNullException(nameof(httpClientFactory));
+            if (string.IsNullOrWhiteSpace(clientName))
+                throw new ArgumentException("The client name cannot be null, empty or white space.", nameof(clientName));
+            if (IsRegistered(services, clientName))
+                throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
+
+            return AddRegistration(services, clientName, new OAuth2ClientRegistration(clientName, options, httpClientFactory));
+        }
+
+        private static IServiceCollection AddRegistration(IServiceCollection services, string clientName, OAuth2ClientRegistration registration)
+        {
+            services.AddSingleton(registration);
             services.AddDataProtection();
             services.TryAddSingleton(provider => new OAuth2Manager(
-                provider.GetServices<OAuth2ClientRegistration>(),
+                Attach(provider, provider.GetServices<OAuth2ClientRegistration>()),
                 provider.GetRequiredService<IDataProtectionProvider>(),
                 provider.GetService<AppRelaySettings>(),
                 provider.GetService<IDistributedCache>(),
                 provider.GetService<TimeProvider>()));
             return services;
+        }
+
+        private static List<OAuth2ClientRegistration> Attach(IServiceProvider provider, IEnumerable<OAuth2ClientRegistration> registrations)
+        {
+            var attached = registrations.ToList();
+            foreach (var registration in attached)
+                registration.Attach(provider);
+            return attached;
         }
 
         /// <summary>

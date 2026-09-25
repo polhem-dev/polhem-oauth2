@@ -42,6 +42,45 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("AddOAuth2ClientWithHttpClientFactory resolves the HTTP client from the service provider for each request to the provider")]
+        public async Task AddOAuth2ClientWithHttpClientFactory_ResolvesClientPerRequest()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1"}""");
+            int resolved = 0;
+            var services = new ServiceCollection();
+            services.AddSingleton(handler);
+            services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), provider =>
+            {
+                resolved++;
+                return provider.GetRequiredService<StubHttpMessageHandler>().CreateClient();
+            });
+            services.AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider());
+            var manager = services.BuildServiceProvider().GetRequiredService<OAuth2Manager>();
+            var signIn = StartSignIn(manager, "Google");
+
+            var result = await manager.CompleteAuthorizationAsync(CreateContext($"?code=abc&state={signIn.State}", signIn.Cookie));
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(2, resolved);
+            Assert.Equal(2, handler.Requests.Count);
+        }
+
+        [Fact]
+        [DisplayName("AddOAuth2ClientWithHttpClientFactory reports invalid options, a null factory and a duplicate name when it is called")]
+        public void AddOAuth2ClientWithHttpClientFactory_InvalidArguments_Throw()
+        {
+            var services = new ServiceCollection();
+            static HttpClient Factory(IServiceProvider provider) => new StubHttpMessageHandler().CreateClient();
+
+            Assert.Throws<ArgumentException>(() => services.AddOAuth2ClientWithHttpClientFactory("Google", new GoogleOAuth2Options(), Factory));
+            Assert.Throws<ArgumentNullException>(() => services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), null!));
+            services.AddOAuth2Client("Google", CreateOptions("Google"));
+            Assert.Throws<InvalidOperationException>(() => services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), Factory));
+        }
+
+        [Fact]
         [DisplayName("GetClient returns the client registered under a name, and null for an unknown name")]
         public void GetClient_RegisteredAndUnknownNames_ReturnsClientOrNull()
         {

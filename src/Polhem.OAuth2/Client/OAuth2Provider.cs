@@ -9,16 +9,16 @@ namespace Polhem.OAuth2
     /// </summary>
     internal abstract class OAuth2Provider
     {
-        private readonly HttpClient _httpClient;
+        private readonly Func<HttpClient> _httpClientFactory;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The OAuth2 options.</param>
-        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
+        /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
-        protected OAuth2Provider(OAuth2Options options, HttpClient? httpClient)
+        protected OAuth2Provider(OAuth2Options options, Func<HttpClient>? httpClientFactory)
         {
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
@@ -26,7 +26,7 @@ namespace Polhem.OAuth2
                 throw new ArgumentException(error, nameof(options));
 
             Options = options;
-            _httpClient = httpClient ?? SharedHttpClient.Instance;
+            _httpClientFactory = httpClientFactory ?? SharedHttpClientFactory;
         }
 
         /// <summary>
@@ -60,22 +60,36 @@ namespace Polhem.OAuth2
         /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public static OAuth2Provider Create(OAuth2Options options, HttpClient? httpClient)
         {
+            return Create(options, HttpClientFactoryFor(httpClient));
+        }
+
+        /// <summary>
+        /// Creates the provider that matches the type of the options, asking for the HTTP client of each request.
+        /// </summary>
+        /// <param name="options">The OAuth2 options.</param>
+        /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
+        /// <returns>The provider.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
+        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
+        public static OAuth2Provider Create(OAuth2Options options, Func<HttpClient>? httpClientFactory)
+        {
             switch (options)
             {
                 case null:
                     throw new ArgumentNullException(nameof(options));
                 case GoogleOAuth2Options googleOptions:
-                    return new GoogleOAuth2Provider(googleOptions, httpClient);
+                    return new GoogleOAuth2Provider(googleOptions, httpClientFactory);
                 case LineOAuth2Options lineOptions:
-                    return new LineOAuth2Provider(lineOptions, httpClient);
+                    return new LineOAuth2Provider(lineOptions, httpClientFactory);
                 case AzureOAuth2Options azureOptions:
-                    return new AzureOAuth2Provider(azureOptions, httpClient);
+                    return new AzureOAuth2Provider(azureOptions, httpClientFactory);
                 case FacebookOAuth2Options facebookOptions:
-                    return new FacebookOAuth2Provider(facebookOptions, httpClient);
+                    return new FacebookOAuth2Provider(facebookOptions, httpClientFactory);
                 case Auth0OAuth2Options auth0Options:
-                    return new Auth0OAuth2Provider(auth0Options, httpClient);
+                    return new Auth0OAuth2Provider(auth0Options, httpClientFactory);
                 case OktaOAuth2Options oktaOptions:
-                    return new OktaOAuth2Provider(oktaOptions, httpClient);
+                    return new OktaOAuth2Provider(oktaOptions, httpClientFactory);
                 default:
                     throw new NotSupportedException("Unsupported OAuth provider.");
             }
@@ -171,7 +185,7 @@ namespace Polhem.OAuth2
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
 
-                using (var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false))
+                using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
@@ -288,6 +302,23 @@ namespace Polhem.OAuth2
         /// <returns>The user information.</returns>
         protected abstract UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token);
 
+        /// <summary>
+        /// Wraps one HTTP client, or the shared instance when it is null, as the factory of every request.
+        /// </summary>
+        /// <param name="httpClient">The HTTP client, or null.</param>
+        /// <returns>A factory that returns that client.</returns>
+        public static Func<HttpClient>? HttpClientFactoryFor(HttpClient? httpClient)
+        {
+            if (httpClient is null)
+                return null;
+            return () => httpClient;
+        }
+
+        private static HttpClient SharedHttpClientFactory()
+        {
+            return SharedHttpClient.Instance;
+        }
+
         private void AddClientSecret(Dictionary<string, string> parameters, bool publicClient)
         {
             // A public client authenticates the code exchange with PKCE, because its client secret cannot be kept confidential (ADR-004).
@@ -298,7 +329,7 @@ namespace Polhem.OAuth2
         private async Task<TokenResponse> RequestTokenAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
         {
             using (var content = new FormUrlEncodedContent(parameters))
-            using (var response = await _httpClient.PostAsync(Options.TokenEndpoint, content, cancellationToken).ConfigureAwait(false))
+            using (var response = await _httpClientFactory().PostAsync(Options.TokenEndpoint, content, cancellationToken).ConfigureAwait(false))
             {
                 string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)

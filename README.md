@@ -238,7 +238,8 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 
 - `AddOAuth2Client` registers the client, `OAuth2Manager` and ASP.NET Core data protection. The client is created by the
   call, so invalid options stop the application at startup. It takes an optional `HttpClient`, which the client keeps for
-  the life of the application, so one from `IHttpClientFactory` would outlive its handler. Pass none unless the application
+  the life of the application, so one from `IHttpClientFactory` would outlive its handler; `AddOAuth2ClientWithHttpClientFactory`
+  takes a function that returns the client for each request instead, which honors the factory. Pass none unless the application
   needs its own: the default replaces its pooled connections regularly to follow DNS changes, which `new HttpClient()` does not.
 - `oauth2Manager.GetClient("Google")` returns the client, for example to call `RefreshTokenAsync`.
 - ASP.NET Core has an `AuthorizationResult` of its own, in `Microsoft.AspNetCore.Authorization`, the namespace of `[Authorize]`.

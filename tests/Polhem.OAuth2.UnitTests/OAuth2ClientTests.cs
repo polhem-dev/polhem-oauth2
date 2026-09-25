@@ -278,6 +278,32 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Create asks the HTTP client factory for each request to the provider, so a replaced client is picked up")]
+        public async Task Create_HttpClientFactory_IsCalledForEachRequest()
+        {
+            var first = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
+            var second = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"sub":"1"}""");
+            var clients = new Queue<HttpClient>([first.CreateClient(), second.CreateClient()]);
+            var client = OAuth2Client.Create(CreateOptions(), () => clients.Dequeue());
+            var request = client.CreateAuthorizationRequest();
+
+            var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("abc", request.Pending.State, null, null), request.Pending);
+
+            Assert.True(result.IsSuccess);
+            Assert.Single(first.Requests);
+            Assert.Single(second.Requests);
+            Assert.Empty(clients);
+        }
+
+        [Fact]
+        [DisplayName("Create rejects a null factory, and invalid options, when it is called")]
+        public void Create_NullFactoryOrInvalidOptions_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() => OAuth2Client.Create(CreateOptions(), null!));
+            Assert.Throws<ArgumentException>(() => OAuth2Client.Create(new GoogleOAuth2Options(), () => new StubHttpMessageHandler().CreateClient()));
+        }
+
+        [Fact]
         [DisplayName("CompleteAuthorizationAsync rejects a null callback or pending authorization")]
         public async Task CompleteAuthorizationAsync_NullArguments_ThrowsArgumentNullException()
         {

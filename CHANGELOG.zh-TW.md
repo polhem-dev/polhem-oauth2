@@ -13,6 +13,9 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
   Polhem.OAuth2.AspNetCore 的後端中轉現在對 `OAuth2AppRelayOptions.AppRedirectUris` 呼叫它，不再複寫一份。
 - `OAuth2Manager.TryRedirectToAppAuthorization`：以請求帶來的值開始一次中轉登入；client 名稱、回呼網址或 code challenge 不合法時
   回傳 false，而不是擲例外。應用程式開啟的端點不必再靠 catch 例外來回應 400。
+- `OAuth2Client.Create(options, httpClientFactory)` 建立的 client 會為每一次對 provider 的請求索取 `HttpClient`；
+  `AddOAuth2ClientWithHttpClientFactory` 則在 ASP.NET Core 以服務提供者給的 `HttpClient` 註冊 client，例如來自 `IHttpClientFactory` 的，
+  這樣它的 handler 輪替才會生效。
 
 ### 變更
 

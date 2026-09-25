@@ -11,8 +11,8 @@ namespace Polhem.OAuth2
         /// Initializes a new instance of the <see cref="OktaOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The Okta OAuth2 options.</param>
-        /// <param name="httpClient">The HTTP client for requests to the provider, or null to use a shared instance.</param>
-        public OktaOAuth2Provider(OktaOAuth2Options options, HttpClient? httpClient = null) : base(options, httpClient)
+        /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
+        public OktaOAuth2Provider(OktaOAuth2Options options, Func<HttpClient>? httpClientFactory = null) : base(options, httpClientFactory)
         {
         }
 

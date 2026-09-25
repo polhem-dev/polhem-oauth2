@@ -15,6 +15,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - `OAuth2Manager.TryRedirectToAppAuthorization` starts a relayed sign-in with values that come from the request, and returns false
   for a client name, a redirect URI or a code challenge that is not valid, instead of throwing. An endpoint that an application
   opens no longer has to catch exceptions to answer with status 400.
+- `OAuth2Client.Create(options, httpClientFactory)` creates a client that asks for the `HttpClient` of each request to the
+  provider, and `AddOAuth2ClientWithHttpClientFactory` registers one in ASP.NET Core with an `HttpClient` from the service
+  provider, such as one from `IHttpClientFactory`, whose handler rotation is honored that way.
 
 ### Changed
 
