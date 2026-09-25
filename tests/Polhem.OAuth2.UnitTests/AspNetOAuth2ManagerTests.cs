@@ -96,6 +96,39 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Two sign-ins started in the same browser do not affect each other")]
+        public async Task CompleteAuthorizationAsync_TwoPendingSignIns_CompletesTheOneThatReturns()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1"}""");
+            var first = StartSignIn(RegisterClient(handler));
+            var second = StartSignIn(RegisterClient(handler));
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(new FakeHttpContext($"code=abc&state={first.State}", first.Cookie, second.Cookie));
+
+            Assert.NotEqual(first.Cookie.Name, second.Cookie.Name);
+            Assert.True(result.IsSuccess);
+            Assert.Equal("1", result.UserInfo.UserId);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync rejects the cookie of another sign-in placed under the name of this state")]
+        public async Task CompleteAuthorizationAsync_CookieOfAnotherSignIn_ReturnsFailedResult()
+        {
+            var handler = new StubHttpMessageHandler();
+            string clientName = RegisterClient(handler);
+            var first = StartSignIn(clientName);
+            var second = StartSignIn(clientName);
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(
+                new FakeHttpContext($"code=abc&state={first.State}", new HttpCookie(first.Cookie.Name, second.Cookie.Value)));
+
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.Empty(handler.Requests);
+        }
+
+        [Fact]
         [DisplayName("CompleteAuthorizationAsync removes the sign-in cookie before it sends the token request")]
         public async Task CompleteAuthorizationAsync_TokenRequest_IsSentAfterCookieRemoval()
         {

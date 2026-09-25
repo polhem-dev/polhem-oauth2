@@ -59,6 +59,43 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("SignInAsync with a fixed port sends the configured redirect URI unchanged to the provider and the token endpoint")]
+        public async Task SignInAsync_FixedPort_SendsConfiguredRedirectUri()
+        {
+            int port = FreePort();
+            var options = CreateOptions();
+            options.RedirectUri = $"http://127.0.0.1:{port}/callback";
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1"}""");
+            var browser = new FakeBrowser("{path}?code=abc&state={state}");
+            var client = new LoopbackOAuth2Client(options, handler.CreateClient()) { OpenBrowser = browser.Open };
+
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal(options.RedirectUri, LoopbackTestHttp.GetQueryValue(browser.AuthorizationUrl!, "redirect_uri"));
+            Assert.Equal(options.RedirectUri, handler.Requests[0].FormValue("redirect_uri"));
+        }
+
+        [Fact]
+        [DisplayName("SignInAsync turns a redirect without a code into a failed result, without a request to the provider")]
+        public async Task SignInAsync_RedirectWithoutCode_ReturnsFailedResult()
+        {
+            var handler = new StubHttpMessageHandler();
+            var browser = new FakeBrowser("{path}?state={state}");
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
+
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
+
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.Contains("did not complete", browser.Responses[0], StringComparison.Ordinal);
+            Assert.Empty(handler.Requests);
+        }
+
+        [Fact]
         [DisplayName("SignInAsync ignores requests without the state of the sign-in and uses the genuine redirect")]
         public async Task SignInAsync_OtherRequestsBeforeRedirect_UsesGenuineRedirect()
         {
@@ -312,6 +349,16 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("refresh", request.FormValue("refresh_token"));
             Assert.Null(request.FormValue("client_secret"));
             Assert.Equal("new-access", token.AccessToken);
+        }
+
+        // A port that was free a moment ago. Another program could take it before the test binds it, which would fail the test.
+        private static int FreePort()
+        {
+            var probe = new TcpListener(IPAddress.Loopback, 0);
+            probe.Start();
+            int port = ((IPEndPoint)probe.LocalEndpoint).Port;
+            probe.Stop();
+            return port;
         }
 
         private static GoogleOAuth2Options CreateOptions()

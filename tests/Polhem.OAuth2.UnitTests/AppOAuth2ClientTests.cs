@@ -209,6 +209,45 @@ namespace Polhem.OAuth2.UnitTests
             Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
         }
 
+        [Theory]
+        [DisplayName("SignInAsync turns a failed request to the provider and an error from the token endpoint into a failed result")]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task SignInAsync_ProviderFailure_ReturnsFailedResult(bool requestFails)
+        {
+            var handler = requestFails
+                ? new StubHttpMessageHandler().Fail(new HttpRequestException("no route"))
+                : new StubHttpMessageHandler().Respond(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""");
+            var browser = new FakeAuthenticator("?code=abc&state={state}");
+
+            var result = await new AppOAuth2Client(CreateOptions("Auth0"), browser.AuthenticateAsync, handler.CreateClient()).SignInAsync();
+
+            Assert.False(result.IsSuccess);
+            if (requestFails)
+                Assert.IsType<HttpRequestException>(result.Exception);
+            else
+                Assert.Equal("invalid_grant", Assert.IsType<OAuth2Exception>(result.Exception).Error);
+        }
+
+        [Theory]
+        [DisplayName("RefreshTokenAsync sends a client secret that is set only to a provider that requires one from a public client")]
+        [InlineData("Auth0", false)]
+        [InlineData("Google", true)]
+        public async Task RefreshTokenAsync_PublicClient_FollowsProvider(string providerName, bool sendsSecret)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"new","refresh_token":"next"}""");
+            var client = new AppOAuth2Client(CreateOptions(providerName, clientSecret: "secret"), (_, _, _) => Task.FromResult(new Uri(RedirectUri)), handler.CreateClient());
+
+            var token = await client.RefreshTokenAsync("old");
+
+            Assert.Equal("new", token.AccessToken);
+            Assert.Equal("next", token.RefreshToken);
+            var request = handler.Requests[0];
+            Assert.Equal("refresh_token", request.FormValue("grant_type"));
+            Assert.Equal("old", request.FormValue("refresh_token"));
+            Assert.Equal(sendsSecret ? "secret" : null, request.FormValue("client_secret"));
+        }
+
         [Fact]
         [DisplayName("SignInAsync lets any other exception from the authenticate function propagate")]
         public async Task SignInAsync_AuthenticateThrows_Propagates()

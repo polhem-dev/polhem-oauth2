@@ -149,6 +149,22 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("ReadAsync returns no target for a request whose head is longer than 16 KiB, so a page cannot hold the listener with one")]
+        public async Task ReadAsync_HeadLongerThanLimit_ReturnsNullTarget()
+        {
+            using var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
+            string head = "GET /callback HTTP/1.1\r\nHost: x\r\nX-Filler: " + new string('a', 17 * 1024) + "\r\n\r\n";
+            var send = LoopbackTestHttp.SendAsync(IPAddress.Loopback, listener.RedirectUri.Port, head);
+
+            using (var request = await AcceptRequestAsync(listener))
+            {
+                Assert.Null(request.Target);
+            }
+
+            await send.WithTimeout();
+        }
+
+        [Fact]
         [DisplayName("ReadAsync stops waiting for a connection that sends nothing")]
         public async Task ReadAsync_IdleConnection_ReturnsNullTarget()
         {
