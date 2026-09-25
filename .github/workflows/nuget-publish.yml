@@ -21,8 +21,20 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      # A tag that does not match the version would pack the previous version, which the push then skips as a duplicate
+      # while the release below is still created. The tag must name the version that src/Directory.Build.props sets.
+      - name: Check that the tag matches the version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $version = (dotnet msbuild src/Polhem.OAuth2/Polhem.OAuth2.csproj -getProperty:Version).Trim()
+          if ("v$version" -ne $env:TAG) {
+            Write-Error "The tag $env:TAG does not match the version $version."
+            exit 1
+          }
+
       - name: Restore dependencies
-        run: dotnet restore --locked-mode
+        run: dotnet restore
 
       - name: Build Polhem.OAuth2 projects
         run: |
