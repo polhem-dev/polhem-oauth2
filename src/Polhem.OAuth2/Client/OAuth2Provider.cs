@@ -294,6 +294,31 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
+        /// Gets the display name of a user from an OpenID Connect user information response: the <c>name</c> claim, or the
+        /// <c>given_name</c> and <c>family_name</c> claims joined with a space when the provider returned those but no name.
+        /// </summary>
+        /// <param name="user">The root object of the user information response.</param>
+        /// <returns>The display name, or null when the response has neither the name nor any of its parts.</returns>
+        protected static string? GetOidcDisplayName(JsonElement user)
+        {
+            return OAuth2Json.GetString(user, "name") ?? JoinNameParts(user, "given_name", "family_name");
+        }
+
+        /// <summary>
+        /// Joins the given and family names of a user with a space, leaving out a part that is missing or blank.
+        /// </summary>
+        /// <param name="user">The root object of the user information response.</param>
+        /// <param name="givenNameField">The field that holds the given name.</param>
+        /// <param name="familyNameField">The field that holds the family name.</param>
+        /// <returns>The joined name, or null when both parts are missing or blank.</returns>
+        protected static string? JoinNameParts(JsonElement user, string givenNameField, string familyNameField)
+        {
+            string?[] parts = { OAuth2Json.GetString(user, givenNameField), OAuth2Json.GetString(user, familyNameField) };
+            string name = string.Join(" ", parts.Where(part => !string.IsNullOrWhiteSpace(part)));
+            return name.Length == 0 ? null : name;
+        }
+
+        /// <summary>
         /// Maps the fields of the user information object.
         /// </summary>
         /// <param name="user">The root object of the user information response.</param>

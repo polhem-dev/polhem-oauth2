@@ -24,6 +24,9 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
   因此不需要再傳入 `HttpContext.RequestAborted`。
 - `OAuth2AppRelayOptions.CodeLifetime` 最長 10 分鐘，也就是 RFC 6749 第 4.1.2 節對授權碼的建議上限。超過時 `AddOAuth2AppRelay` 會拒絕。
 - 端點帶有 fragment 時，建立 client 當下就會拒絕，符合 RFC 6749 第 3.1 節的要求。這種端點原本就無法運作，因為 fragment 會吃掉接在後面的參數。
+- 回應裡沒有 name 時，每一家 OpenID Connect provider 的 `UserInfo.UserName` 都會退而把 given name 與 family name 接起來，
+  Microsoft Entra ID 原本就是這樣；Auth0 的 nickname 與 Okta 的 preferred user name 排在那之後。Facebook 也向 Graph API 多要
+  `first_name` 與 `last_name`，在 `name` 缺席時接起來，所以 Facebook 的 `UserInfo.RawJson` 現在多了這兩個欄位。
 
 ### 修正
 

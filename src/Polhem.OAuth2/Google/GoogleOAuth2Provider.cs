@@ -28,7 +28,7 @@ namespace Polhem.OAuth2
         {
             return new UserInfo(
                 OAuth2Json.GetString(user, "sub"),
-                OAuth2Json.GetString(user, "name"),
+                GetOidcDisplayName(user),
                 OAuth2Json.GetString(user, "email"),
                 json);
         }

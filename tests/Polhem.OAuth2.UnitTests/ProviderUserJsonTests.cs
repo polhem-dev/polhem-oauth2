@@ -41,6 +41,17 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Null(user.UserName);
         }
 
+        [Theory]
+        [DisplayName("Google falls back to given_name and family_name when name is missing or JSON null")]
+        [InlineData("""{"sub":"1","given_name":"Ada","family_name":"Lovelace"}""", "Ada Lovelace")]
+        [InlineData("""{"sub":"1","name":null,"given_name":"Ada","family_name":"Lovelace"}""", "Ada Lovelace")]
+        [InlineData("""{"sub":"1","given_name":"Ada"}""", "Ada")]
+        [InlineData("""{"sub":"1","name":"Ada L.","given_name":"Ada","family_name":"Lovelace"}""", "Ada L.")]
+        public void Google_ParseUserJson_MissingName_FallsBackToNameParts(string json, string expectedName)
+        {
+            Assert.Equal(expectedName, new GoogleOAuth2Provider(new GoogleOAuth2Options()).ParseUserJson(json).UserName);
+        }
+
         [Fact]
         [DisplayName("Facebook maps id, name and email")]
         public void Facebook_ParseUserJson_MapsIdNameAndEmail()
@@ -52,6 +63,15 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("1234567890", user.UserId);
             Assert.Equal("Ada Lovelace", user.UserName);
             Assert.Equal("ada@example.com", user.Email);
+        }
+
+        [Fact]
+        [DisplayName("Facebook falls back to first_name and last_name when name is missing")]
+        public void Facebook_ParseUserJson_MissingName_FallsBackToNameParts()
+        {
+            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options()).ParseUserJson("""{"id":"1","first_name":"Ada","last_name":"Lovelace"}""");
+
+            Assert.Equal("Ada Lovelace", user.UserName);
         }
 
         [Fact]
@@ -147,6 +167,15 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Auth0 prefers the given and family names to the nickname when name is missing")]
+        public void Auth0_ParseUserJson_MissingName_PrefersNamePartsToNickname()
+        {
+            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","given_name":"Ada","family_name":"Lovelace","nickname":"ada"}""");
+
+            Assert.Equal("Ada Lovelace", user.UserName);
+        }
+
+        [Fact]
         [DisplayName("Auth0 falls back to nickname when name is JSON null")]
         public void Auth0_ParseUserJson_NullName_FallsBackToNickname()
         {
@@ -175,6 +204,15 @@ namespace Polhem.OAuth2.UnitTests
             var user = CreateOktaProvider().ParseUserJson("""{"sub":"00u1","preferred_username":"ada@example.com"}""");
 
             Assert.Equal("ada@example.com", user.UserName);
+        }
+
+        [Fact]
+        [DisplayName("Okta prefers the given and family names to preferred_username when name is missing")]
+        public void Okta_ParseUserJson_MissingName_PrefersNamePartsToPreferredUsername()
+        {
+            var user = CreateOktaProvider().ParseUserJson("""{"sub":"00u1","given_name":"Ada","family_name":"Lovelace","preferred_username":"ada@example.com"}""");
+
+            Assert.Equal("Ada Lovelace", user.UserName);
         }
 
         [Theory]

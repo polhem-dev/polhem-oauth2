@@ -28,6 +28,10 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
   code. A longer value is rejected by `AddOAuth2AppRelay`.
 - An endpoint with a fragment is rejected when the client is created, as RFC 6749, section 3.1, requires. Such an endpoint never
   worked, because the fragment swallowed the parameters added after it.
+- `UserInfo.UserName` falls back to the given and family names joined for every OpenID Connect provider when the response
+  has no name, as it already did for Microsoft Entra ID; Auth0 falls back to the nickname and Okta to the preferred user
+  name only after that. Facebook asks the Graph API for `first_name` and `last_name` as well, and joins them when `name`
+  is missing, so `UserInfo.RawJson` from Facebook now includes those fields.
 
 ### Fixed
 

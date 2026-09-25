@@ -31,7 +31,9 @@ namespace Polhem.OAuth2
         public string? UserId { get; }
 
         /// <summary>
-        /// Gets the user's display name, or null if the response does not include one.
+        /// Gets the user's display name, or null if the response does not include one: the name the provider returns, or
+        /// the given and family names joined when it returns those but no name. Auth0 falls back to the nickname and Okta
+        /// to the preferred user name after that.
         /// </summary>
         public string? UserName { get; }
 

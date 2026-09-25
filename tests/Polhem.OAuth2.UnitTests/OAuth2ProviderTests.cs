@@ -119,7 +119,7 @@ namespace Polhem.OAuth2.UnitTests
 
             await provider.GetUserInfoAsync(new TokenResponse("access"), CancellationToken.None);
 
-            Assert.Equal("?locale=en_US&fields=id%2Cname%2Cemail", handler.Requests[0].Uri.Query);
+            Assert.Equal("?locale=en_US&fields=id%2Cname%2Cfirst_name%2Clast_name%2Cemail", handler.Requests[0].Uri.Query);
         }
 
         [Fact]
@@ -464,7 +464,7 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("Facebook asks the Graph API for the id, name and email fields only")]
+        [DisplayName("Facebook asks the Graph API for the id, name, name parts and email fields only")]
         public async Task Facebook_GetUserInfoAsync_RequestsIdNameAndEmail()
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"id":"1"}""");
@@ -472,7 +472,7 @@ namespace Polhem.OAuth2.UnitTests
 
             await provider.GetUserInfoAsync(new TokenResponse("access"), CancellationToken.None);
 
-            Assert.Equal("id,name,email", LoopbackTestHttp.GetQueryValue(Assert.Single(handler.Requests).Uri.AbsoluteUri, "fields"));
+            Assert.Equal("id,name,first_name,last_name,email", LoopbackTestHttp.GetQueryValue(Assert.Single(handler.Requests).Uri.AbsoluteUri, "fields"));
         }
 
         [Fact]
