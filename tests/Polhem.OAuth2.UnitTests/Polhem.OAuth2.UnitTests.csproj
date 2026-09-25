@@ -26,6 +26,8 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <ProjectReference Include="..\..\src\Polhem.OAuth2.AspNetCore\Polhem.OAuth2.AspNetCore.csproj" />
+    <!-- The settings loader of the samples, whose README promises are tested in SampleConfigTests. -->
+    <Compile Include="..\..\samples\Shared\*.cs" LinkBase="Samples" />
     <Compile Remove="AspNetOAuth2ManagerTests.cs;FakeHttpContext.cs" />
   </ItemGroup>
 
@@ -35,7 +37,7 @@
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Web" />
     <Using Include="System.Net.Http" />
-    <Compile Remove="AspNetCore*.cs" />
+    <Compile Remove="AspNetCore*.cs;SampleConfigTests.cs;ReadmeDefaultsTests.cs" />
   </ItemGroup>
 
 </Project>

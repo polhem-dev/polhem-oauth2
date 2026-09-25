@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
+using System.Text;
 using System.Web;
 using Polhem.OAuth2.AspNet;
 
@@ -167,6 +168,11 @@ namespace Polhem.OAuth2.UnitTests
             var removal = Assert.Single(GetCookies(callback.Response.Cookies));
             Assert.Equal(signIn.Cookie.Name, removal.Name);
             Assert.True(removal.Expires < DateTime.UtcNow);
+            // A browser applies the removal of a __Host- cookie only with the attributes it was set with.
+            Assert.True(removal.Secure);
+            Assert.True(removal.HttpOnly);
+            Assert.Equal("/", removal.Path);
+            Assert.Null(removal.Domain);
         }
 
         [Fact]
@@ -190,6 +196,11 @@ namespace Polhem.OAuth2.UnitTests
             var removal = Assert.Single(GetCookies(callback.Response.Cookies));
             Assert.Equal(signIn.Cookie.Name, removal.Name);
             Assert.True(removal.Expires < DateTime.UtcNow);
+            // A browser applies the removal of a __Host- cookie only with the attributes it was set with.
+            Assert.True(removal.Secure);
+            Assert.True(removal.HttpOnly);
+            Assert.Equal("/", removal.Path);
+            Assert.Null(removal.Domain);
         }
 
         [Theory]
@@ -255,9 +266,11 @@ namespace Polhem.OAuth2.UnitTests
         {
             var handler = new StubHttpMessageHandler();
             string clientName = RegisterClient(handler);
-            var pending = new PendingAuthorization("relayed-state", "verifier", RedirectUri);
-            byte[] payload = PendingAuthorizationCookie.Serialize(
-                clientName, pending, DateTimeOffset.UtcNow, "com.example.app:/signin", "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+            // Written as the relay of Polhem.OAuth2.AspNetCore writes it, which this package does not compile.
+            string json = "{\"client\":\"" + clientName + "\",\"state\":\"relayed-state\",\"verifier\":\"verifier\",\"redirectUri\":\"" + RedirectUri
+                + "\",\"issuedAt\":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture)
+                + ",\"appRedirectUri\":\"com.example.app:/signin\",\"appChallenge\":\"E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM\"}";
+            byte[] payload = Encoding.UTF8.GetBytes(json);
             string value = HttpServerUtility.UrlTokenEncode(System.Web.Security.MachineKey.Protect(payload, PendingAuthorizationCookie.ProtectionPurpose));
 
             var result = await OAuth2Manager.CompleteAuthorizationAsync(

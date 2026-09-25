@@ -19,5 +19,10 @@ namespace Polhem.OAuth2
             TokenEndpoint = $"https://graph.facebook.com/{GraphApiVersion}/oauth/access_token";
             UserInfoEndpoint = $"https://graph.facebook.com/{GraphApiVersion}/me";
         }
+
+        internal override OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory)
+        {
+            return new FacebookOAuth2Provider(this, httpClientFactory);
+        }
     }
 }

@@ -89,11 +89,12 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("Deserialize reads back the application redirect URI and code challenge of a relayed sign-in")]
+        [DisplayName("Deserialize reads the application redirect URI and code challenge of a relayed sign-in, in both web packages")]
         public void Deserialize_RelayedSignIn_ReturnsAppValues()
         {
-            var pending = new PendingAuthorization("state", "verifier", "https://app.example.com/callback");
-            byte[] data = PendingAuthorizationCookie.Serialize("Google", pending, s_issuedAt, "com.example.app:/signin", "challenge");
+            // Written as the relay of Polhem.OAuth2.AspNetCore writes it, which the System.Web package does not compile.
+            byte[] data = Encoding.UTF8.GetBytes(
+                """{"client":"Google","state":"state","verifier":"verifier","redirectUri":"https://app.example.com/callback","issuedAt":1789387200,"appRedirectUri":"com.example.app:/signin","appChallenge":"challenge"}""");
 
             var signIn = PendingAuthorizationCookie.Deserialize(data, s_issuedAt);
 
@@ -113,6 +114,22 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Null(signIn.AppRedirectUri);
             Assert.Null(signIn.AppCodeChallenge);
         }
+
+#if !NETFRAMEWORK
+        [Fact]
+        [DisplayName("SerializeRelayed writes what Deserialize reads back as a relayed sign-in")]
+        public void SerializeRelayed_RelayedSignIn_RoundTrips()
+        {
+            var pending = new PendingAuthorization("state", "verifier", "https://app.example.com/callback");
+            byte[] data = PendingAuthorizationCookie.SerializeRelayed("Google", pending, s_issuedAt, "com.example.app:/signin", "challenge");
+
+            var signIn = PendingAuthorizationCookie.Deserialize(data, s_issuedAt);
+
+            Assert.Equal("verifier", signIn.Pending.CodeVerifier);
+            Assert.Equal("com.example.app:/signin", signIn.AppRedirectUri);
+            Assert.Equal("challenge", signIn.AppCodeChallenge);
+        }
+#endif
 
         [Theory]
         [DisplayName("Deserialize rejects an application redirect URI without a code challenge, and the reverse")]

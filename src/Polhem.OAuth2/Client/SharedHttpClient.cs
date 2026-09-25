@@ -21,5 +21,12 @@ namespace Polhem.OAuth2
         public static HttpClient Instance { get; } = new HttpClient(CreateHandler());
 
         internal static partial HttpMessageHandler CreateHandler();
+
+        /// <summary>
+        /// Prepares the shared instance for requests to an endpoint. On .NET Framework it limits how long a connection to the
+        /// endpoint's host is reused, which the handler cannot do there; elsewhere the handler already does it.
+        /// </summary>
+        /// <param name="endpoint">An absolute endpoint URI.</param>
+        internal static partial void UseEndpoint(string endpoint);
     }
 }

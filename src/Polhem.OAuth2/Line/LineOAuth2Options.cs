@@ -15,5 +15,10 @@ namespace Polhem.OAuth2
             TokenEndpoint = "https://api.line.me/oauth2/v2.1/token";
             UserInfoEndpoint = "https://api.line.me/v2/profile";
         }
+
+        internal override OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory)
+        {
+            return new LineOAuth2Provider(this, httpClientFactory);
+        }
     }
 }

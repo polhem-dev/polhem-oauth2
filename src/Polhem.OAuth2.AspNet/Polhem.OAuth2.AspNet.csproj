@@ -18,7 +18,8 @@
 
   <!-- Both web packages compile the files of this folder, so the format of the pending sign-in cookie is defined once. -->
   <ItemGroup>
-    <Compile Include="..\Shared\*.cs" LinkBase="Shared" />
+    <!-- System.Web has no back-end relay (ADR-006), so it leaves out the file that writes a relayed sign-in. -->
+    <Compile Include="..\Shared\*.cs" Exclude="..\Shared\*.AppRelay.cs" LinkBase="Shared" />
   </ItemGroup>
 
   <ItemGroup>

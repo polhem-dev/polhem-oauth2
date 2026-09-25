@@ -9,8 +9,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 新增
 
-- Polhem.OAuth2.AspNetCore 新增 `IOAuth2Manager`，涵蓋 `OAuth2Manager` 的操作；`AddOAuth2Client` 也會把 manager 登記為這個介面。
-  依賴它的 controller 測試時可以換成假的 manager。
+- Polhem.OAuth2.AspNetCore 的 `OAuth2Manager` 可以被繼承：公開成員都是 virtual，protected 建構式會建立沒有任何 client、也沒有中轉的
+  manager，測試 controller 時可以傳入只覆寫所需成員的類別。
 - `AddOAuth2AppRelay(services, configuration)` 以組態區段的設定註冊後端中轉，例如 `builder.Configuration.GetSection("AppRelay")`。
   `AppRedirectUris` 與 `CodeLifetime` 以外的 key 視為錯誤。
 - `OAuth2Options.ClientAuthentication` 設為 `ClientAuthenticationMethod.ClientSecretBasic` 時，client secret 改放在 HTTP Basic 標頭送出，
@@ -18,6 +18,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 變更
 
+- 在 .NET Framework 上，使用預設 `HttpClient` 的 client 會對 token 與使用者資訊端點主機的 `ServicePoint` 設定 `ConnectionLeaseTimeout`，
+  連線池裡的連線會定期汰換並跟上 DNS 變更，與 .NET 上相同。這個設定對整個程序裡連到這些主機的連線都有效。
 - `TokenResponse.Scope` 的文件不再宣稱 scope 以空白分隔；它就是 token 端點回傳的原值，不做任何轉換。
 - token 回應指定的 token type 不是 `Bearer` 時，登入或 refresh 會以 `OAuth2Exception` 失敗。RFC 6749 第 7.1 節禁止 client 使用它不理解
   類型的 token，而本套件把 access token 當作 bearer token 送出。比對不分大小寫，沒有 token type 的回應仍然接受。
@@ -32,6 +34,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 修正
 
+- `LoopbackOAuth2Client` 收到帶授權碼、但 `error` 參數為空的導回時，登入其實成功，頁面卻顯示失敗。現在頁面也把空的 error 視為沒有錯誤。
 - System.Web 套件不再讓 web.config 中 `<httpCookies>` 的 `domain` 套用到登入 cookie。瀏覽器會拒收指定了 domain 的 `__Host-` cookie，
   所以設了這個值時每次登入都會失敗。
 - ASP.NET Core 中，同一個 request 第二次呼叫 `CompleteAuthorizationAsync` 時，不再留下第一次呼叫的中轉登入讓 `RedirectToAppAsync` 送回。

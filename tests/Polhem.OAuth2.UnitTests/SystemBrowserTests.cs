@@ -5,7 +5,7 @@ namespace Polhem.OAuth2.UnitTests
     public class SystemBrowserTests
     {
         [Theory]
-        [DisplayName("IsWebUrl accepts only absolute http and https URLs")]
+        [DisplayName("OAuth2Options.IsWebUri, which Open applies, accepts only absolute http and https URLs")]
         [InlineData("https://accounts.google.com/o/oauth2/v2/auth?client_id=x", true)]
         [InlineData("http://127.0.0.1:53682/callback", true)]
         [InlineData("file:///etc/hosts", false)]
@@ -13,9 +13,9 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("/usr/bin/open", false)]
         [InlineData("mailto:user@example.com", false)]
         [InlineData("", false)]
-        public void IsWebUrl_VariousUris_AcceptsOnlyWebUrls(string url, bool expected)
+        public void IsWebUri_VariousUris_AcceptsOnlyWebUrls(string url, bool expected)
         {
-            Assert.Equal(expected, SystemBrowser.IsWebUrl(new Uri(url, UriKind.RelativeOrAbsolute)));
+            Assert.Equal(expected, OAuth2Options.IsWebUri(new Uri(url, UriKind.RelativeOrAbsolute)));
         }
 
         [Fact]

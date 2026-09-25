@@ -228,7 +228,8 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
   預設的 `HttpClient` 會定期汰換連線池裡的連線以跟上 DNS 變更，`new HttpClient()` 不會。
   預設的 `HttpClient` 也不跟隨轉址，以免把 token 請求的本文轉送出去；自己的 `HttpClient` 基於同樣理由，請把 handler 的 `AllowAutoRedirect` 設為 false。
 - `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
-- manager 同時登記為 `IOAuth2Manager`。依賴這個介面的 controller，測試時可以換成假的 manager，不需要 service provider，也不需要真的登入 provider。
+- `OAuth2Manager` 的公開成員都是 virtual，protected 建構式會建立一個沒有任何 client 的 manager。測試 controller 時，可以傳入繼承它、
+  只覆寫測試需要之成員的類別，不需要 service provider，也不需要真的登入 provider。
 - ASP.NET Core 自己也有一個 `AuthorizationResult`，位於 `Microsoft.AspNetCore.Authorization`，也就是 `[Authorize]` 所在的命名空間。
   同一個檔案兩個命名空間都匯入、又寫出型別名稱時，會得到 CS0104 錯誤。改用 `var` 宣告變數，或加上
   `using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;`。
@@ -280,9 +281,9 @@ public class AuthController : Controller
   非同步頁面與作業系統的 TLS 預設值都取決於這個設定。
 - 在 .NET Framework 上，核心套件相依於 System.Text.Json。NuGet 為它及其相依套件加入 `web.config` 的 binding redirect 要保留。
 - 有多台伺服器可能收到回呼時，每一台的 `web.config` 都要設定相同的 `<machineKey>`。
-- 在 .NET Framework 上，預設的 `HttpClient` 會在 provider 允許的範圍內一直沿用同一條連線，在那之前不會跟上 DNS 的變更。
-  長時間執行的應用程式可以對 token 端點的 `ServicePoint` 設定 `ConnectionLeaseTimeout`，或傳入自己的 `HttpClient`，
-  並像預設的一樣把 handler 的 `AllowAutoRedirect` 設為 false。
+- 在 .NET Framework 上，預設 `HttpClient` 的 handler 沒有連線壽命設定，所以 client 會對 token 與使用者資訊端點主機的 `ServicePoint`
+  設定 `ConnectionLeaseTimeout`，連線會定期汰換以跟上 DNS 變更。這個設定對整個程序裡連到這些主機的連線都有效。傳入自己的
+  `HttpClient` 的應用程式要自行設定，並像預設的一樣把 handler 的 `AllowAutoRedirect` 設為 false。
 - 在開啟 FIPS 模式的機器上，目標框架為 .NET Framework 4.7.2 的應用程式，開始登入時可能擲出 `CryptographicException`：
   對這類應用程式，.NET Framework 會擋下 PKCE 使用的 managed SHA-256 實作。請把目標框架改為 .NET Framework 4.8 或更新的版本，
   或把 `Switch.System.Security.Cryptography.UseLegacyFipsThrow` 開關設為 `false`。
@@ -408,9 +409,10 @@ provider 在後台是桌面、Web 與行動 App 的 client 分開登記的，所
 - 後台其實只登記一個 client 的 provider（例如一個 LINE channel 登記兩個回呼網址），兩組填相同的 `ClientId`
   與 `ClientSecret` 即可。
 - `ClientId` 還留空的區段會被略過，所以 sample 只會出現你已經填好的 provider。
-- OAuthMaui sample 在 iOS 與 Mac Catalyst 讀 `iOS`，在 Android 讀 `Android`，在 Windows 讀 `Desktop`。`iOS` 與
-  `Android` 區段不能有 `ClientSecret`，因為 App 無法保密 secret：有的話載入會失敗。OAuthMaui 建置時只打包
-  `ClientId`、`RedirectUri`、`Scopes`、`UsePkce` 與共用欄位，不會打包任何 secret。Google 與 LINE 不接受直接導回
+- OAuthMaui sample 在 iOS 與 Mac Catalyst 讀 `iOS`，在 Android 讀 `Android`，在 Windows 讀 `Desktop`。它也會讀每個 `Web`
+  區段的 `ClientId`，用來決定哪些 provider 提供經由後端的登入。`iOS` 與 `Android` 區段不能有 `ClientSecret`，因為 App 無法保密
+  secret：有的話載入會失敗。OAuthMaui 建置時只打包 `ClientId`、`RedirectUri`、`Scopes`、`UsePkce` 與共用欄位；打包內容若會出現
+  名稱含 `Secret` 的欄位，建置就會失敗。Google 與 LINE 不接受直接導回
   Android App（[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)），所以沒有 `Android` 區段，sample 在 Android 上
   改由後端登入它們。
 - 最上層的 `AppRelay` 區段設定後端中轉：`BackendUrl` 是 ASP.NET Core sample 的網址，`RedirectUri` 是 App 的中轉回呼網址，

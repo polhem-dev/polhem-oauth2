@@ -9,8 +9,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Added
 
-- `IOAuth2Manager` holds the operations of `OAuth2Manager` in Polhem.OAuth2.AspNetCore, and `AddOAuth2Client` registers the
-  manager as the interface as well. A controller that depends on it can be tested with a fake manager.
+- `OAuth2Manager` in Polhem.OAuth2.AspNetCore can be derived from. Its public members are virtual, and a protected constructor
+  creates a manager with no clients and no relay, so a test of a controller can pass a class that overrides what it needs.
 - `AddOAuth2AppRelay(services, configuration)` registers the back-end relay with the settings of a configuration section, such as
   `builder.Configuration.GetSection("AppRelay")`. A key other than `AppRedirectUris` and `CodeLifetime` is an error.
 - `OAuth2Options.ClientAuthentication` sends the client secret in an HTTP Basic header when set to
@@ -19,6 +19,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Changed
 
+- On .NET Framework, a client that uses the default `HttpClient` sets `ConnectionLeaseTimeout` on the `ServicePoint` of the token
+  and user information hosts, so a pooled connection is replaced regularly and a DNS change is followed, as on .NET. The
+  setting applies to the whole process for those hosts.
 - The documentation of `TokenResponse.Scope` no longer says that the scopes are separated by spaces. The value is the one the
   token endpoint returned, unchanged.
 - A token response that names a token type other than `Bearer` now fails the sign-in or the refresh with an `OAuth2Exception`.
@@ -39,6 +42,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Fixed
 
+- `LoopbackOAuth2Client` showed the page of a failed sign-in for a redirect with an empty `error` parameter and a code, although
+  the sign-in completed. An empty error now counts as none on the page as well.
 - The System.Web package no longer lets the `domain` of `<httpCookies>` in web.config reach the sign-in cookie. Browsers
   reject a `__Host-` cookie that names a domain, so with that setting every sign-in failed.
 - In ASP.NET Core, a second call to `CompleteAuthorizationAsync` in the same request no longer leaves the relayed sign-in of the

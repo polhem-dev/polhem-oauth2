@@ -35,5 +35,10 @@ namespace Polhem.OAuth2
                 UserInfoEndpoint = hasDomain ? $"https://{_domain}/userinfo" : string.Empty;
             }
         }
+
+        internal override OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory)
+        {
+            return new Auth0OAuth2Provider(this, httpClientFactory);
+        }
     }
 }

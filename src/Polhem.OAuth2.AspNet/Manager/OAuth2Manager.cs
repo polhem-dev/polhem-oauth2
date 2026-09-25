@@ -209,7 +209,6 @@ namespace Polhem.OAuth2.AspNet
                 : throw new InvalidOperationException("There is no current HTTP context.");
         }
 
-        // Reads the cookie of the sign-in that the state names, and removes it on the response.
         private static PendingSignIn TakePendingAuthorization(HttpContextBase context, string? state)
         {
             if (string.IsNullOrEmpty(state))

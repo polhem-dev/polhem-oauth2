@@ -254,7 +254,9 @@ namespace Polhem.OAuth2
                 return null;
             }
 
-            bool received = callback.Error is null && !string.IsNullOrEmpty(callback.Code);
+            // An empty error names no error, as OAuth2Client.CompleteAuthorizationAsync also reads it, so the page agrees with
+            // how the sign-in ends.
+            bool received = string.IsNullOrEmpty(callback.Error) && !string.IsNullOrEmpty(callback.Code);
             await request.RespondAsync("200 OK", received ? ReceivedMessage : RejectedMessage).ConfigureAwait(false);
             return callback;
         }

@@ -1,14 +1,25 @@
 #nullable enable
 static Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.CompleteAuthorizationAsync(Microsoft.AspNetCore.Http.HttpContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.CreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> string!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.CreateAppRedirectUrlAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.CreateAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> string!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.OAuth2Client?
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.RedeemAppCodeAsync(string! clientName, string! code, string! codeVerifier, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.UserInfo?>!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.RedirectToAppAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.RedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> void
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.RedirectToAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> void
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.TryCreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge, out string? url) -> bool
-Polhem.OAuth2.AspNetCore.IOAuth2Manager.TryRedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge) -> bool
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.CompleteAuthorizationAsync(Microsoft.AspNetCore.Http.HttpContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.CompleteAuthorizationAsync(Microsoft.AspNetCore.Http.HttpContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> string!
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> string!
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAppRedirectUrlAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAppRedirectUrlAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string?>!
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> string!
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.CreateAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> string!
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.OAuth2Client?
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.GetClient(string! clientName) -> Polhem.OAuth2.OAuth2Client?
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.RedeemAppCodeAsync(string! clientName, string! code, string! codeVerifier, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.UserInfo?>!
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.RedeemAppCodeAsync(string! clientName, string! code, string! codeVerifier, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.UserInfo?>!
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAppAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAppAsync(Microsoft.AspNetCore.Http.HttpContext! context, Polhem.OAuth2.AuthorizationResult! result, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> void
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName, string! appRedirectUri, string! codeChallenge) -> void
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> void
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.RedirectToAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string! clientName) -> void
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.TryCreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge, out string? url) -> bool
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.TryCreateAppAuthorizationUrl(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge, out string? url) -> bool
+*REMOVED*Polhem.OAuth2.AspNetCore.OAuth2Manager.TryRedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge) -> bool
+virtual Polhem.OAuth2.AspNetCore.OAuth2Manager.TryRedirectToAppAuthorization(Microsoft.AspNetCore.Http.HttpContext! context, string? clientName, string? appRedirectUri, string? codeChallenge) -> bool
+Polhem.OAuth2.AspNetCore.OAuth2Manager.OAuth2Manager() -> void

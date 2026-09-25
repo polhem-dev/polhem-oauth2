@@ -24,6 +24,12 @@ dotnet_diagnostic.CA1724.severity = warning
 # Build-time check: the packages await with ConfigureAwait(false), because a caller may have a synchronization context.
 dotnet_diagnostic.CA2007.severity = warning
 
+# Namespaces do not follow folders, so IDE0130 stays off. Every public type of Polhem.OAuth2 is in the Polhem.OAuth2
+# namespace whatever its folder, so that one using directive reaches the whole API, and a new folder adds no namespace.
+# The web packages use Polhem.OAuth2.AspNetCore and Polhem.OAuth2.AspNet, and their service registration extensions use
+# Microsoft.Extensions.DependencyInjection, as .NET libraries do.
+dotnet_diagnostic.IDE0130.severity = none
+
 # ───── Checks that mirror SonarCloud rules, enforced at build time ─────
 
 # Methods that use no instance members should be static (Sonar S2325).

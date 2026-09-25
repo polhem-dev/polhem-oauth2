@@ -163,7 +163,7 @@ namespace Polhem.OAuth2
         {
             string[] lines = head.Split(s_lineSeparator);
 
-            // The request line is "METHOD target HTTP/version". Providers redirect with GET.
+            // Only a GET request can be the redirect, because a provider redirects the browser with GET.
             string[] parts = lines[0].TrimEnd('\r').Split(' ');
             target = parts.Length == 3 && string.Equals(parts[0], "GET", StringComparison.Ordinal) ? parts[1] : null;
 

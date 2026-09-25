@@ -10,7 +10,7 @@ namespace Polhem.OAuth2.AspNetCore
 {
     // The back-end relay of ADR-006: a sign-in started by a mobile application, returned to it with a single-use code,
     // and redeemed with the application's code verifier.
-    public sealed partial class OAuth2Manager
+    public partial class OAuth2Manager
     {
         private const string RelayCacheKeyPrefix = "Polhem.OAuth2.AppRelay.";
 
@@ -61,7 +61,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="InvalidOperationException">
         /// The relay is not registered, or no client is registered under <paramref name="clientName"/>.
         /// </exception>
-        public void RedirectToAppAuthorization(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
+        public virtual void RedirectToAppAuthorization(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
         {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
@@ -85,7 +85,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="InvalidOperationException">
         /// The relay is not registered, or no client is registered under <paramref name="clientName"/>.
         /// </exception>
-        public string CreateAppAuthorizationUrl(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
+        public virtual string CreateAppAuthorizationUrl(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
         {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
@@ -123,7 +123,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
-        public bool TryRedirectToAppAuthorization(HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge)
+        public virtual bool TryRedirectToAppAuthorization(HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge)
         {
             if (!TryCreateAppAuthorizationUrl(context, clientName, appRedirectUri, codeChallenge, out string? url))
                 return false;
@@ -148,7 +148,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
-        public bool TryCreateAppAuthorizationUrl(
+        public virtual bool TryCreateAppAuthorizationUrl(
             HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge, [NotNullWhen(true)] out string? url)
         {
             if (context is null)
@@ -201,7 +201,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// The relay is not registered, or the sign-in names an application redirect URI that is no longer registered.
         /// </exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
-        public async Task<bool> RedirectToAppAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
+        public virtual async Task<bool> RedirectToAppAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
         {
             string? url = await CreateAppRedirectUrlAsync(context, result, cancellationToken).ConfigureAwait(false);
             if (url is null)
@@ -227,7 +227,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// The relay is not registered, or the sign-in names an application redirect URI that is no longer registered.
         /// </exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
-        public async Task<string?> CreateAppRedirectUrlAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
+        public virtual async Task<string?> CreateAppRedirectUrlAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
         {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
@@ -287,7 +287,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="ArgumentNullException">An argument is null.</exception>
         /// <exception cref="InvalidOperationException">The relay is not registered.</exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
-        public async Task<UserInfo?> RedeemAppCodeAsync(string clientName, string code, string codeVerifier, CancellationToken cancellationToken = default)
+        public virtual async Task<UserInfo?> RedeemAppCodeAsync(string clientName, string code, string codeVerifier, CancellationToken cancellationToken = default)
         {
             if (clientName is null)
                 throw new ArgumentNullException(nameof(clientName));

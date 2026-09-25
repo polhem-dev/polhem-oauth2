@@ -23,8 +23,12 @@ namespace Polhem.OAuth2.AspNetCore
     /// same clients also sign in mobile applications through the back-end relay of ADR-006:
     /// <see cref="RedirectToAppAuthorization"/>, <see cref="RedirectToAppAsync"/> and <see cref="RedeemAppCodeAsync"/>.
     /// </para>
+    /// <para>
+    /// The public members are virtual, so a controller that depends on the manager can be tested with a class derived through
+    /// the protected constructor.
+    /// </para>
     /// </remarks>
-    public sealed partial class OAuth2Manager : IOAuth2Manager
+    public partial class OAuth2Manager
     {
         private readonly Dictionary<string, OAuth2Client> _clients;
         private readonly IDataProtector _protector;
@@ -32,6 +36,21 @@ namespace Polhem.OAuth2.AspNetCore
         private readonly AppRelaySettings? _relay;
         private readonly IDistributedCache? _relayCache;
         private readonly TimeProvider _timeProvider;
+
+        /// <summary>
+        /// Initializes a manager with no clients and no relay, as the base of a test double that overrides the members a test
+        /// needs. <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2Client"/>
+        /// creates the manager that an application uses.
+        /// </summary>
+        /// <remarks>
+        /// A member that the double does not override behaves as it does in such a manager: <see cref="GetClient"/> returns
+        /// null, a sign-in cannot start because no client is registered, and the relay members report that the relay is not
+        /// registered.
+        /// </remarks>
+        protected OAuth2Manager()
+            : this([], new EphemeralDataProtectionProvider())
+        {
+        }
 
         internal OAuth2Manager(
             IEnumerable<OAuth2ClientRegistration> registrations,
@@ -54,7 +73,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <param name="clientName">The name that identifies the client.</param>
         /// <returns>The client, or null if no client is registered under that name.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="clientName"/> is null.</exception>
-        public OAuth2Client? GetClient(string clientName)
+        public virtual OAuth2Client? GetClient(string clientName)
         {
             if (clientName is null)
                 throw new ArgumentNullException(nameof(clientName));
@@ -70,7 +89,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <returns>The URL to redirect the user to.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="clientName"/> is null.</exception>
         /// <exception cref="InvalidOperationException">No client is registered under <paramref name="clientName"/>.</exception>
-        public string CreateAuthorizationUrl(HttpContext context, string clientName)
+        public virtual string CreateAuthorizationUrl(HttpContext context, string clientName)
         {
             return StartSignIn(context, clientName, appRedirectUri: null, appCodeChallenge: null);
         }
@@ -82,7 +101,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <param name="clientName">The name the client is registered under.</param>
         /// <exception cref="ArgumentNullException"><paramref name="context"/> or <paramref name="clientName"/> is null.</exception>
         /// <exception cref="InvalidOperationException">No client is registered under <paramref name="clientName"/>.</exception>
-        public void RedirectToAuthorization(HttpContext context, string clientName)
+        public virtual void RedirectToAuthorization(HttpContext context, string clientName)
         {
             string url = CreateAuthorizationUrl(context, clientName);
             context.Response.Redirect(url);
@@ -116,7 +135,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="ArgumentNullException"><paramref name="context"/> is null.</exception>
         /// <exception cref="InvalidOperationException">The sign-in names a client that is no longer registered.</exception>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
-        public async Task<AuthorizationResult> CompleteAuthorizationAsync(HttpContext context, CancellationToken cancellationToken = default)
+        public virtual async Task<AuthorizationResult> CompleteAuthorizationAsync(HttpContext context, CancellationToken cancellationToken = default)
         {
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
@@ -165,13 +184,15 @@ namespace Polhem.OAuth2.AspNetCore
                 ?? throw new InvalidOperationException($"No OAuth2 client is registered under the name '{clientName}'.");
 
             var request = client.CreateAuthorizationRequest();
-            byte[] payload = PendingAuthorizationCookie.Serialize(clientName, request.Pending, _timeProvider.GetUtcNow(), appRedirectUri, appCodeChallenge);
+            DateTimeOffset now = _timeProvider.GetUtcNow();
+            byte[] payload = appRedirectUri is not null && appCodeChallenge is not null
+                ? PendingAuthorizationCookie.SerializeRelayed(clientName, request.Pending, now, appRedirectUri, appCodeChallenge)
+                : PendingAuthorizationCookie.Serialize(clientName, request.Pending, now);
             string cookieName = PendingAuthorizationCookie.NamePrefix + request.Pending.State;
             context.Response.Cookies.Append(cookieName, WebEncoders.Base64UrlEncode(_protector.Protect(payload)), CreateCookieOptions(PendingAuthorizationCookie.Lifetime));
             return request.Url;
         }
 
-        // Reads the cookie of the sign-in that the state names, and removes it on the response.
         private PendingSignIn TakePendingAuthorization(HttpContext context, string? state)
         {
             if (string.IsNullOrEmpty(state))

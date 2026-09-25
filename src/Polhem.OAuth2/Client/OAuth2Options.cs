@@ -90,6 +90,14 @@ namespace Polhem.OAuth2
         public bool UsePkce { get; set; } = true;
 
         /// <summary>
+        /// Creates the provider for these options. Each options type creates its own provider, so adding a provider needs no
+        /// change to a list of types elsewhere.
+        /// </summary>
+        /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
+        /// <returns>The provider.</returns>
+        internal abstract OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory);
+
+        /// <summary>
         /// Creates a copy that later changes to these options do not affect.
         /// </summary>
         /// <returns>The copy.</returns>
@@ -168,12 +176,23 @@ namespace Polhem.OAuth2
             return !s_nonAppSchemes.Contains(uri.Scheme);
         }
 
+        /// <summary>
+        /// Checks whether a URI is an absolute http or https URI: the rule for the redirect URI of a web client, and for a URL
+        /// that <see cref="SystemBrowser"/> may hand to the operating system shell.
+        /// </summary>
+        /// <param name="uri">The URI to check.</param>
+        /// <returns><see langword="true"/> for an absolute http or https URI; otherwise, <see langword="false"/>.</returns>
+        internal static bool IsWebUri(Uri uri)
+        {
+            return uri.IsAbsoluteUri
+                && (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
+                    || string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal));
+        }
+
         // On Unix a path such as /callback parses as an absolute file URI, so the scheme is checked as well.
         private static bool IsWebUri(string value)
         {
-            return Uri.TryCreate(value, UriKind.Absolute, out var uri)
-                && (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
-                    || string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal));
+            return Uri.TryCreate(value, UriKind.Absolute, out var uri) && IsWebUri(uri);
         }
     }
 }

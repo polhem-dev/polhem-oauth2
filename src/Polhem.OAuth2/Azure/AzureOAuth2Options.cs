@@ -40,5 +40,10 @@ namespace Polhem.OAuth2
             AuthorizationEndpoint = authority + "/oauth2/v2.0/authorize";
             TokenEndpoint = authority + "/oauth2/v2.0/token";
         }
+
+        internal override OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory)
+        {
+            return new AzureOAuth2Provider(this, httpClientFactory);
+        }
     }
 }

@@ -10,12 +10,15 @@ namespace Polhem.OAuth2
     /// It accepts TCP connections itself instead of using <c>HttpListener</c>, which on Windows needs a URL reservation for
     /// loopback address prefixes and cannot pick a free port. Only loopback addresses are bound, as RFC 8252 requires.
     /// </remarks>
-    internal sealed class LoopbackListener : IDisposable
+    internal sealed partial class LoopbackListener : IDisposable
     {
         private const int BindAttempts = 5;
 
         private readonly List<TcpListener> _listeners;
         private readonly Task<TcpClient>?[] _pendingAccepts;
+
+        // Canceled by Dispose. It ends a pending accept natively where the framework can, and Stop ends it everywhere else.
+        private readonly CancellationTokenSource _stopping = new();
 
         private LoopbackListener(List<TcpListener> listeners, Uri redirectUri)
         {
@@ -104,9 +107,11 @@ namespace Polhem.OAuth2
         public async Task<TcpClient> AcceptClientAsync(CancellationToken cancellationToken)
         {
             for (int i = 0; i < _listeners.Count; i++)
-                _pendingAccepts[i] ??= _listeners[i].AcceptTcpClientAsync();
+                _pendingAccepts[i] ??= AcceptAsync(_listeners[i], _stopping.Token);
 
-            // AcceptTcpClientAsync takes no cancellation token on netstandard2.0, so the wait races a task that the token completes.
+            // An accept outlives this wait: the one that loses the race on a listener with two addresses is kept for the next
+            // call, because a connection it completes with may be the redirect. The wait therefore races a task that the token
+            // completes, instead of passing the token to the accepts.
             var canceled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             using (cancellationToken.Register(() => canceled.TrySetResult(true)))
             {
@@ -138,16 +143,26 @@ namespace Polhem.OAuth2
         /// </summary>
         public void Dispose()
         {
+            if (_stopping.IsCancellationRequested)
+                return;
+
+            // The slots are cleared before the accepts end, so a wait in AcceptClientAsync that they wake finds its accept gone
+            // and reports ObjectDisposedException on every target framework.
+            var abandoned = _pendingAccepts.OfType<Task<TcpClient>>().ToList();
+            Array.Clear(_pendingAccepts, 0, _pendingAccepts.Length);
+
+            _stopping.Cancel();
+            _stopping.Dispose();
             foreach (var listener in _listeners)
                 listener.Stop();
 
-            for (int i = 0; i < _pendingAccepts.Length; i++)
-            {
-                if (_pendingAccepts[i] is { } accept)
-                    ReleaseWhenAbandoned(accept);
-                _pendingAccepts[i] = null;
-            }
+            foreach (var accept in abandoned)
+                ReleaseWhenAbandoned(accept);
         }
+
+        // Accepts a connection. The token is observed where the framework supports it; otherwise Dispose ends the accept by
+        // stopping the listener.
+        private static partial Task<TcpClient> AcceptAsync(TcpListener listener, CancellationToken stopping);
 
         private static bool IsLocalhost(Uri redirectUri)
         {

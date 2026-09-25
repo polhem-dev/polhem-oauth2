@@ -8,9 +8,11 @@ namespace Polhem.OAuth2
     /// </summary>
     /// <remarks>
     /// Both web packages compile this file, so they share one format. Each package protects the encoded bytes with the data
-    /// protection of its platform before they reach the browser.
+    /// protection of its platform before they reach the browser. Only Polhem.OAuth2.AspNetCore compiles
+    /// <c>PendingAuthorizationCookie.AppRelay.cs</c>, which writes a sign-in relayed to an application (ADR-006), because
+    /// System.Web has no relay. Both packages read the relay fields, so that System.Web can refuse such a cookie.
     /// </remarks>
-    internal static class PendingAuthorizationCookie
+    internal static partial class PendingAuthorizationCookie
     {
         /// <summary>
         /// The prefix of the cookie name. Browsers accept a cookie whose name starts with <c>__Host-</c> only when it is
@@ -54,18 +56,19 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Encodes a pending sign-in, before it is protected.
+        /// Encodes a pending web sign-in, before it is protected.
         /// </summary>
         /// <param name="clientName">The name the client is registered under.</param>
         /// <param name="pending">The values to keep until the callback.</param>
         /// <param name="issuedAt">When the sign-in started.</param>
-        /// <param name="appRedirectUri">
-        /// For a sign-in relayed to an application (ADR-006), the application redirect URI to return to; otherwise null.
-        /// </param>
-        /// <param name="appCodeChallenge">For a relayed sign-in, the S256 code challenge of the application; otherwise null.</param>
         /// <returns>The encoded bytes.</returns>
-        public static byte[] Serialize(
-            string clientName, PendingAuthorization pending, DateTimeOffset issuedAt, string? appRedirectUri = null, string? appCodeChallenge = null)
+        public static byte[] Serialize(string clientName, PendingAuthorization pending, DateTimeOffset issuedAt)
+        {
+            return Write(clientName, pending, issuedAt, appRedirectUri: null, appCodeChallenge: null);
+        }
+
+        private static byte[] Write(
+            string clientName, PendingAuthorization pending, DateTimeOffset issuedAt, string? appRedirectUri, string? appCodeChallenge)
         {
             using (var stream = new MemoryStream())
             {
@@ -92,7 +95,7 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Decodes a pending sign-in, after it is unprotected, together with the application it is relayed to, if any.
         /// </summary>
-        /// <param name="data">The bytes written by <see cref="Serialize"/>.</param>
+        /// <param name="data">The bytes that <see cref="Serialize"/> or its relayed counterpart wrote.</param>
         /// <param name="now">The current time.</param>
         /// <returns>The pending sign-in.</returns>
         /// <exception cref="OAuth2Exception">

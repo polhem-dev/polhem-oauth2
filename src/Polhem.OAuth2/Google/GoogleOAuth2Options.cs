@@ -16,5 +16,10 @@ namespace Polhem.OAuth2
             TokenEndpoint = "https://oauth2.googleapis.com/token";
             UserInfoEndpoint = "https://openidconnect.googleapis.com/v1/userinfo";
         }
+
+        internal override OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory)
+        {
+            return new GoogleOAuth2Provider(this, httpClientFactory);
+        }
     }
 }

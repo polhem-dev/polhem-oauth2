@@ -80,7 +80,8 @@ else
   sample shows the same sign-in in a Windows Forms application on .NET Framework.
 - An application that targets .NET Framework 4.7.2 and runs on a machine with FIPS mode enabled needs the setting described
   under "Before deploying" in the ASP.NET (System.Web) section.
-- To sign in to a separate back end as well, see the "Apps with a separate back end" section.
+- To sign in to a separate back end as well, see
+  [Apps with a separate back end](https://github.com/polhem-dev/polhem-oauth2#apps-with-a-separate-back-end).
 
 The reasons behind this design, and how each provider handled loopback redirects, are recorded in
 [ADR-004](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-004-system-browser-loopback.md).
@@ -252,8 +253,9 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
   The default also does not follow redirects, which would resend the body of a token request; set `AllowAutoRedirect` to false
   on the handler of a client of your own for the same reason.
 - `oauth2Manager.GetClient("Google")` returns the client, for example to call `RefreshTokenAsync`.
-- The manager is also registered as `IOAuth2Manager`. A controller that depends on the interface can be tested with a fake
-  manager, without a service provider or a provider to sign in to.
+- The public members of `OAuth2Manager` are virtual, and a protected constructor creates a manager with no clients. A test
+  of a controller can pass a class derived from it that overrides what the test needs, without a service provider or a
+  provider to sign in to.
 - ASP.NET Core has an `AuthorizationResult` of its own, in `Microsoft.AspNetCore.Authorization`, the namespace of `[Authorize]`.
   A file that imports both namespaces and names the type gets error CS0104. Declare the variable with `var`, or add
   `using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;`.
@@ -307,9 +309,10 @@ Before deploying:
 - On .NET Framework the core package depends on System.Text.Json. Keep the binding redirects that NuGet adds for it and its
   dependencies in `web.config`.
 - When more than one server can receive the callback, set the same `<machineKey>` in `web.config` on each of them.
-- On .NET Framework the default `HttpClient` keeps a connection for as long as the provider allows, and does not follow a DNS
-  change until then. An application that runs for a long time can set `ConnectionLeaseTimeout` on the `ServicePoint` of the token
-  endpoint, or pass its own `HttpClient`, with `AllowAutoRedirect` set to false on its handler as the default has.
+- On .NET Framework the handler of the default `HttpClient` has no connection lifetime, so the client sets
+  `ConnectionLeaseTimeout` on the `ServicePoint` of the token and user information hosts, and a connection is replaced
+  regularly to follow DNS changes. The setting applies to the whole process for those hosts. An application that passes its own
+  `HttpClient` sets it itself, with `AllowAutoRedirect` set to false on the handler as the default has.
 - On a machine with FIPS mode enabled, an application that targets .NET Framework 4.7.2 can get a `CryptographicException`
   when a sign-in starts: for such applications .NET Framework blocks the managed SHA-256 implementation that PKCE uses.
   Target .NET Framework 4.8 or later, or set the `Switch.System.Security.Cryptography.UseLegacyFipsThrow` switch to `false`.
@@ -457,9 +460,11 @@ separately:
 - A provider whose back end registers one client for both, such as a LINE channel with two callback URLs, gets the same
   `ClientId` and `ClientSecret` in both sections.
 - A section whose `ClientId` is still empty is skipped, so the samples offer only the providers you filled in.
-- The OAuthMaui sample reads `iOS` on iOS and Mac Catalyst, `Android` on Android, and `Desktop` on Windows. An `iOS` or
+- The OAuthMaui sample reads `iOS` on iOS and Mac Catalyst, `Android` on Android, and `Desktop` on Windows. It also reads the
+  `ClientId` of each `Web` section, to offer a sign-in through the back end for the providers that have one. An `iOS` or
   `Android` section cannot hold a `ClientSecret`, because an application cannot keep one: loading such a file fails. The
-  build of OAuthMaui packages only `ClientId`, `RedirectUri`, `Scopes`, `UsePkce` and the shared fields, never a secret.
+  build of OAuthMaui packages only `ClientId`, `RedirectUri`, `Scopes`, `UsePkce` and the shared fields, and fails if the
+  packaged settings would hold a field whose name contains `Secret`.
   Google and LINE refuse a direct redirect to an Android application
   ([ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md)), so they have no
   `Android` section, and the sample signs in to them through the back end there.

@@ -66,5 +66,10 @@ namespace Polhem.OAuth2
             TokenEndpoint = baseUrl + "/token";
             UserInfoEndpoint = baseUrl + "/userinfo";
         }
+
+        internal override OAuth2Provider CreateProvider(Func<HttpClient>? httpClientFactory)
+        {
+            return new OktaOAuth2Provider(this, httpClientFactory);
+        }
     }
 }

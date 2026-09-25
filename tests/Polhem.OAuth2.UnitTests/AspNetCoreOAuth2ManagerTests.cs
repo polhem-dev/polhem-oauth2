@@ -80,24 +80,18 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Throws<InvalidOperationException>(() => services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), Factory));
         }
 
-        [Theory]
-        [DisplayName("Both registrations resolve IOAuth2Manager to the same OAuth2Manager instance")]
-        [InlineData(false)]
-        [InlineData(true)]
-        public void Registration_IOAuth2Manager_ResolvesToManager(bool withFactory)
+        [Fact]
+        [DisplayName("A test double derived through the protected constructor overrides what it needs and has no clients or relay otherwise")]
+        public async Task ProtectedConstructor_TestDouble_OverridesMembersAndKeepsSafeDefaults()
         {
-            var services = new ServiceCollection();
-            if (withFactory)
-                services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), _ => new HttpClient());
-            else
-                services.AddOAuth2Client("Google", CreateOptions("Google"));
-            services.AddOAuth2Client("Facebook", CreateOptions("Facebook"));
-            var provider = services.BuildServiceProvider();
+            var expected = AuthorizationResult.Failure(new OAuth2Exception("From the test double."));
+            OAuth2Manager manager = new FakeManager(expected);
+            var context = AspNetCoreTestContext.Create();
 
-            var manager = provider.GetRequiredService<OAuth2Manager>();
-
-            Assert.Same(manager, provider.GetRequiredService<IOAuth2Manager>());
-            Assert.Single(services, descriptor => descriptor.ServiceType == typeof(IOAuth2Manager));
+            Assert.Same(expected, await manager.CompleteAuthorizationAsync(context));
+            Assert.Null(manager.GetClient("Google"));
+            Assert.Throws<InvalidOperationException>(() => manager.CreateAuthorizationUrl(context, "Google"));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => manager.RedeemAppCodeAsync("Google", "code", "verifier"));
         }
 
         [Fact]
@@ -175,6 +169,11 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal(signIn.CookieName, removal.Name.Value);
             Assert.True(removal.Expires < DateTimeOffset.UtcNow);
             Assert.Null(removal.MaxAge);
+            // A browser applies the removal of a __Host- cookie only with the attributes it was set with.
+            Assert.True(removal.Secure);
+            Assert.True(removal.HttpOnly);
+            Assert.Equal("/", removal.Path.Value);
+            Assert.Null(removal.Domain.Value);
         }
 
         [Fact]
@@ -421,6 +420,21 @@ namespace Polhem.OAuth2.UnitTests
         private sealed record SignIn(string Url, string State, string CookieName, string CookieValue)
         {
             public string Cookie => $"{CookieName}={CookieValue}";
+        }
+
+        private sealed class FakeManager : OAuth2Manager
+        {
+            private readonly AuthorizationResult _result;
+
+            public FakeManager(AuthorizationResult result)
+            {
+                _result = result;
+            }
+
+            public override Task<AuthorizationResult> CompleteAuthorizationAsync(HttpContext context, CancellationToken cancellationToken = default)
+            {
+                return Task.FromResult(_result);
+            }
         }
     }
 }

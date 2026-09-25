@@ -28,6 +28,11 @@ namespace Polhem.OAuth2
 
             Options = options;
             _httpClientFactory = httpClientFactory ?? SharedHttpClientFactory;
+            if (httpClientFactory is null)
+            {
+                SharedHttpClient.UseEndpoint(options.TokenEndpoint);
+                SharedHttpClient.UseEndpoint(options.UserInfoEndpoint);
+            }
         }
 
         /// <summary>
@@ -58,7 +63,6 @@ namespace Polhem.OAuth2
         /// <returns>The provider.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public static OAuth2Provider Create(OAuth2Options options, HttpClient? httpClient)
         {
             return Create(options, HttpClientFactoryFor(httpClient));
@@ -72,28 +76,12 @@ namespace Polhem.OAuth2
         /// <returns>The provider.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
-        /// <exception cref="NotSupportedException">No provider matches the type of <paramref name="options"/>.</exception>
         public static OAuth2Provider Create(OAuth2Options options, Func<HttpClient>? httpClientFactory)
         {
-            switch (options)
-            {
-                case null:
-                    throw new ArgumentNullException(nameof(options));
-                case GoogleOAuth2Options googleOptions:
-                    return new GoogleOAuth2Provider(googleOptions, httpClientFactory);
-                case LineOAuth2Options lineOptions:
-                    return new LineOAuth2Provider(lineOptions, httpClientFactory);
-                case AzureOAuth2Options azureOptions:
-                    return new AzureOAuth2Provider(azureOptions, httpClientFactory);
-                case FacebookOAuth2Options facebookOptions:
-                    return new FacebookOAuth2Provider(facebookOptions, httpClientFactory);
-                case Auth0OAuth2Options auth0Options:
-                    return new Auth0OAuth2Provider(auth0Options, httpClientFactory);
-                case OktaOAuth2Options oktaOptions:
-                    return new OktaOAuth2Provider(oktaOptions, httpClientFactory);
-                default:
-                    throw new NotSupportedException("Unsupported OAuth provider.");
-            }
+            if (options is null)
+                throw new ArgumentNullException(nameof(options));
+
+            return options.CreateProvider(httpClientFactory);
         }
 
         /// <summary>

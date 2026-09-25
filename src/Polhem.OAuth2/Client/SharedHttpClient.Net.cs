@@ -9,5 +9,10 @@ namespace Polhem.OAuth2
             // the one in the other part of this class.
             return new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5), AllowAutoRedirect = false };
         }
+
+        internal static partial void UseEndpoint(string endpoint)
+        {
+            // The handler replaces its pooled connections itself.
+        }
     }
 }

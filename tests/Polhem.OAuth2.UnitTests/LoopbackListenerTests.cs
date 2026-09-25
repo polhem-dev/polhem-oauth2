@@ -186,6 +186,19 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("Dispose ends a wait in AcceptClientAsync with ObjectDisposedException, and a second Dispose does nothing")]
+        public async Task AcceptClientAsync_DisposedWhileWaiting_ThrowsObjectDisposedException()
+        {
+            var listener = LoopbackListener.Start(new Uri("http://127.0.0.1:0/callback"));
+            Task<TcpClient> wait = listener.AcceptClientAsync(CancellationToken.None);
+
+            listener.Dispose();
+            listener.Dispose();
+
+            await Assert.ThrowsAsync<ObjectDisposedException>(() => wait.WithTimeout());
+        }
+
+        [Fact]
         [DisplayName("AcceptClientAsync throws OperationCanceledException when the wait is canceled")]
         public async Task AcceptClientAsync_Canceled_ThrowsOperationCanceledException()
         {

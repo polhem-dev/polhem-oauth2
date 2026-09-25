@@ -179,6 +179,23 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("SignInAsync treats an empty error parameter as no error, on the page as well as in the result")]
+        public async Task SignInAsync_EmptyErrorWithCode_ExchangesCodeAndShowsReceivedPage()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1"}""");
+            var browser = new FakeBrowser("{path}?error=&code=abc&state={state}");
+            var client = new LoopbackOAuth2Client(CreateOptions(), handler.CreateClient()) { OpenBrowser = browser.Open };
+
+            var result = await client.SignInAsync().WithTimeout();
+            await browser.Completed.WithTimeout();
+
+            Assert.True(result.IsSuccess);
+            Assert.Contains("was received", browser.Responses[0], StringComparison.Ordinal);
+        }
+
+        [Fact]
         [DisplayName("SignInAsync turns a missing redirect into a failed result with TimeoutException")]
         public async Task SignInAsync_OnlyForgedRequest_ReturnsFailedResultWithTimeoutException()
         {

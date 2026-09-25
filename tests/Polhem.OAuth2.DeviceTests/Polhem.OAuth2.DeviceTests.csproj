@@ -48,10 +48,11 @@
   </ItemGroup>
 
   <!-- The unit tests of the core package, compiled into the application. The ASP.NET tests and the tests of the pending
-       authorization cookie belong to the server packages, which do not run on a device. -->
+       authorization cookie belong to the server packages, which do not run on a device, and the tests of the sample
+       settings and the README need files that are not on the device. -->
   <ItemGroup>
     <Compile Include="..\Polhem.OAuth2.UnitTests\*.cs"
-             Exclude="..\Polhem.OAuth2.UnitTests\AspNet*.cs;..\Polhem.OAuth2.UnitTests\FakeHttpContext.cs;..\Polhem.OAuth2.UnitTests\PendingAuthorizationCookieTests.cs"
+             Exclude="..\Polhem.OAuth2.UnitTests\AspNet*.cs;..\Polhem.OAuth2.UnitTests\FakeHttpContext.cs;..\Polhem.OAuth2.UnitTests\PendingAuthorizationCookieTests.cs;..\Polhem.OAuth2.UnitTests\SampleConfigTests.cs;..\Polhem.OAuth2.UnitTests\ReadmeDefaultsTests.cs"
              Link="UnitTests\%(Filename)%(Extension)" />
   </ItemGroup>
 

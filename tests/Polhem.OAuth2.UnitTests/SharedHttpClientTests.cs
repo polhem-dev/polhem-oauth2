@@ -15,5 +15,19 @@ namespace Polhem.OAuth2.UnitTests
 
             Assert.Equal(false, allowAutoRedirect);
         }
+
+#if NETFRAMEWORK
+        [Fact]
+        [DisplayName("On .NET Framework a client on the shared HTTP client limits how long a connection to the token and user information hosts is reused")]
+        public void Constructor_SharedClientOnNetFramework_SetsConnectionLeaseTimeout()
+        {
+            var options = new Auth0OAuth2Options { Domain = "lease-test.auth0.com", ClientId = "client-id", RedirectUri = "https://app.example.com/auth/callback" };
+
+            _ = new OAuth2Client(options);
+
+            Assert.Equal(300000, System.Net.ServicePointManager.FindServicePoint(new Uri(options.TokenEndpoint)).ConnectionLeaseTimeout);
+            Assert.Equal(300000, System.Net.ServicePointManager.FindServicePoint(new Uri(options.UserInfoEndpoint)).ConnectionLeaseTimeout);
+        }
+#endif
     }
 }
