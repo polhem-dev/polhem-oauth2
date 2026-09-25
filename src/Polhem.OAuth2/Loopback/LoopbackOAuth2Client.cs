@@ -166,7 +166,7 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="refreshToken"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="refreshToken"/> is empty.</exception>
         /// <exception cref="NotSupportedException">The provider does not issue refresh tokens, as with Facebook.</exception>
-        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token.</exception>
+        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token or names a token type other than Bearer.</exception>
         /// <exception cref="HttpRequestException">
         /// The request failed, or the token endpoint returned an unsuccessful status code without an error code.
         /// </exception>

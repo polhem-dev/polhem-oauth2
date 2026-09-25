@@ -1,1 +1,5 @@
 #nullable enable
+*REMOVED*Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message) -> void
+*REMOVED*Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message, System.Exception! innerException) -> void
+Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message) -> void
+Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message, System.Exception? innerException) -> void

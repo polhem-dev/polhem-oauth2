@@ -258,6 +258,35 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
+        [DisplayName("ExchangeCodeAsync accepts the Bearer token type in any case, and a response without a token type")]
+        [InlineData("""{"access_token":"a","token_type":"Bearer"}""")]
+        [InlineData("""{"access_token":"a","token_type":"bearer"}""")]
+        [InlineData("""{"access_token":"a"}""")]
+        public async Task ExchangeCodeAsync_BearerOrNoTokenType_ReturnsToken(string json)
+        {
+            var provider = CreateProvider("Google", new StubHttpMessageHandler().Respond(HttpStatusCode.OK, json));
+
+            var token = await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            Assert.Equal("a", token.AccessToken);
+        }
+
+        [Theory]
+        [DisplayName("ExchangeCodeAsync and RefreshTokenAsync reject a token type other than Bearer, which RFC 6749 forbids the client to use")]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task TokenRequest_OtherTokenType_ThrowsOAuth2Exception(bool refresh)
+        {
+            const string json = """{"access_token":"a","token_type":"DPoP"}""";
+            var provider = CreateProvider("Google", new StubHttpMessageHandler().Respond(HttpStatusCode.OK, json));
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(() => refresh
+                ? provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None)
+                : provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+            Assert.Contains("DPoP", exception.Message, StringComparison.Ordinal);
+        }
+
+        [Theory]
         [DisplayName("ExchangeCodeAsync reads expires_in written as a number or as a string of digits")]
         [InlineData("""{"access_token":"a","expires_in":3599}""")]
         [InlineData("""{"access_token":"a","expires_in":"3599"}""")]

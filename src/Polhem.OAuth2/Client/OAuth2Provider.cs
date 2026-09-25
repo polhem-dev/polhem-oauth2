@@ -120,7 +120,7 @@ namespace Polhem.OAuth2
         /// </param>
         /// <param name="cancellationToken">Cancels the request.</param>
         /// <returns>The tokens.</returns>
-        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token.</exception>
+        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token or names a token type other than Bearer.</exception>
         /// <exception cref="HttpRequestException">The request failed, or the token endpoint returned an unsuccessful status code without an error code.</exception>
         /// <exception cref="JsonException">A successful response is not a JSON object.</exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
@@ -150,7 +150,7 @@ namespace Polhem.OAuth2
         /// <param name="cancellationToken">Cancels the request.</param>
         /// <returns>The new tokens.</returns>
         /// <exception cref="NotSupportedException">The provider does not issue refresh tokens.</exception>
-        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token.</exception>
+        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token or names a token type other than Bearer.</exception>
         /// <exception cref="HttpRequestException">The request failed, or the token endpoint returned an unsuccessful status code without an error code.</exception>
         /// <exception cref="JsonException">A successful response is not a JSON object.</exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
@@ -207,12 +207,15 @@ namespace Polhem.OAuth2
         /// <param name="json">The user information as a JSON string.</param>
         /// <param name="token">The tokens of the sign-in, for providers that put some user details in the ID token.</param>
         /// <returns>The parsed user information.</returns>
-        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="json"/> is null.</exception>
+        /// <exception cref="ArgumentException"><paramref name="json"/> is empty.</exception>
         /// <exception cref="JsonException"><paramref name="json"/> is not a JSON object.</exception>
         public UserInfo ParseUserJson(string json, TokenResponse? token)
         {
-            if (string.IsNullOrEmpty(json))
-                throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");
+            if (json is null)
+                throw new ArgumentNullException(nameof(json));
+            if (json.Length == 0)
+                throw new ArgumentException("The JSON cannot be empty.", nameof(json));
 
             using (var document = OAuth2Json.ParseObject(json))
             {
@@ -392,9 +395,16 @@ namespace Polhem.OAuth2
                 if (OAuth2Json.GetProtocolString(root, "access_token") is not { Length: > 0 } accessToken)
                     throw new OAuth2Exception("The token response does not contain an access token.");
 
+                // RFC 6749, section 7.1: a client must not use an access token whose type it does not understand, and the
+                // user information request sends it as a bearer token (RFC 6750). The comparison ignores case, because
+                // Facebook writes the type in lower case. A response without a type is accepted and used as a bearer token.
+                string? tokenType = OAuth2Json.GetProtocolString(root, "token_type");
+                if (tokenType is not null && !string.Equals(tokenType, "Bearer", StringComparison.OrdinalIgnoreCase))
+                    throw new OAuth2Exception($"The token response names the token type '{tokenType}', and only Bearer is supported.");
+
                 return new TokenResponse(
                     accessToken,
-                    OAuth2Json.GetProtocolString(root, "token_type"),
+                    tokenType,
                     OAuth2Json.GetSeconds(root, "expires_in"),
                     OAuth2Json.GetProtocolString(root, "refresh_token"),
                     OAuth2Json.GetProtocolString(root, "id_token"),

@@ -215,15 +215,23 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("Ada Lovelace", user.UserName);
         }
 
-        [Theory]
-        [DisplayName("ParseUserJson rejects an empty response")]
-        [InlineData(null)]
-        [InlineData("")]
-        public void ParseUserJson_EmptyJson_ThrowsArgumentNullException(string? json)
+        [Fact]
+        [DisplayName("ParseUserJson rejects a null response with ArgumentNullException")]
+        public void ParseUserJson_NullJson_ThrowsArgumentNullException()
         {
             var provider = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null);
 
-            Assert.Throws<ArgumentNullException>(() => provider.ParseUserJson(json!, null));
+            Assert.Throws<ArgumentNullException>(() => provider.ParseUserJson(null!, null));
+        }
+
+        [Fact]
+        [DisplayName("ParseUserJson rejects an empty response with ArgumentException, not ArgumentNullException")]
+        public void ParseUserJson_EmptyJson_ThrowsArgumentException()
+        {
+            var provider = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null);
+
+            var exception = Assert.Throws<ArgumentException>(() => provider.ParseUserJson(string.Empty, null));
+            Assert.Equal("json", exception.ParamName);
         }
 
         [Theory]

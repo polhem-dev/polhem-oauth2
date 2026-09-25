@@ -133,7 +133,8 @@ namespace Polhem.OAuth2
         /// <para>
         /// Only the failures a sign-in is expected to produce become a failed result: an <see cref="OAuth2Exception"/> when
         /// the state does not match, the provider returned an error, the authorization code or the PKCE code verifier is
-        /// missing, or the token endpoint returned an error; an <see cref="HttpRequestException"/>; a
+        /// missing, or the token endpoint returned an error or a token type other than Bearer; an
+        /// <see cref="HttpRequestException"/>; a
         /// <see cref="TaskCanceledException"/> when a request times out; and a <see cref="JsonException"/> for a response
         /// that is not valid JSON. Any other exception propagates.
         /// </para>
@@ -195,7 +196,7 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="refreshToken"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="refreshToken"/> is empty.</exception>
         /// <exception cref="NotSupportedException">The provider does not issue refresh tokens, as with Facebook.</exception>
-        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token.</exception>
+        /// <exception cref="OAuth2Exception">The token endpoint returned an error, or the response has no access token or names a token type other than Bearer.</exception>
         /// <exception cref="HttpRequestException">
         /// The request failed, or the token endpoint returned an unsuccessful status code without an error code.
         /// </exception>

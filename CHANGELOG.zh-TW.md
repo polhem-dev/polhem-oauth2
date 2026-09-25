@@ -9,6 +9,9 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 變更
 
+- token 回應指定的 token type 不是 `Bearer` 時，登入或 refresh 會以 `OAuth2Exception` 失敗。RFC 6749 第 7.1 節禁止 client 使用它不理解
+  類型的 token，而本套件把 access token 當作 bearer token 送出。比對不分大小寫，沒有 token type 的回應仍然接受。
+- `OAuth2Exception` 建構式的 `message` 與 `innerException` 參數改為可為 null，與 `Exception` 相同。
 - 未傳入 `HttpClient` 時使用的共用 `HttpClient` 不再跟隨轉址。token 請求的本文帶著 client secret 與授權碼，307 或 308 轉址會把它們
   轉送到另一個位置，所以轉址回應現在會讓請求失敗。自行傳入 `HttpClient` 的應用程式可以用同樣方式把 `AllowAutoRedirect` 設為 false。
 - 不發 refresh token 的 provider（Facebook）呼叫 `RefreshTokenAsync` 時，改為回傳失敗的 task，不再於呼叫當下擲例外；先取得 task、

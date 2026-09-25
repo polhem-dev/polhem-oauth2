@@ -16,17 +16,17 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuth2Exception"/> class with a message.
         /// </summary>
-        /// <param name="message">The message that describes the failure.</param>
-        public OAuth2Exception(string message) : base(message)
+        /// <param name="message">The message that describes the failure, or null for a default message.</param>
+        public OAuth2Exception(string? message) : base(message)
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuth2Exception"/> class with a message and the exception that caused it.
         /// </summary>
-        /// <param name="message">The message that describes the failure.</param>
-        /// <param name="innerException">The exception that caused the failure.</param>
-        public OAuth2Exception(string message, Exception innerException) : base(message, innerException)
+        /// <param name="message">The message that describes the failure, or null for a default message.</param>
+        /// <param name="innerException">The exception that caused the failure, or null.</param>
+        public OAuth2Exception(string? message, Exception? innerException) : base(message, innerException)
         {
         }
 

@@ -9,6 +9,10 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Changed
 
+- A token response that names a token type other than `Bearer` now fails the sign-in or the refresh with an `OAuth2Exception`.
+  RFC 6749, section 7.1, forbids a client to use a token whose type it does not understand, and the client sends the access token
+  as a bearer token. The comparison ignores case, and a response without a token type is still accepted.
+- The `message` and `innerException` parameters of the `OAuth2Exception` constructors are nullable, as those of `Exception` are.
 - The shared `HttpClient` that a client uses when none is passed in no longer follows redirects. A token request carries the
   client secret and the authorization code in its body, which a 307 or 308 redirect would send on to another location, so a
   redirect response now fails the request. An application that passes its own `HttpClient` can set `AllowAutoRedirect` to
