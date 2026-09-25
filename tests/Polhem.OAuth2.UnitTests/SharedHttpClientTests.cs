@@ -10,10 +10,14 @@ namespace Polhem.OAuth2.UnitTests
         {
             using var handler = SharedHttpClient.CreateHandler();
 
-            // SocketsHttpHandler on .NET and HttpClientHandler on .NET Framework both have the property.
-            object? allowAutoRedirect = handler.GetType().GetProperty("AllowAutoRedirect")?.GetValue(handler);
+            // Read without reflection: a trimmed .NET MAUI application, where these tests also run, drops the unused getter.
+#if NET
+            bool allowAutoRedirect = Assert.IsType<SocketsHttpHandler>(handler).AllowAutoRedirect;
+#else
+            bool allowAutoRedirect = Assert.IsType<HttpClientHandler>(handler).AllowAutoRedirect;
+#endif
 
-            Assert.Equal(false, allowAutoRedirect);
+            Assert.False(allowAutoRedirect);
         }
 
 #if NET
