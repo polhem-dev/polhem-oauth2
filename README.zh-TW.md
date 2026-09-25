@@ -227,6 +227,7 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
   每次請求取得 client 的函式，factory 才會生效。除非應用程式需要自己的，否則不要傳：
   預設的 `HttpClient` 會定期汰換連線池裡的連線以跟上 DNS 變更，`new HttpClient()` 不會。
 - `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
+- manager 同時登記為 `IOAuth2Manager`。依賴這個介面的 controller，測試時可以換成假的 manager，不需要 service provider，也不需要真的登入 provider。
 - ASP.NET Core 自己也有一個 `AuthorizationResult`，位於 `Microsoft.AspNetCore.Authorization`，也就是 `[Authorize]` 所在的命名空間。
   同一個檔案兩個命名空間都匯入、又寫出型別名稱時，會得到 CS0104 錯誤。改用 `var` 宣告變數，或加上
   `using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;`。

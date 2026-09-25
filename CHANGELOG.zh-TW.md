@@ -9,6 +9,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 新增
 
+- Polhem.OAuth2.AspNetCore 新增 `IOAuth2Manager`，涵蓋 `OAuth2Manager` 的操作；`AddOAuth2Client` 也會把 manager 登記為這個介面。
+  依賴它的 controller 測試時可以換成假的 manager。
 - `AddOAuth2AppRelay(services, configuration)` 以組態區段的設定註冊後端中轉，例如 `builder.Configuration.GetSection("AppRelay")`。
   `AppRedirectUris` 與 `CodeLifetime` 以外的 key 視為錯誤。
 - `OAuth2Options.ClientAuthentication` 設為 `ClientAuthenticationMethod.ClientSecretBasic` 時，client secret 改放在 HTTP Basic 標頭送出，

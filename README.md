@@ -250,6 +250,8 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
   takes a function that returns the client for each request instead, which honors the factory. Pass none unless the application
   needs its own: the default replaces its pooled connections regularly to follow DNS changes, which `new HttpClient()` does not.
 - `oauth2Manager.GetClient("Google")` returns the client, for example to call `RefreshTokenAsync`.
+- The manager is also registered as `IOAuth2Manager`. A controller that depends on the interface can be tested with a fake
+  manager, without a service provider or a provider to sign in to.
 - ASP.NET Core has an `AuthorizationResult` of its own, in `Microsoft.AspNetCore.Authorization`, the namespace of `[Authorize]`.
   A file that imports both namespaces and names the type gets error CS0104. Declare the variable with `var`, or add
   `using AuthorizationResult = Polhem.OAuth2.AuthorizationResult;`.

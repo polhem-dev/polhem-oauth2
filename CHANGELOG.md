@@ -9,6 +9,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Added
 
+- `IOAuth2Manager` holds the operations of `OAuth2Manager` in Polhem.OAuth2.AspNetCore, and `AddOAuth2Client` registers the
+  manager as the interface as well. A controller that depends on it can be tested with a fake manager.
 - `AddOAuth2AppRelay(services, configuration)` registers the back-end relay with the settings of a configuration section, such as
   `builder.Configuration.GetSection("AppRelay")`. A key other than `AppRedirectUris` and `CodeLifetime` is an error.
 - `OAuth2Options.ClientAuthentication` sends the client secret in an HTTP Basic header when set to

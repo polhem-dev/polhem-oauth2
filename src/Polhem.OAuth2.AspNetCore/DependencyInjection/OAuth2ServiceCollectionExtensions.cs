@@ -13,8 +13,9 @@ namespace Microsoft.Extensions.DependencyInjection
     public static class OAuth2ServiceCollectionExtensions
     {
         /// <summary>
-        /// Registers an OAuth2 client under a name, together with <see cref="OAuth2Manager"/>, which runs its sign-in, and
-        /// ASP.NET Core data protection, which protects the pending sign-in cookie.
+        /// Registers an OAuth2 client under a name, together with <see cref="OAuth2Manager"/>, which runs its sign-in and is
+        /// also registered as <see cref="IOAuth2Manager"/>, and ASP.NET Core data protection, which protects the pending
+        /// sign-in cookie.
         /// </summary>
         /// <param name="services">The service collection.</param>
         /// <param name="clientName">The name that identifies the client, such as <c>Google</c>.</param>
@@ -92,6 +93,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 provider.GetService<AppRelaySettings>(),
                 provider.GetService<IDistributedCache>(),
                 provider.GetService<TimeProvider>()));
+            services.TryAddSingleton<IOAuth2Manager>(provider => provider.GetRequiredService<OAuth2Manager>());
             return services;
         }
 

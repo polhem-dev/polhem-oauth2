@@ -80,6 +80,26 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Throws<InvalidOperationException>(() => services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), Factory));
         }
 
+        [Theory]
+        [DisplayName("Both registrations resolve IOAuth2Manager to the same OAuth2Manager instance")]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void Registration_IOAuth2Manager_ResolvesToManager(bool withFactory)
+        {
+            var services = new ServiceCollection();
+            if (withFactory)
+                services.AddOAuth2ClientWithHttpClientFactory("Google", CreateOptions("Google"), _ => new HttpClient());
+            else
+                services.AddOAuth2Client("Google", CreateOptions("Google"));
+            services.AddOAuth2Client("Facebook", CreateOptions("Facebook"));
+            var provider = services.BuildServiceProvider();
+
+            var manager = provider.GetRequiredService<OAuth2Manager>();
+
+            Assert.Same(manager, provider.GetRequiredService<IOAuth2Manager>());
+            Assert.Single(services, descriptor => descriptor.ServiceType == typeof(IOAuth2Manager));
+        }
+
         [Fact]
         [DisplayName("GetClient returns the client registered under a name, and null for an unknown name")]
         public void GetClient_RegisteredAndUnknownNames_ReturnsClientOrNull()

@@ -24,7 +24,7 @@ namespace Polhem.OAuth2.AspNetCore
     /// <see cref="RedirectToAppAuthorization"/>, <see cref="RedirectToAppAsync"/> and <see cref="RedeemAppCodeAsync"/>.
     /// </para>
     /// </remarks>
-    public sealed partial class OAuth2Manager
+    public sealed partial class OAuth2Manager : IOAuth2Manager
     {
         private readonly Dictionary<string, OAuth2Client> _clients;
         private readonly IDataProtector _protector;
