@@ -20,7 +20,7 @@ PROFILES = {
         "Polhem.OAuth2.AspNetCore": (0.93, 0.91),
     },
     "net48": {
-        "Polhem.OAuth2.AspNet": None,
+        "Polhem.OAuth2.AspNet": (0.92, 0.90),
     },
 }
 
