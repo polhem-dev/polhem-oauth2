@@ -32,6 +32,17 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("The constructor rejects a client authentication method that is not defined")]
+        public void Constructor_UndefinedClientAuthentication_ThrowsArgumentException()
+        {
+            var options = CreateOptions();
+            options.ClientAuthentication = (ClientAuthenticationMethod)2;
+
+            var exception = Assert.Throws<ArgumentException>(() => new OAuth2Client(options));
+            Assert.Contains(nameof(OAuth2Options.ClientAuthentication), exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
         [DisplayName("The constructor rejects options whose scopes are null")]
         public void Constructor_NullScopes_ThrowsArgumentException()
         {

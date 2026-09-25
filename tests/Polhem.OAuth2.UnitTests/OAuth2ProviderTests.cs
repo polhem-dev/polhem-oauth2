@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Polhem.OAuth2.UnitTests
@@ -460,6 +461,72 @@ namespace Polhem.OAuth2.UnitTests
             await provider.RefreshTokenAsync("old-refresh", publicClient: true, CancellationToken.None);
 
             Assert.Null(Assert.Single(handler.Requests).FormValue("client_secret"));
+        }
+
+        [Theory]
+        [DisplayName("With ClientSecretBasic the token requests send the form-encoded client ID and secret in a Basic header, and neither in the body")]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task TokenRequest_ClientSecretBasic_SendsBasicHeader(bool refresh)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"a"}""");
+            var options = new GoogleOAuth2Options
+            {
+                ClientId = "id:with space",
+                ClientSecret = "s&cret/+",
+                RedirectUri = RedirectUri,
+                ClientAuthentication = ClientAuthenticationMethod.ClientSecretBasic
+            };
+            var provider = OAuth2Provider.Create(options, handler.CreateClient());
+
+            if (refresh)
+                await provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None);
+            else
+                await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            var request = Assert.Single(handler.Requests);
+            Assert.Equal("Basic", request.Authorization?.Scheme);
+            Assert.Equal("id%3Awith+space:s%26cret%2F%2B", Encoding.UTF8.GetString(Convert.FromBase64String(request.Authorization!.Parameter!)));
+            Assert.Null(request.FormValue("client_id"));
+            Assert.Null(request.FormValue("client_secret"));
+        }
+
+        [Fact]
+        [DisplayName("With ClientSecretBasic but no secret to send, the token request sends the client ID in the body and no header")]
+        public async Task ExchangeCodeAsync_ClientSecretBasicWithoutSecret_SendsClientIdInBody()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"a"}""");
+            var options = new AzureOAuth2Options
+            {
+                ClientId = "client-id",
+                ClientSecret = "secret",
+                RedirectUri = RedirectUri,
+                ClientAuthentication = ClientAuthenticationMethod.ClientSecretBasic
+            };
+            var provider = OAuth2Provider.Create(options, handler.CreateClient());
+
+            await provider.ExchangeCodeAsync("code", RedirectUri, "verifier", publicClient: true, CancellationToken.None);
+
+            var request = Assert.Single(handler.Requests);
+            Assert.Null(request.Authorization);
+            Assert.Equal("client-id", request.FormValue("client_id"));
+            Assert.Null(request.FormValue("client_secret"));
+        }
+
+        [Fact]
+        [DisplayName("By default the token request sends the client secret in the body and no Authorization header")]
+        public async Task ExchangeCodeAsync_DefaultClientAuthentication_SendsSecretInBody()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"a"}""");
+            var options = new GoogleOAuth2Options { ClientId = "client-id", ClientSecret = "secret", RedirectUri = RedirectUri };
+            var provider = OAuth2Provider.Create(options, handler.CreateClient());
+
+            await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            var request = Assert.Single(handler.Requests);
+            Assert.Null(request.Authorization);
+            Assert.Equal("client-id", request.FormValue("client_id"));
+            Assert.Equal("secret", request.FormValue("client_secret"));
         }
 
         [Fact]

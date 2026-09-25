@@ -3,3 +3,8 @@
 *REMOVED*Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message, System.Exception! innerException) -> void
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message) -> void
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message, System.Exception? innerException) -> void
+Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.ClientAuthenticationMethod.ClientSecretBasic = 1 -> Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.ClientAuthenticationMethod.ClientSecretPost = 0 -> Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.OAuth2Options.ClientAuthentication.get -> Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.OAuth2Options.ClientAuthentication.set -> void

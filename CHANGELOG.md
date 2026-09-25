@@ -7,6 +7,12 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ## [Unreleased]
 
+### Added
+
+- `OAuth2Options.ClientAuthentication` sends the client secret in an HTTP Basic header when set to
+  `ClientAuthenticationMethod.ClientSecretBasic`, instead of in the request body. Okta registers a web application for that
+  method by default.
+
 ### Changed
 
 - A token response that names a token type other than `Bearer` now fails the sign-in or the refresh with an `OAuth2Exception`.

@@ -2,6 +2,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Polhem.OAuth2;
 
 namespace OAuthSamples
@@ -37,7 +38,12 @@ namespace OAuthSamples
             new Provider("Okta", typeof(OktaOAuth2Options), "Domain", "AuthorizationServerId")
         };
 
-        private static readonly JsonSerializerOptions s_readOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        // Enumerations such as ClientAuthentication are written by name in the file.
+        private static readonly JsonSerializerOptions s_readOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter() }
+        };
 
         private readonly string _filePath;
         private readonly Dictionary<OAuthClientType, List<OAuthClientEntry>> _clients;

@@ -35,6 +35,9 @@ dotnet add package Polhem.OAuth2
 - 所有端點都必須是絕對的 `https` URI，而且不能有 fragment。端點自帶的 query 會被保留，所以可以在端點上加 provider 的參數，
   例如 `https://tenant.auth0.com/authorize?audience=...`。
 - `UsePkce` 預設為 `true`。
+- `ClientAuthentication` 決定 client secret 怎麼送到 token 端點：放在請求本文（`ClientSecretPost`，預設值），或放在 HTTP Basic
+  標頭（`ClientSecretBasic`）。Okta 的網頁應用程式預設註冊為 `client_secret_basic`，這類應用程式請設為 `ClientSecretBasic`。
+  帶 client secret 的網頁登入還沒有對實際的 Okta org 試過。
 
 ## 桌面與主控台應用程式
 

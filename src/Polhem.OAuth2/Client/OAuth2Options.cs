@@ -31,6 +31,17 @@ namespace Polhem.OAuth2
         public string ClientSecret { get; set; } = string.Empty;
 
         /// <summary>
+        /// Gets or sets how the client secret is sent to the token endpoint. The default is
+        /// <see cref="ClientAuthenticationMethod.ClientSecretPost"/>.
+        /// </summary>
+        /// <remarks>
+        /// It applies whenever the client secret is sent: by <see cref="OAuth2Client"/>, and by a public client for a provider
+        /// that requires the secret from one. Set <see cref="ClientAuthenticationMethod.ClientSecretBasic"/> for an application
+        /// that the provider registered for <c>client_secret_basic</c>, which Okta assigns to a web application by default.
+        /// </remarks>
+        public ClientAuthenticationMethod ClientAuthentication { get; set; } = ClientAuthenticationMethod.ClientSecretPost;
+
+        /// <summary>
         /// Gets or sets the URI the provider sends the user back to after sign-in. It is required, and must match a redirect URI
         /// registered with the provider.
         /// </summary>
@@ -107,6 +118,8 @@ namespace Polhem.OAuth2
                 return $"{nameof(RedirectUri)} must be an absolute http or https URI.";
             if (Scopes is null || Scopes.Any(string.IsNullOrWhiteSpace))
                 return $"{nameof(Scopes)} cannot be null or contain an empty scope.";
+            if (ClientAuthentication is not (ClientAuthenticationMethod.ClientSecretPost or ClientAuthenticationMethod.ClientSecretBasic))
+                return $"{nameof(ClientAuthentication)} is not a supported method.";
             return GetEndpointError();
         }
 

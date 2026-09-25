@@ -7,6 +7,11 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ## [Unreleased]
 
+### 新增
+
+- `OAuth2Options.ClientAuthentication` 設為 `ClientAuthenticationMethod.ClientSecretBasic` 時，client secret 改放在 HTTP Basic 標頭送出，
+  不放在請求本文。Okta 的網頁應用程式預設就註冊為這種方式。
+
 ### 變更
 
 - token 回應指定的 token type 不是 `Bearer` 時，登入或 refresh 會以 `OAuth2Exception` 失敗。RFC 6749 第 7.1 節禁止 client 使用它不理解

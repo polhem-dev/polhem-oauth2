@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace Polhem.OAuth2
@@ -136,8 +137,7 @@ namespace Polhem.OAuth2
             };
             if (codeVerifier is { Length: > 0 } verifier)
                 parameters["code_verifier"] = verifier;
-            AddClientSecret(parameters, publicClient);
-            return RequestTokenAsync(parameters, cancellationToken);
+            return RequestTokenAsync(parameters, AddClientAuthentication(parameters, publicClient), cancellationToken);
         }
 
         /// <summary>
@@ -167,8 +167,7 @@ namespace Polhem.OAuth2
                 ["refresh_token"] = refreshToken,
                 ["client_id"] = Options.ClientId
             };
-            AddClientSecret(parameters, publicClient);
-            return RequestTokenAsync(parameters, cancellationToken);
+            return RequestTokenAsync(parameters, AddClientAuthentication(parameters, publicClient), cancellationToken);
         }
 
         /// <summary>
@@ -349,25 +348,48 @@ namespace Polhem.OAuth2
             return SharedHttpClient.Instance;
         }
 
-        private void AddClientSecret(Dictionary<string, string> parameters, bool publicClient)
+        // Adds the client secret to the body, or returns the Basic header that carries it, as the options ask.
+        private AuthenticationHeaderValue? AddClientAuthentication(Dictionary<string, string> parameters, bool publicClient)
         {
             // A public client authenticates the code exchange with PKCE, because its client secret cannot be kept confidential (ADR-004).
-            if (Options.ClientSecret is { Length: > 0 } clientSecret && (!publicClient || RequiresClientSecret))
-                parameters["client_secret"] = clientSecret;
+            if (Options.ClientSecret is not { Length: > 0 } clientSecret || (publicClient && !RequiresClientSecret))
+                return null;
+
+            if (Options.ClientAuthentication == ClientAuthenticationMethod.ClientSecretBasic)
+            {
+                // RFC 6749, section 2.3.1: the client ID and the secret are form-encoded before they are joined and encoded as
+                // base64. The client authenticates in the header, so the body leaves out the client ID (section 4.1.3).
+                parameters.Remove("client_id");
+                string credentials = FormEncode(Options.ClientId) + ":" + FormEncode(clientSecret);
+                return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials)));
+            }
+
+            parameters["client_secret"] = clientSecret;
+            return null;
         }
 
-        private async Task<TokenResponse> RequestTokenAsync(Dictionary<string, string> parameters, CancellationToken cancellationToken)
+        private static string FormEncode(string value)
         {
-            using (var content = new FormUrlEncodedContent(parameters))
-            using (var response = await _httpClientFactory().PostAsync(Options.TokenEndpoint, content, cancellationToken).ConfigureAwait(false))
+            return Uri.EscapeDataString(value).Replace("%20", "+");
+        }
+
+        private async Task<TokenResponse> RequestTokenAsync(
+            Dictionary<string, string> parameters, AuthenticationHeaderValue? authorization, CancellationToken cancellationToken)
+        {
+            using (var request = new HttpRequestMessage(HttpMethod.Post, Options.TokenEndpoint))
             {
-                string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode)
+                request.Content = new FormUrlEncodedContent(parameters);
+                request.Headers.Authorization = authorization;
+                using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
-                    throw (Exception?)ReadErrorResponse(body)
-                        ?? new HttpRequestException($"The token endpoint returned status code {(int)response.StatusCode}.");
+                    string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        throw (Exception?)ReadErrorResponse(body)
+                            ?? new HttpRequestException($"The token endpoint returned status code {(int)response.StatusCode}.");
+                    }
+                    return ReadTokenResponse(body);
                 }
-                return ReadTokenResponse(body);
             }
         }
 

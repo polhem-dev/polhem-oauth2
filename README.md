@@ -38,6 +38,10 @@ Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Op
 - Every endpoint must be an absolute `https` URI without a fragment. A query is kept, so an endpoint can carry a parameter of the
   provider, such as `https://tenant.auth0.com/authorize?audience=...`.
 - `UsePkce` is `true` by default.
+- `ClientAuthentication` chooses how the client secret reaches the token endpoint: in the request body (`ClientSecretPost`, the
+  default) or in an HTTP Basic header (`ClientSecretBasic`). Okta registers a web application for `client_secret_basic` unless
+  told otherwise, so set `ClientSecretBasic` for such an application. A web sign-in with a client secret has not been tried
+  against a live Okta org.
 
 ## Desktop and console applications
 
