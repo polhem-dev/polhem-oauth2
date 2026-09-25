@@ -40,6 +40,8 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 
 - 所有被接受的組合，都在不帶 client secret 的情況下換到 token。Facebook 的這一點屬於實測到的行為：它的手動流程文件把 client secret 列為必要、
   也沒有提到 PKCE，所以 Facebook 隨時可以收回。
+  2026-09-26 在 iOS 模擬器重測，Google 的 iOS client 仍不帶 client secret 就登入成功；同一天 ADR-004 的桌面 client 不帶 secret 則被拒：
+  Google 依 client 類型決定是否要求 secret。
 - Entra ID 的入口網站不接受 `<scheme>:/<path>` 形式的自訂 URI，必須寫成 `<scheme>://`。
 - Facebook 實際導回 `fb<app id>://authorize/`，多一個結尾斜線；token 請求的 `redirect_uri` 必須帶這個斜線才會成功。
 - Facebook 與 LINE 在所有測過的平台上，都拒絕一般的自訂 scheme `dev.polhem.redirectprobe:/oauth2redirect`。

@@ -44,6 +44,8 @@ Notes on the table:
 
 - Every accepted combination exchanged the code without a client secret. For Facebook that is observed behavior: its
   documentation of the manual flow lists the client secret as required and does not mention PKCE, so Facebook could withdraw it.
+  A retest on 2026-09-26 on the iOS simulator signed in to Google with the iOS client again without a client secret, while the
+  desktop client of ADR-004 was refused without it that day: Google decides by the client type.
 - The Entra ID portal refuses a custom URI in the form `<scheme>:/<path>`; it requires `<scheme>://`.
 - Facebook redirects to `fb<app id>://authorize/`, with a trailing slash, and the token request succeeds only when its
   `redirect_uri` has that slash.
