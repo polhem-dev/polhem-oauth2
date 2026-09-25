@@ -11,9 +11,14 @@ permissions:
 
 jobs:
   build:
-    # Windows builds the net48 and Windows Forms targets natively. Other operating systems need
-    # -p:EnableWindowsTargeting=true for the net10.0-windows sample.
-    runs-on: windows-latest
+    # Windows builds the net48 and Windows Forms targets natively, and runs the tests of the System.Web package. The
+    # other operating systems run the tests of the core package, whose loopback listener and browser launcher behave
+    # differently on each of them, and need -p:EnableWindowsTargeting=true for the net10.0-windows sample.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     # A hung test or restore ends the run instead of holding the runner for the default six hours.
     timeout-minutes: 20
 
@@ -27,7 +32,7 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Build
-        run: dotnet build Polhem.OAuth2.slnx --configuration Release
+        run: dotnet build Polhem.OAuth2.slnx --configuration Release ${{ runner.os != 'Windows' && '-p:EnableWindowsTargeting=true' || '' }}
 
       - name: Test
         run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build

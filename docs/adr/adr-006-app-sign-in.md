@@ -42,7 +42,8 @@ code with PKCE and without a client secret:
 
 Notes on the table:
 
-- Every accepted combination exchanged the code without a client secret.
+- Every accepted combination exchanged the code without a client secret. For Facebook that is observed behavior: its
+  documentation of the manual flow lists the client secret as required and does not mention PKCE, so Facebook could withdraw it.
 - The Entra ID portal refuses a custom URI in the form `<scheme>:/<path>`; it requires `<scheme>://`.
 - Facebook redirects to `fb<app id>://authorize/`, with a trailing slash, and the token request succeeds only when its
   `redirect_uri` has that slash.

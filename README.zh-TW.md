@@ -83,8 +83,8 @@ else
 | Microsoft Entra ID | Mobile and desktop applications，登記為 `http://localhost` | `http://localhost:0` | 被忽略 |
 | Auth0 | Native | `http://127.0.0.1:53682/callback` | 必須一致 |
 | Okta | Native，Client authentication 選 None 並要求 PKCE | `http://localhost:53682/callback` | 必須一致 |
-| LINE | LINE Login channel 的 Callback URL | `http://localhost:53682/callback` | 必須一致 |
-| Facebook | Facebook Login 的 Valid OAuth Redirect URIs | `http://localhost:53682/callback` | 登記實際使用的 port |
+| LINE | LINE Login channel 的 Callback URL | `http://localhost:53682/callback` | 必須一致。channel 必須包含 Mobile app 類型：只有 Web app 類型的 channel 要求 client secret，而公開 client 不會送 |
+| Facebook | Facebook Login 的 Valid OAuth Redirect URIs | `http://localhost:53682/callback` | 登記實際使用的 port。ADR-004 與 ADR-006 的實測中 Facebook 接受不帶 client secret 的 PKCE，但官方文件沒有寫 |
 
 - Google：實測的 client 有登記回呼網址。Google 的文件對 Desktop app 是否需要登記說法不一，並把 client secret 列為已安裝應用程式的選填參數。
 - Okta：授權伺服器需要一個存取政策，並有允許 authorization code 的規則。沒有的話，登入會因政策評估失敗而被拒。
@@ -311,7 +311,9 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - 成功的結果有 `ProviderName`、`UserInfo` 與 `Token`；失敗的結果有 `Exception`。
 - `Token` 帶著 access token，以及 provider 有回傳時的 refresh token、ID token、有效期限與 scope。
   用 client 的 `RefreshTokenAsync` 取得新的 token。有些 provider 每次都會發新的 refresh token，所以要保留最新一次回應裡的那個。
-  Facebook 不發 refresh token。
+  provider 發不發 refresh token 取決於請求：Microsoft Entra ID、Auth0 與 Okta 在 `Scopes` 含 `offline_access` 時才發
+  （Auth0 與 Okta 還要在應用程式設定裡允許）；Google 對桌面與行動應用程式都會發，對網頁應用程式則只在 `AuthorizationEndpoint`
+  帶著 `?access_type=offline&prompt=consent` 時發；LINE 一律會發；Facebook 從不發。
 - `Exception` 只收納登入預期會發生的失敗，例如 HTTP 請求失敗、state 不相符、provider 回傳錯誤。
   設定或程式錯誤（例如 client 名稱沒有註冊）會往外拋。見 [ADR-003](docs/adr/adr-003-exception-semantics.zh-TW.md)。
 - provider 回傳的錯誤是 `OAuth2Exception`：`Error` 是錯誤代碼，例如 `access_denied`；`ErrorDescription` 是 provider 提供的說明。

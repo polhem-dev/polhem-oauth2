@@ -91,8 +91,8 @@ These registrations were tested with each provider on 2026-09-14.
 | Microsoft Entra ID | Mobile and desktop applications, registered as `http://localhost` | `http://localhost:0` | Ignored |
 | Auth0 | Native | `http://127.0.0.1:53682/callback` | Must match |
 | Okta | Native, with client authentication None and PKCE required | `http://localhost:53682/callback` | Must match |
-| LINE | LINE Login channel, Callback URL | `http://localhost:53682/callback` | Must match |
-| Facebook | Facebook Login, Valid OAuth Redirect URIs | `http://localhost:53682/callback` | Register the port you use |
+| LINE | LINE Login channel, Callback URL | `http://localhost:53682/callback` | Must match. The channel must include the Mobile app type: a channel of the Web app type alone requires the client secret, which a public client does not send |
+| Facebook | Facebook Login, Valid OAuth Redirect URIs | `http://localhost:53682/callback` | Register the port you use. Facebook accepted PKCE without the client secret in the tests of ADR-004 and ADR-006, but does not document it |
 
 - Google: the tested client had its redirect URIs registered. Google's documentation differs on whether a desktop app needs
   them, and lists the client secret as optional for installed applications.
@@ -338,7 +338,10 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - A successful result has `ProviderName`, `UserInfo` and `Token`; a failed result has `Exception`.
 - `Token` holds the access token, and the refresh token, ID token, lifetime and scopes when the provider returns them.
   `RefreshTokenAsync` on a client obtains new tokens. Keep the refresh token of the latest response, because some providers
-  issue a new one each time. Facebook does not issue refresh tokens.
+  issue a new one each time. Whether a provider issues one depends on the request: Microsoft Entra ID, Auth0 and Okta issue
+  one when `Scopes` includes `offline_access` (Auth0 and Okta also need it allowed for the application); Google issues one
+  to a desktop or mobile application, and to a web application only when `AuthorizationEndpoint` carries
+  `?access_type=offline&prompt=consent`; LINE issues one always; Facebook never.
 - `Exception` holds only the failures a sign-in is expected to produce, such as a failed HTTP request, a state that does
   not match, or an error from the provider. Configuration and programming errors, such as an unregistered client name, are
   thrown. See [ADR-003](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-003-exception-semantics.md).
