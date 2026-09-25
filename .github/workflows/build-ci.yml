@@ -35,4 +35,9 @@ jobs:
         run: dotnet build Polhem.OAuth2.slnx --configuration Release ${{ runner.os != 'Windows' && '-p:EnableWindowsTargeting=true' || '' }}
 
       - name: Test
-        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build
+        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build ${{ runner.os == 'Linux' && '--collect "Code Coverage;Format=cobertura" --results-directory coverage' || '' }}
+
+      # Coverage is measured once, on Linux, with the collector that the test SDK includes. The floors are in the script.
+      - name: Check coverage
+        if: runner.os == 'Linux'
+        run: python3 .github/scripts/check_coverage.py coverage
