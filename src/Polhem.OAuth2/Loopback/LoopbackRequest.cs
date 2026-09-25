@@ -8,7 +8,11 @@ namespace Polhem.OAuth2
     /// <summary>
     /// A connection accepted by <see cref="LoopbackListener"/>, together with the parts of its HTTP request that a sign-in uses.
     /// </summary>
-    internal sealed class LoopbackRequest : IDisposable
+    /// <remarks>
+    /// The read of the request head has one implementation for each target framework, in <c>LoopbackRequest.Net.cs</c> and
+    /// <c>LoopbackRequest.NetStandard.cs</c>, because only the newer one can cancel a socket read.
+    /// </remarks>
+    internal sealed partial class LoopbackRequest : IDisposable
     {
         private const int MaxRequestHeadBytes = 16 * 1024;
 
@@ -107,47 +111,36 @@ namespace Polhem.OAuth2
         }
 
         // Returns the request line and header lines, or null when the connection closed, the read timed out, or the head is
-        // longer than the limit.
+        // longer than the limit. How a stalled read is ended differs by target framework: see the other part of this class.
         private static async Task<string?> ReadHeadAsync(TcpClient client, TimeSpan readTimeout, CancellationToken cancellationToken)
         {
             using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             {
                 timeout.CancelAfter(readTimeout);
-
-                // Socket reads do not observe a cancellation token on every target framework, so a stalled read is ended by
-                // closing the connection. A browser can open a connection in advance and leave it idle.
-                using (timeout.Token.Register(client.Dispose))
-                {
-                    var buffer = new byte[MaxRequestHeadBytes];
-                    int length = 0;
-                    int headEnd = -1;
-                    try
-                    {
-                        var stream = client.GetStream();
-                        while (length < buffer.Length && headEnd < 0)
-                        {
-                            int read = await stream.ReadAsync(buffer, length, buffer.Length - length).ConfigureAwait(false);
-                            if (read == 0)
-                                break;
-
-                            int searchStart = Math.Max(0, length - 2);
-                            length += read;
-                            headEnd = FindHeadEnd(buffer, searchStart, length);
-                        }
-                    }
-                    catch (IOException)
-                    {
-                        headEnd = -1;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        headEnd = -1;
-                    }
-
-                    cancellationToken.ThrowIfCancellationRequested();
-                    return headEnd < 0 ? null : Encoding.ASCII.GetString(buffer, 0, headEnd);
-                }
+                var buffer = new byte[MaxRequestHeadBytes];
+                int headEnd = await ReadHeadAsync(client, buffer, timeout.Token).ConfigureAwait(false);
+                cancellationToken.ThrowIfCancellationRequested();
+                return headEnd < 0 ? null : Encoding.ASCII.GetString(buffer, 0, headEnd);
             }
+        }
+
+        // Reads into the buffer until the empty line that ends the head arrives, and returns the index of its final line
+        // feed, or -1 when the connection closed first or the buffer filled up. The read is supplied by the target framework.
+        private static async Task<int> ReadHeadAsync(byte[] buffer, Func<byte[], int, int, Task<int>> read)
+        {
+            int length = 0;
+            int headEnd = -1;
+            while (length < buffer.Length && headEnd < 0)
+            {
+                int count = await read(buffer, length, buffer.Length - length).ConfigureAwait(false);
+                if (count == 0)
+                    break;
+
+                int searchStart = Math.Max(0, length - 2);
+                length += count;
+                headEnd = FindHeadEnd(buffer, searchStart, length);
+            }
+            return headEnd;
         }
 
         // The head ends with an empty line. Lines end with CRLF, and a bare LF is accepted as well (RFC 9112, section 2.2).
