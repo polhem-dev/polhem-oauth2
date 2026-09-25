@@ -29,15 +29,21 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
         with:
-          dotnet-version: 10.0.x
+          # The tests also run on .NET 8, against the net8.0 build of the core package, so its runtime is installed too.
+          dotnet-version: |
+            8.0.x
+            10.0.x
 
       - name: Build
         run: dotnet build Polhem.OAuth2.slnx --configuration Release ${{ runner.os != 'Windows' && '-p:EnableWindowsTargeting=true' || '' }}
 
       - name: Test
-        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build ${{ runner.os == 'Linux' && '--collect "Code Coverage;Format=cobertura" --results-directory coverage' || '' }}
+        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build
 
-      # Coverage is measured once, on Linux, with the collector that the test SDK includes. The floors are in the script.
+      # Coverage is measured once, on Linux and net10.0, where the tests of both measured packages run, with the collector
+      # that the test SDK includes. The floors are in the script.
       - name: Check coverage
         if: runner.os == 'Linux'
-        run: python3 .github/scripts/check_coverage.py coverage
+        run: |
+          dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build --framework net10.0 --collect "Code Coverage;Format=cobertura" --results-directory coverage
+          python3 .github/scripts/check_coverage.py coverage

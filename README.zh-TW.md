@@ -14,7 +14,7 @@ ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權�
 
 | 套件 | 目標框架 | 用途 |
 |------|----------|------|
-| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0、net10.0 | 各 provider、桌面、主控台與 .NET MAUI 應用程式的登入，以及其他伺服器端框架 |
+| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0、net8.0、net10.0 | 各 provider、桌面、主控台與 .NET MAUI 應用程式的登入，以及其他伺服器端框架 |
 | [Polhem.OAuth2.AspNetCore](https://www.nuget.org/packages/Polhem.OAuth2.AspNetCore) | net10.0 | ASP.NET Core 應用程式 |
 | [Polhem.OAuth2.AspNet](https://www.nuget.org/packages/Polhem.OAuth2.AspNet) | net472 | System.Web 上的 ASP.NET Web Forms 與 MVC 應用程式 |
 

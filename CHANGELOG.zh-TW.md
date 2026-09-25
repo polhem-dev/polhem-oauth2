@@ -9,6 +9,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 新增
 
+- Polhem.OAuth2 新增 net8.0 組建。.NET 8 或 9 的應用程式原本載入 netstandard2.0 組建，其預設 `HttpClient` 的連線池連線沒有壽命，
+  provider 主機的 DNS 變更跟不上；現在會拿到定期汰換連線的 handler，與 .NET 10 相同。
 - Polhem.OAuth2.AspNetCore 的 `OAuth2Manager` 可以被繼承：公開成員都是 virtual，protected 建構式會建立沒有任何 client、也沒有中轉的
   manager，測試 controller 時可以傳入只覆寫所需成員的類別。
 - `AddOAuth2AppRelay(services, configuration)` 以組態區段的設定註冊後端中轉，例如 `builder.Configuration.GetSection("AppRelay")`。

@@ -15,7 +15,7 @@ Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.
 
 | Package | Target frameworks | Use it for |
 |---------|-------------------|------------|
-| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0, net10.0 | The providers, sign-in from desktop, console and .NET MAUI applications, and other server frameworks |
+| [Polhem.OAuth2](https://www.nuget.org/packages/Polhem.OAuth2) | netstandard2.0, net8.0, net10.0 | The providers, sign-in from desktop, console and .NET MAUI applications, and other server frameworks |
 | [Polhem.OAuth2.AspNetCore](https://www.nuget.org/packages/Polhem.OAuth2.AspNetCore) | net10.0 | ASP.NET Core applications |
 | [Polhem.OAuth2.AspNet](https://www.nuget.org/packages/Polhem.OAuth2.AspNet) | net472 | ASP.NET Web Forms and MVC applications on System.Web |
 

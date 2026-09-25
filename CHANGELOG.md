@@ -9,6 +9,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Added
 
+- Polhem.OAuth2 has a net8.0 build. An application on .NET 8 or 9 loaded the netstandard2.0 build before, whose default
+  `HttpClient` kept pooled connections without a lifetime and did not follow a DNS change of a provider host. It now gets the
+  handler that replaces them regularly, as on .NET 10.
 - `OAuth2Manager` in Polhem.OAuth2.AspNetCore can be derived from. Its public members are virtual, and a protected constructor
   creates a manager with no clients and no relay, so a test of a controller can pass a class that overrides what it needs.
 - `AddOAuth2AppRelay(services, configuration)` registers the back-end relay with the settings of a configuration section, such as

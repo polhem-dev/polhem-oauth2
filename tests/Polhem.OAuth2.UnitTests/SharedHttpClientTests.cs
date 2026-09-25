@@ -16,6 +16,17 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal(false, allowAutoRedirect);
         }
 
+#if NET
+        [Fact]
+        [DisplayName("On .NET the shared HTTP client replaces a pooled connection after a while, so that it follows DNS changes")]
+        public void CreateHandler_OnNet_SetsPooledConnectionLifetime()
+        {
+            using var handler = Assert.IsType<SocketsHttpHandler>(SharedHttpClient.CreateHandler());
+
+            Assert.Equal(TimeSpan.FromMinutes(5), handler.PooledConnectionLifetime);
+        }
+#endif
+
 #if NETFRAMEWORK
         [Fact]
         [DisplayName("On .NET Framework a client on the shared HTTP client limits how long a connection to the token and user information hosts is reused")]

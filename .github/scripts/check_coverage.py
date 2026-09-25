@@ -4,7 +4,8 @@ Usage: python3 check_coverage.py <folder with *.cobertura.xml>
 
 Each package has a floor about two points below the coverage it had when the floor was set, so a change that drops a
 package below it fails the build. Raise a floor when coverage rises; lower one only with a reason in the commit message.
-The System.Web package runs its tests on Windows only and is not measured here.
+The System.Web package runs its tests on Windows only and is not measured here. When the folder holds several reports,
+the lowest rate of a package among them counts.
 """
 
 import os
@@ -31,7 +32,9 @@ def main(folder: str) -> int:
     rates = {}
     for report in reports:
         for package in ElementTree.parse(report).getroot().iter("package"):
-            rates[package.get("name")] = (float(package.get("line-rate")), float(package.get("branch-rate")))
+            name = package.get("name")
+            measured = (float(package.get("line-rate")), float(package.get("branch-rate")))
+            rates[name] = min(rates[name], measured) if name in rates else measured
 
     lines = ["| Package | Lines | Branches | Floor for lines |", "|---------|------:|---------:|----------------:|"]
     failed = False
