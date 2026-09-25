@@ -92,6 +92,13 @@ Directory.CreateDirectory(outputDirectory);
 var output = new JsonObject { ["Providers"] = providersOut };
 if (relayOut != null)
     output["AppRelay"] = relayOut;
+
+// The allowlists above keep secrets out. This check fails the build if a later change to them lets one through.
+if (FindSecret(output) is { } secretPath)
+{
+    Console.WriteLine($"OAuthConfig.json : error OAUTHMAUI2: {secretPath} would be packaged into the application. An application cannot keep a secret.");
+    return 1;
+}
 WriteIfChanged(Path.Combine(outputDirectory, "OAuthApp.json"), output.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
 var activity = new StringBuilder();
@@ -118,6 +125,23 @@ foreach (string scheme in appleSchemes)
     plist.AppendLine("<string>" + System.Security.SecurityElement.Escape(scheme) + "</string>");
 plist.AppendLine("</array></dict></array></dict></plist>");
 WriteIfChanged(Path.Combine(outputDirectory, "OAuthUrlTypes.plist"), plist.ToString());
+
+return 0;
+
+static string? FindSecret(JsonNode? node, string path = "")
+{
+    if (node is not JsonObject obj)
+        return null;
+    foreach (var field in obj)
+    {
+        string fieldPath = path.Length == 0 ? field.Key : path + "." + field.Key;
+        if (field.Key.Contains("Secret", StringComparison.OrdinalIgnoreCase))
+            return fieldPath;
+        if (FindSecret(field.Value, fieldPath) is { } found)
+            return found;
+    }
+    return null;
+}
 
 void WriteIfChanged(string path, string content)
 {

@@ -42,4 +42,4 @@ dotnet run -- --provider Google
 | 1 | `The sign-in failed` | The provider redirected back with an error, such as `access_denied`, or its response could not be read. |
 | 2 | Any other message | The arguments, the settings file or the listening socket are wrong. |
 
-The tool prints the user identifier, name and email address of the account that signed in. It never prints tokens.
+The tool prints the user identifier, name and email address of the account that signed in, and nothing from the token response.

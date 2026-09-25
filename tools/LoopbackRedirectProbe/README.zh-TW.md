@@ -41,4 +41,4 @@ dotnet run -- --provider Google
 | 1 | `The sign-in failed` | provider 帶著錯誤導回（例如 `access_denied`），或它的回應無法解讀。 |
 | 2 | 其他訊息 | 參數、設定檔或監聽的 socket 有問題。 |
 
-工具會印出登入帳號的使用者 ID、名稱與 email，但絕不會印出 token。
+工具會印出登入帳號的使用者 ID、名稱與 email，不印 token 回應的任何內容。
