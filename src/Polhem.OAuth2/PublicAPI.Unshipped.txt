@@ -1,3 +1,1 @@
 #nullable enable
-static Polhem.OAuth2.OAuth2Options.IsAppRedirectUri(string? redirectUri) -> bool
-static Polhem.OAuth2.OAuth2Client.Create(Polhem.OAuth2.OAuth2Options! options, System.Func<System.Net.Http.HttpClient!>! httpClientFactory) -> Polhem.OAuth2.OAuth2Client!

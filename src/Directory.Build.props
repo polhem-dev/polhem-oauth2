@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <!-- Package metadata -->
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Authors>Polhem contributors</Authors>
     <Company>Polhem</Company>
     <Product>Polhem</Product>

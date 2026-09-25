@@ -98,3 +98,5 @@ Polhem.OAuth2.UserInfo.UserInfo(string? userId, string? userName, string? email,
 Polhem.OAuth2.UserInfo.UserName.get -> string?
 static Polhem.OAuth2.AuthorizationResult.Failure(System.Exception! exception) -> Polhem.OAuth2.AuthorizationResult!
 static Polhem.OAuth2.AuthorizationResult.Success(string! providerName, Polhem.OAuth2.TokenResponse! token, Polhem.OAuth2.UserInfo! userInfo) -> Polhem.OAuth2.AuthorizationResult!
+static Polhem.OAuth2.OAuth2Client.Create(Polhem.OAuth2.OAuth2Options! options, System.Func<System.Net.Http.HttpClient!>! httpClientFactory) -> Polhem.OAuth2.OAuth2Client!
+static Polhem.OAuth2.OAuth2Options.IsAppRedirectUri(string? redirectUri) -> bool

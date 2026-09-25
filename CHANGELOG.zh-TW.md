@@ -5,7 +5,7 @@
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更。格式依循
 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。
 
-## [Unreleased]
+## [1.2.0] - 2026-09-25
 
 ### 新增
 
@@ -42,7 +42,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 - 後端中轉以 ASP.NET Core data protection 保護它存進 `IDistributedCache` 的資料。1.1.0 在代碼兌換之前，把中轉登入的使用者資訊
   未加保護地存在快取裡，並且信任快取回傳的任何內容，因此快取必須跟應用程式本身一樣可信。兩個版本的伺服器共用同一個快取的期間，
-  一個版本發出的代碼不會被另一個版本兌換。
+  一個版本發出的代碼不會被另一個版本兌換。見 [ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)。
 
 ## [1.1.0] - 2026-09-19
 
@@ -121,6 +121,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - loopback 監聽程式只接受 Host 標頭為回呼網址主機、且帶著本次登入 state 的請求，並且同時讀取多條連線。
 - provider 端點必須使用 https。
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.2.0
 [1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0

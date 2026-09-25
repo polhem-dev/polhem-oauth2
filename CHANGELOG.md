@@ -5,7 +5,7 @@
 Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [1.2.0] - 2026-09-25
 
 ### Added
 
@@ -52,7 +52,7 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 - The back-end relay protects its entries in `IDistributedCache` with ASP.NET Core data protection. Version 1.1.0 stored the
   user information of a relayed sign-in unprotected until the code was redeemed, and trusted whatever the cache returned, so
   the cache had to be as trusted as the application. While servers of both versions share a cache, a code issued by one version
-  is not redeemed by the other.
+  is not redeemed by the other. See [ADR-006](docs/adr/adr-006-app-sign-in.md).
 
 ## [1.1.0] - 2026-09-19
 
@@ -143,6 +143,7 @@ below are relative to the last Bee.OAuth2 release. How to move an application ov
   sign-in, and it reads connections side by side.
 - Provider endpoints must use https.
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.2.0
 [1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0
