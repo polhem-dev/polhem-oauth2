@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Net;
+using System.Text.Json;
 
 namespace Polhem.OAuth2.UnitTests
 {
@@ -246,6 +247,34 @@ namespace Polhem.OAuth2.UnitTests
             cancellation.Cancel();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => completion.WithTimeout());
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync turns a token response that is not JSON into a failed result with JsonException")]
+        public async Task CompleteAuthorizationAsync_ResponseNotJson_ReturnsFailedResultWithJsonException()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, "access_token=access");
+            var client = new OAuth2Client(CreateOptions(), handler.CreateClient());
+            var request = client.CreateAuthorizationRequest();
+
+            var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("abc", request.Pending.State, null, null), request.Pending);
+
+            Assert.IsAssignableFrom<JsonException>(result.Exception);
+        }
+
+        [Fact]
+        [DisplayName("One client serves authorization requests created at the same time, each with its own state and code verifier")]
+        public void CreateAuthorizationRequest_InParallel_KeepsRequestsApart()
+        {
+            var client = new OAuth2Client(CreateOptions());
+            var requests = new AuthorizationRequest[64];
+
+            Parallel.For(0, requests.Length, i => requests[i] = client.CreateAuthorizationRequest());
+
+            Assert.Equal(requests.Length, requests.Select(request => request.Pending.State).Distinct(StringComparer.Ordinal).Count());
+            Assert.Equal(requests.Length, requests.Select(request => request.Pending.CodeVerifier).Distinct(StringComparer.Ordinal).Count());
+            Assert.All(requests, request =>
+                Assert.Equal(Pkce.GenerateCodeChallenge(request.Pending.CodeVerifier!), LoopbackTestHttp.GetQueryValue(request.Url, "code_challenge")));
         }
 
         [Fact]

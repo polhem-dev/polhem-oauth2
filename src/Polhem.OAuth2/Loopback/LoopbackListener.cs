@@ -99,6 +99,7 @@ namespace Polhem.OAuth2
         /// <param name="cancellationToken">Cancels the wait.</param>
         /// <returns>The accepted connection, which the caller disposes.</returns>
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
+        /// <exception cref="ObjectDisposedException">The listener was disposed while a connection was being accepted.</exception>
         /// <exception cref="SocketException">A connection could not be accepted.</exception>
         public async Task<TcpClient> AcceptClientAsync(CancellationToken cancellationToken)
         {
@@ -119,7 +120,12 @@ namespace Polhem.OAuth2
                 Task completed = await Task.WhenAny(waiting).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
 
+                // Dispose may have run since the wait ended: it clears the pending accepts and closes the connection that
+                // the completed one produced, so this listener has nothing to hand over.
                 int index = Array.IndexOf(_pendingAccepts, completed);
+                if (index < 0)
+                    throw new ObjectDisposedException(nameof(LoopbackListener));
+
                 var accept = _pendingAccepts[index]!;
                 _pendingAccepts[index] = null;
 
@@ -199,7 +205,8 @@ namespace Polhem.OAuth2
         }
 
         // An accept still pending when the listener stops either fails, which is observed here so that it is not reported as an
-        // unobserved task exception, or in a rare race returns a connection that nobody will answer.
+        // unobserved task exception, or in a rare race returns a connection that nobody will answer, which is closed here. In
+        // that race the wait in AcceptClientAsync may already have ended, and it finds the slot cleared.
         private static void ReleaseAbandonedAccept(Task<TcpClient> accept)
         {
             if (accept.Status == TaskStatus.RanToCompletion)

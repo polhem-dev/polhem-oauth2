@@ -21,6 +21,9 @@ dotnet_diagnostic.IDE0028.severity = warning
 # Build-time check: the last namespace segment must not share its name with a type declared in it.
 dotnet_diagnostic.CA1724.severity = warning
 
+# Build-time check: the packages await with ConfigureAwait(false), because a caller may have a synchronization context.
+dotnet_diagnostic.CA2007.severity = warning
+
 # ───── Checks that mirror SonarCloud rules, enforced at build time ─────
 
 # Methods that use no instance members should be static (Sonar S2325).
@@ -89,6 +92,10 @@ dotnet_naming_style.s_camel_case_style.required_prefix = s_
 dotnet_naming_style.s_camel_case_style.capitalization = camel_case
 dotnet_naming_style.underscore_camel_case_style.required_prefix = _
 dotnet_naming_style.underscore_camel_case_style.capitalization = camel_case
+
+# Applications and tests await on the context they run on, so they do not call ConfigureAwait.
+[{samples,tests,tools}/**.cs]
+dotnet_diagnostic.CA2007.severity = none
 
 # XML project files
 [*.{csproj,props,targets}]
