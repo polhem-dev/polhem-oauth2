@@ -77,7 +77,7 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 
 | Provider | 結果 |
 |----------|------|
-| Google | 不送 client secret（`--secret omit`）時，token 端點以 `invalid_request` 拒絕授權碼。 |
+| Google | 不送 client secret（`--secret omit`）時，token 端點以 `invalid_request` 拒絕授權碼。送 secret 時有發 refresh token，refresh 成功；refresh 的回應沒有新的 refresh token。 |
 | Microsoft Entra ID | 有發 refresh token，refresh 成功。scope 回傳為 `openid email profile`，以空白分隔。 |
 | Auth0 | 有發 refresh token，refresh 成功。refresh 的回應沒有新的 refresh token，表示這個 tenant 沒有啟用輪替。 |
 | Okta | 沒有發 refresh token，核准的 scope 也沒有 `offline_access`：這個應用程式沒有被允許 refresh token grant。 |

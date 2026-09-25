@@ -90,7 +90,7 @@ tokens came back.
 
 | Provider | Result |
 |----------|--------|
-| Google | Without the client secret (`--secret omit`) the token endpoint refused the code with `invalid_request`. |
+| Google | Without the client secret (`--secret omit`) the token endpoint refused the code with `invalid_request`. With it, a refresh token was issued and the refresh succeeded; the response to the refresh carried no new refresh token. |
 | Microsoft Entra ID | A refresh token was issued, and the refresh succeeded. The scope came back as `openid email profile`, separated by spaces. |
 | Auth0 | A refresh token was issued, and the refresh succeeded. The response to the refresh carried no new refresh token, so this tenant does not rotate them. |
 | Okta | No refresh token was issued, and the granted scopes left out `offline_access`: this application is not allowed the refresh token grant. |
