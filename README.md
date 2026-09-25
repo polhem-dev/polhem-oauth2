@@ -39,9 +39,9 @@ Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Op
   provider, such as `https://tenant.auth0.com/authorize?audience=...`.
 - `UsePkce` is `true` by default.
 - `ClientAuthentication` chooses how the client secret reaches the token endpoint: in the request body (`ClientSecretPost`, the
-  default) or in an HTTP Basic header (`ClientSecretBasic`). Okta registers a web application for `client_secret_basic` unless
-  told otherwise, so set `ClientSecretBasic` for such an application. A web sign-in with a client secret has not been tried
-  against a live Okta org.
+  default) or in an HTTP Basic header (`ClientSecretBasic`). Set `ClientSecretBasic` for an application that the provider
+  registered for `client_secret_basic` and that refuses the secret in the body. Okta registers a web application that way
+  unless told otherwise; the web application of an Okta org tested on 2026-09-26 accepted both methods.
 
 ## Desktop and console applications
 

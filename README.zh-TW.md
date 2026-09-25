@@ -36,8 +36,8 @@ dotnet add package Polhem.OAuth2
   例如 `https://tenant.auth0.com/authorize?audience=...`。
 - `UsePkce` 預設為 `true`。
 - `ClientAuthentication` 決定 client secret 怎麼送到 token 端點：放在請求本文（`ClientSecretPost`，預設值），或放在 HTTP Basic
-  標頭（`ClientSecretBasic`）。Okta 的網頁應用程式預設註冊為 `client_secret_basic`，這類應用程式請設為 `ClientSecretBasic`。
-  帶 client secret 的網頁登入還沒有對實際的 Okta org 試過。
+  標頭（`ClientSecretBasic`）。provider 把應用程式登記為 `client_secret_basic`、且不接受本文裡的 secret 時，請設為
+  `ClientSecretBasic`。Okta 的網頁應用程式預設就是這樣登記；2026-09-26 實測的 Okta org 網頁應用程式兩種方式都接受。
 
 ## 桌面與主控台應用程式
 

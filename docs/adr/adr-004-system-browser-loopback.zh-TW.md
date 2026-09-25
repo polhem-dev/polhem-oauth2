@@ -51,7 +51,8 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
   擲出 `PlatformNotSupportedException`），則往外拋。
 - loopback client 是 public client。它一律使用 PKCE，不看 `OAuth2Options.UsePkce` 的設定，這是 RFC 8252 對原生應用程式的要求；
   它也不送 client secret，只有 Google 例外。Google 的文件把 client secret 列為已安裝應用程式的選填參數，
-  這個例外尚未在不送 secret 的情況下測試。下方實測的其他 provider 都在沒有 secret 的情況下換到 token。
+  但 2026-09-26 不送 secret 的實測失敗：token 端點回應 `invalid_request`，所以 secret 是必要的，這個例外維持。
+  下方實測的其他 provider 都在沒有 secret 的情況下換到 token。
   能夠保密 secret 的網頁 client，只要設了就一律送出。
 
 ## 各 provider 實測結果
@@ -68,6 +69,20 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | Facebook | — | `http://localhost:53682/callback`、`http://127.0.0.1:53682/callback` | `localhost:53682` 開啟 PKCE 時被接受，沒送 client secret 也換 token 成功（2026-09-14）。`127.0.0.1:53682` 被拒：登入頁顯示應用程式的網路連線不安全。`localhost` 以可用 port 導回也被接受，雖然只登記了 port 53682。app 的模式（開發或上線）沒有記錄，上線狀態的 app 尚未測試。 |
 
 以上結果記錄於 2026-09-14 修訂之前。LINE provider 現在會從 ID token 讀取 email，channel 有權限讀取時，之後的實測可以取得 email。
+
+### 2026-09-26 重測
+
+同一批應用程式，以探測工具的 `--refresh yes` 登入；Microsoft Entra ID、Auth0 與 Okta 另加 `--scopes "openid email profile offline_access"`。
+工具會回報 token type、有效期、原樣回傳的 scope，以及回傳了哪些 token。
+
+| Provider | 結果 |
+|----------|------|
+| Google | 不送 client secret（`--secret omit`）時，token 端點以 `invalid_request` 拒絕授權碼。 |
+| Microsoft Entra ID | 有發 refresh token，refresh 成功。scope 回傳為 `openid email profile`，以空白分隔。 |
+| Auth0 | 有發 refresh token，refresh 成功。refresh 的回應沒有新的 refresh token，表示這個 tenant 沒有啟用輪替。 |
+| Okta | 沒有發 refresh token，核准的 scope 也沒有 `offline_access`：這個應用程式沒有被允許 refresh token grant。 |
+| LINE | 不送 client secret 也換 token 與 refresh 成功，並發了 refresh token。核准的 scope 沒有 `email`，channel 尚未取得該權限。 |
+| Facebook | 不送 client secret、以 PKCE 換 token 成功。token type 回傳為小寫的 `bearer`，沒有回傳 scope，也沒有發 refresh token。 |
 
 ## 影響
 

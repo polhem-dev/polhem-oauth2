@@ -62,8 +62,9 @@ That approach has several problems:
   started) propagate.
 - The loopback client is a public client. It always uses PKCE, whatever `OAuth2Options.UsePkce` says, as RFC 8252 requires
   of native applications, and it does not send the client secret, except to Google. Google's documentation lists the client
-  secret as optional for installed applications; that exception has not been tested without the secret. Every other provider
-  tested below exchanged the code without it. Web clients, which can keep a secret, send it whenever it is set.
+  secret as optional for installed applications, but a test without it on 2026-09-26 failed: the token endpoint answered
+  `invalid_request`, so the secret is required and the exception stays. Every other provider tested below exchanged the code
+  without it. Web clients, which can keep a secret, send it whenever it is set.
 
 ## Provider test results
 
@@ -80,6 +81,21 @@ Each provider is tested with `tools/LoopbackRedirectProbe`, which signs in throu
 
 These results were recorded before the revision of 2026-09-14. The LINE provider now reads the email address from the ID
 token, so a later test can return one when the channel may read it.
+
+### Retest of 2026-09-26
+
+The same applications, signed in with the probe's `--refresh yes`, and with `--scopes "openid email profile offline_access"`
+for Microsoft Entra ID, Auth0 and Okta. The probe reports the token type, lifetime and granted scopes as returned, and which
+tokens came back.
+
+| Provider | Result |
+|----------|--------|
+| Google | Without the client secret (`--secret omit`) the token endpoint refused the code with `invalid_request`. |
+| Microsoft Entra ID | A refresh token was issued, and the refresh succeeded. The scope came back as `openid email profile`, separated by spaces. |
+| Auth0 | A refresh token was issued, and the refresh succeeded. The response to the refresh carried no new refresh token, so this tenant does not rotate them. |
+| Okta | No refresh token was issued, and the granted scopes left out `offline_access`: this application is not allowed the refresh token grant. |
+| LINE | The code exchange and the refresh succeeded without the client secret, and a refresh token was issued. The granted scopes left out `email`, which the channel has not been approved for. |
+| Facebook | The code exchange succeeded without the client secret, with PKCE. The token type came back as `bearer` in lower case, no scope was returned, and no refresh token was issued. |
 
 ## Consequences
 
