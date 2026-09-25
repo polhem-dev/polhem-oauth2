@@ -31,6 +31,9 @@ dotnet run -- --provider Google
 | `--redirect` | Optional. A loopback redirect URI that replaces the `RedirectUri` of the provider's `Desktop` section for this run. |
 | `--settings` | The settings file. The default is `OAuthConfig.json` in the output folder, which the build copies from the repository root. |
 | `--timeout` | Seconds to wait for the redirect. The default is 180. |
+| `--scopes` | Optional. Scopes separated by spaces, in quotation marks, that replace the `Scopes` of the section, such as `"openid email profile offline_access"`. |
+| `--secret` | `keep`, the default, or `omit` to leave out the client secret of the section and test a provider without it. |
+| `--refresh` | `no`, the default, or `yes` to use a refresh token once after the sign-in, when the provider issues one. |
 
 ## Reading the result
 
@@ -42,4 +45,5 @@ dotnet run -- --provider Google
 | 1 | `The sign-in failed` | The provider redirected back with an error, such as `access_denied`, or its response could not be read. |
 | 2 | Any other message | The arguments, the settings file or the listening socket are wrong. |
 
-The tool prints the user identifier, name and email address of the account that signed in, and nothing from the token response.
+The tool prints the user identifier, name and email address of the account that signed in. Of the token response it prints the
+token type, the lifetime and the granted scopes as returned, and whether a refresh token and an ID token came back, but no token.

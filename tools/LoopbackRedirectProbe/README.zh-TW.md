@@ -30,6 +30,9 @@ dotnet run -- --provider Google
 | `--redirect` | 選填。這次執行改用這個 loopback 回呼網址，取代設定檔裡該 provider `Desktop` 區段的 `RedirectUri`。 |
 | `--settings` | 設定檔路徑，預設是輸出目錄下、建置時從 repo 根目錄複製過來的 `OAuthConfig.json`。 |
 | `--timeout` | 等待導回的秒數，預設 180。 |
+| `--scopes` | 選填。以空白分隔、加上引號的 scope，取代該區段的 `Scopes`，例如 `"openid email profile offline_access"`。 |
+| `--secret` | `keep`（預設）或 `omit`：`omit` 會拿掉該區段的 client secret，用來測試 provider 在沒有 secret 時的反應。 |
+| `--refresh` | `no`（預設）或 `yes`：provider 有發 refresh token 時，登入後用它 refresh 一次。 |
 
 ## 判讀結果
 
@@ -41,4 +44,4 @@ dotnet run -- --provider Google
 | 1 | `The sign-in failed` | provider 帶著錯誤導回（例如 `access_denied`），或它的回應無法解讀。 |
 | 2 | 其他訊息 | 參數、設定檔或監聽的 socket 有問題。 |
 
-工具會印出登入帳號的使用者 ID、名稱與 email，不印 token 回應的任何內容。
+工具會印出登入帳號的使用者 ID、名稱與 email。token 回應只印 token type、有效期、原樣回傳的 scope，以及有沒有 refresh token 與 ID token，不印任何 token。

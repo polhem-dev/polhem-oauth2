@@ -28,6 +28,10 @@ namespace LoopbackRedirectProbe
                     options.RedirectUri = arguments.RedirectUri.OriginalString;
                 if (string.IsNullOrWhiteSpace(options.RedirectUri))
                     return Fail($"Set RedirectUri in 'Providers.{arguments.Provider}.{OAuthClientType.Desktop}' of the settings file, or pass --redirect.", 2);
+                if (arguments.Scopes is not null)
+                    options.Scopes = arguments.Scopes;
+                if (arguments.OmitSecret)
+                    options.ClientSecret = string.Empty;
                 client = new LoopbackOAuth2Client(options) { Timeout = TimeSpan.FromSeconds(arguments.TimeoutSeconds) };
             }
             catch (FileNotFoundException ex)
@@ -52,6 +56,8 @@ namespace LoopbackRedirectProbe
             {
                 Console.WriteLine($"Provider:     {arguments.Provider}");
                 Console.WriteLine($"Redirect URI: {GetQueryValue(url, "redirect_uri")}");
+                Console.WriteLine($"Scopes:       {GetQueryValue(url, "scope")}");
+                Console.WriteLine($"Secret:       {(string.IsNullOrEmpty(options.ClientSecret) ? "none set" : "set, sent only to a provider that requires it from a public client")}");
                 Console.WriteLine("Opening the system browser. If it does not open, visit this URL:");
                 Console.WriteLine(url.AbsoluteUri);
                 BrowserLauncher.TryOpen(url.AbsoluteUri);
@@ -74,7 +80,8 @@ namespace LoopbackRedirectProbe
                 Console.WriteLine($"  User ID:   {user.UserId}");
                 Console.WriteLine($"  User name: {user.UserName}");
                 Console.WriteLine($"  Email:     {user.Email}");
-                return 0;
+                WriteTokenFacts(result.Token);
+                return arguments.Refresh ? await RefreshAsync(client, result.Token) : 0;
             }
 
             return result.Exception switch
@@ -85,6 +92,46 @@ namespace LoopbackRedirectProbe
                 { } ex => Fail($"The sign-in failed: {ex.Message}", 1),
                 null => Fail("The sign-in failed without an exception.", 1)
             };
+        }
+
+        // Describes the token response without any token: the type, the lifetime, the granted scopes as returned, and which
+        // tokens came back.
+        private static void WriteTokenFacts(TokenResponse token)
+        {
+            Console.WriteLine($"  Token type:    {token.TokenType ?? "(not returned)"}");
+            Console.WriteLine($"  Expires in:    {(token.ExpiresIn is { } expiresIn ? $"{expiresIn.TotalSeconds:0} seconds" : "(not returned)")}");
+            Console.WriteLine($"  Scope:         {token.Scope ?? "(not returned)"}");
+            Console.WriteLine($"  Refresh token: {(token.RefreshToken is null ? "not issued" : "issued")}");
+            Console.WriteLine($"  ID token:      {(token.IdToken is null ? "not issued" : "issued")}");
+        }
+
+        private static async Task<int> RefreshAsync(LoopbackOAuth2Client client, TokenResponse token)
+        {
+            if (token.RefreshToken is null)
+            {
+                Console.WriteLine("No refresh token was issued, so there is nothing to refresh.");
+                return 0;
+            }
+
+            try
+            {
+                var refreshed = await client.RefreshTokenAsync(token.RefreshToken);
+                Console.WriteLine("The refresh succeeded.");
+                WriteTokenFacts(refreshed);
+                return 0;
+            }
+            catch (OAuth2Exception ex)
+            {
+                return Fail($"The refresh failed with the provider error '{ex.Error}': {ex.Message}", 1);
+            }
+            catch (HttpRequestException ex)
+            {
+                return Fail($"The refresh failed: {ex.Message}", 1);
+            }
+            catch (NotSupportedException ex)
+            {
+                return Fail($"The refresh is not supported: {ex.Message}", 1);
+            }
         }
 
         private static string? GetQueryValue(Uri url, string name)
