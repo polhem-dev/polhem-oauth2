@@ -18,6 +18,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 變更
 
+- `TokenResponse.Scope` 的文件不再宣稱 scope 以空白分隔；它就是 token 端點回傳的原值，不做任何轉換。
 - token 回應指定的 token type 不是 `Bearer` 時，登入或 refresh 會以 `OAuth2Exception` 失敗。RFC 6749 第 7.1 節禁止 client 使用它不理解
   類型的 token，而本套件把 access token 當作 bearer token 送出。比對不分大小寫，沒有 token type 的回應仍然接受。
 - `OAuth2Exception` 建構式的 `message` 與 `innerException` 參數改為可為 null，與 `Exception` 相同。

@@ -249,6 +249,8 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
   the life of the application, so one from `IHttpClientFactory` would outlive its handler; `AddOAuth2ClientWithHttpClientFactory`
   takes a function that returns the client for each request instead, which honors the factory. Pass none unless the application
   needs its own: the default replaces its pooled connections regularly to follow DNS changes, which `new HttpClient()` does not.
+  The default also does not follow redirects, which would resend the body of a token request; set `AllowAutoRedirect` to false
+  on the handler of a client of your own for the same reason.
 - `oauth2Manager.GetClient("Google")` returns the client, for example to call `RefreshTokenAsync`.
 - The manager is also registered as `IOAuth2Manager`. A controller that depends on the interface can be tested with a fake
   manager, without a service provider or a provider to sign in to.
@@ -307,7 +309,7 @@ Before deploying:
 - When more than one server can receive the callback, set the same `<machineKey>` in `web.config` on each of them.
 - On .NET Framework the default `HttpClient` keeps a connection for as long as the provider allows, and does not follow a DNS
   change until then. An application that runs for a long time can set `ConnectionLeaseTimeout` on the `ServicePoint` of the token
-  endpoint, or pass its own `HttpClient`.
+  endpoint, or pass its own `HttpClient`, with `AllowAutoRedirect` set to false on its handler as the default has.
 - On a machine with FIPS mode enabled, an application that targets .NET Framework 4.7.2 can get a `CryptographicException`
   when a sign-in starts: for such applications .NET Framework blocks the managed SHA-256 implementation that PKCE uses.
   Target .NET Framework 4.8 or later, or set the `Switch.System.Security.Cryptography.UseLegacyFipsThrow` switch to `false`.

@@ -19,6 +19,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Changed
 
+- The documentation of `TokenResponse.Scope` no longer says that the scopes are separated by spaces. The value is the one the
+  token endpoint returned, unchanged.
 - A token response that names a token type other than `Bearer` now fails the sign-in or the refresh with an `OAuth2Exception`.
   RFC 6749, section 7.1, forbids a client to use a token whose type it does not understand, and the client sends the access token
   as a bearer token. The comparison ignores case, and a response without a token type is still accepted.

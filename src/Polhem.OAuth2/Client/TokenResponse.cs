@@ -14,7 +14,7 @@ namespace Polhem.OAuth2
         /// <param name="expiresIn">How long the access token stays valid after the response, or null if the response does not say.</param>
         /// <param name="refreshToken">The refresh token, or null if the provider did not issue one.</param>
         /// <param name="idToken">The OpenID Connect ID token, or null if the provider did not issue one.</param>
-        /// <param name="scope">The granted scopes separated by spaces, or null if the response does not list them.</param>
+        /// <param name="scope">The granted scopes as the token endpoint returned them, or null if the response does not list them.</param>
         /// <param name="rawJson">The raw JSON returned by the token endpoint.</param>
         /// <exception cref="ArgumentNullException"><paramref name="accessToken"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="accessToken"/> is empty.</exception>
@@ -72,8 +72,12 @@ namespace Polhem.OAuth2
         public string? IdToken { get; }
 
         /// <summary>
-        /// Gets the granted scopes separated by spaces, or null if the response does not list them.
+        /// Gets the granted scopes as the token endpoint returned them, or null if the response does not list them.
         /// </summary>
+        /// <remarks>
+        /// RFC 6749 separates the scopes with spaces. The value is passed on unchanged, so a provider that encodes it another
+        /// way, for example percent-encoded, returns it that way here.
+        /// </remarks>
         public string? Scope { get; }
 
         /// <summary>

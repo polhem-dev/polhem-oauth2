@@ -29,7 +29,8 @@ namespace Polhem.OAuth2
         protected override Dictionary<string, string> GetAuthorizationParameters(string state, string redirectUri, string? codeChallenge)
         {
             var parameters = base.GetAuthorizationParameters(state, redirectUri, codeChallenge);
-            // Facebook separates scopes with commas rather than spaces.
+            // Facebook documents both commas and spaces as separators. Commas are kept because they are what this provider has
+            // always sent, and what the sign-ins recorded in ADR-004 and ADR-006 used.
             parameters["scope"] = string.Join(",", Options.Scopes);
             return parameters;
         }

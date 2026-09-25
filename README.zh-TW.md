@@ -226,6 +226,7 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
   所以來自 `IHttpClientFactory` 的 `HttpClient` 會活得比它的 handler 久；改用 `AddOAuth2ClientWithHttpClientFactory` 傳入
   每次請求取得 client 的函式，factory 才會生效。除非應用程式需要自己的，否則不要傳：
   預設的 `HttpClient` 會定期汰換連線池裡的連線以跟上 DNS 變更，`new HttpClient()` 不會。
+  預設的 `HttpClient` 也不跟隨轉址，以免把 token 請求的本文轉送出去；自己的 `HttpClient` 基於同樣理由，請把 handler 的 `AllowAutoRedirect` 設為 false。
 - `oauth2Manager.GetClient("Google")` 取得 client，例如用來呼叫 `RefreshTokenAsync`。
 - manager 同時登記為 `IOAuth2Manager`。依賴這個介面的 controller，測試時可以換成假的 manager，不需要 service provider，也不需要真的登入 provider。
 - ASP.NET Core 自己也有一個 `AuthorizationResult`，位於 `Microsoft.AspNetCore.Authorization`，也就是 `[Authorize]` 所在的命名空間。
@@ -280,7 +281,8 @@ public class AuthController : Controller
 - 在 .NET Framework 上，核心套件相依於 System.Text.Json。NuGet 為它及其相依套件加入 `web.config` 的 binding redirect 要保留。
 - 有多台伺服器可能收到回呼時，每一台的 `web.config` 都要設定相同的 `<machineKey>`。
 - 在 .NET Framework 上，預設的 `HttpClient` 會在 provider 允許的範圍內一直沿用同一條連線，在那之前不會跟上 DNS 的變更。
-  長時間執行的應用程式可以對 token 端點的 `ServicePoint` 設定 `ConnectionLeaseTimeout`，或傳入自己的 `HttpClient`。
+  長時間執行的應用程式可以對 token 端點的 `ServicePoint` 設定 `ConnectionLeaseTimeout`，或傳入自己的 `HttpClient`，
+  並像預設的一樣把 handler 的 `AllowAutoRedirect` 設為 false。
 - 在開啟 FIPS 模式的機器上，目標框架為 .NET Framework 4.7.2 的應用程式，開始登入時可能擲出 `CryptographicException`：
   對這類應用程式，.NET Framework 會擋下 PKCE 使用的 managed SHA-256 實作。請把目標框架改為 .NET Framework 4.8 或更新的版本，
   或把 `Switch.System.Security.Cryptography.UseLegacyFipsThrow` 開關設為 `false`。
