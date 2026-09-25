@@ -55,11 +55,13 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("CreateAuthorizationUrl keeps the sign-in in a protected __Host- cookie that is Secure, HTTP-only and SameSite=Lax")]
+        [DisplayName("CreateAuthorizationUrl keeps the sign-in in a protected __Host- cookie that is Secure, HTTP-only, SameSite=Lax and names no domain, even when <httpCookies> sets one")]
         public void CreateAuthorizationUrl_RegisteredClient_SetsProtectedCookie()
         {
             string clientName = RegisterClient(new StubHttpMessageHandler());
             var context = new FakeHttpContext();
+            // App.config sets a domain for every cookie, as a web.config can.
+            Assert.Equal("app.example.com", new HttpCookie("probe", "value").Domain);
 
             string url = OAuth2Manager.CreateAuthorizationUrl(context, clientName);
 
@@ -244,6 +246,24 @@ namespace Polhem.OAuth2.UnitTests
                 new FakeHttpContext($"error=access_denied&error_description=Denied&state={signIn.State}", signIn.Cookie));
 
             Assert.Equal("access_denied", Assert.IsType<OAuth2Exception>(result.Exception).Error);
+            Assert.Empty(handler.Requests);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync refuses a sign-in relayed to an application, which System.Web does not support")]
+        public async Task CompleteAuthorizationAsync_RelayedSignIn_ReturnsFailedResult()
+        {
+            var handler = new StubHttpMessageHandler();
+            string clientName = RegisterClient(handler);
+            var pending = new PendingAuthorization("relayed-state", "verifier", RedirectUri);
+            byte[] payload = PendingAuthorizationCookie.Serialize(
+                clientName, pending, DateTimeOffset.UtcNow, "com.example.app:/signin", "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+            string value = HttpServerUtility.UrlTokenEncode(System.Web.Security.MachineKey.Protect(payload, PendingAuthorizationCookie.ProtectionPurpose));
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(
+                new FakeHttpContext("code=abc&state=relayed-state", new HttpCookie(PendingAuthorizationCookie.NamePrefix + "relayed-state", value)));
+
+            Assert.IsType<OAuth2Exception>(result.Exception);
             Assert.Empty(handler.Requests);
         }
 

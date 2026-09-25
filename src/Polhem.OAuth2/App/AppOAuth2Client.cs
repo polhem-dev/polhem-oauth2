@@ -30,7 +30,6 @@ namespace Polhem.OAuth2
     {
         private readonly PublicSignIn _signIn;
         private readonly Func<Uri, Uri, CancellationToken, Task<Uri>> _authenticate;
-        private readonly string _redirectUri;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AppOAuth2Client"/> class.
@@ -58,7 +57,6 @@ namespace Polhem.OAuth2
 
             _signIn = new PublicSignIn(new OAuth2Client(options, httpClient, publicClient: true, appRedirectUri: true));
             _authenticate = authenticate;
-            _redirectUri = options.RedirectUri;
         }
 
         /// <summary>
@@ -83,12 +81,13 @@ namespace Polhem.OAuth2
                 if (PublicSignIn.CanceledBeforeStart(cancellationToken) is { } canceled)
                     return canceled;
 
-                AuthorizationRequest authorization = _signIn.Client.CreateAuthorizationRequest(_redirectUri);
+                AuthorizationRequest authorization = _signIn.Client.CreateAuthorizationRequest();
+                var redirectUri = new Uri(authorization.Pending.RedirectUri);
 
                 Uri callbackUri;
                 try
                 {
-                    callbackUri = await _authenticate(new Uri(authorization.Url), new Uri(_redirectUri), cancellationToken).ConfigureAwait(false)
+                    callbackUri = await _authenticate(new Uri(authorization.Url), redirectUri, cancellationToken).ConfigureAwait(false)
                         ?? throw new InvalidOperationException("The authenticate function returned null instead of the callback URI.");
                 }
                 catch (OperationCanceledException ex)

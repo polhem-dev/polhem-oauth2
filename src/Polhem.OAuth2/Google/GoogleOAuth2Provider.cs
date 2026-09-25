@@ -12,7 +12,7 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="options">The Google OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
-        public GoogleOAuth2Provider(GoogleOAuth2Options options, Func<HttpClient>? httpClientFactory = null) : base(options, httpClientFactory)
+        public GoogleOAuth2Provider(GoogleOAuth2Options options, Func<HttpClient>? httpClientFactory) : base(options, httpClientFactory)
         {
         }
 

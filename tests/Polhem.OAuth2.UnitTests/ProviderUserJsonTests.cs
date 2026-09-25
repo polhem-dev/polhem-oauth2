@@ -14,7 +14,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"sub":"107691503500061507151","name":"Ada Lovelace","email":"ada@example.com","email_verified":true}""";
 
-            var user = new GoogleOAuth2Provider(new GoogleOAuth2Options()).ParseUserJson(json);
+            var user = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null).ParseUserJson(json, null);
 
             Assert.Equal("107691503500061507151", user.UserId);
             Assert.Equal("Ada Lovelace", user.UserName);
@@ -26,7 +26,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("A field missing from the response maps to null")]
         public void Google_ParseUserJson_MissingFields_MapToNull()
         {
-            var user = new GoogleOAuth2Provider(new GoogleOAuth2Options()).ParseUserJson("""{"sub":"1"}""");
+            var user = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null).ParseUserJson("""{"sub":"1"}""", null);
 
             Assert.Null(user.UserName);
             Assert.Null(user.Email);
@@ -36,7 +36,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("A field whose value is JSON null maps to null")]
         public void Google_ParseUserJson_NullField_MapsToNull()
         {
-            var user = new GoogleOAuth2Provider(new GoogleOAuth2Options()).ParseUserJson("""{"sub":"1","name":null}""");
+            var user = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null).ParseUserJson("""{"sub":"1","name":null}""", null);
 
             Assert.Null(user.UserName);
         }
@@ -49,7 +49,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("""{"sub":"1","name":"Ada L.","given_name":"Ada","family_name":"Lovelace"}""", "Ada L.")]
         public void Google_ParseUserJson_MissingName_FallsBackToNameParts(string json, string expectedName)
         {
-            Assert.Equal(expectedName, new GoogleOAuth2Provider(new GoogleOAuth2Options()).ParseUserJson(json).UserName);
+            Assert.Equal(expectedName, new GoogleOAuth2Provider(new GoogleOAuth2Options(), null).ParseUserJson(json, null).UserName);
         }
 
         [Fact]
@@ -58,7 +58,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"id":"1234567890","name":"Ada Lovelace","email":"ada@example.com"}""";
 
-            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options()).ParseUserJson(json);
+            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options(), null).ParseUserJson(json, null);
 
             Assert.Equal("1234567890", user.UserId);
             Assert.Equal("Ada Lovelace", user.UserName);
@@ -69,7 +69,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Facebook falls back to first_name and last_name when name is missing")]
         public void Facebook_ParseUserJson_MissingName_FallsBackToNameParts()
         {
-            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options()).ParseUserJson("""{"id":"1","first_name":"Ada","last_name":"Lovelace"}""");
+            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options(), null).ParseUserJson("""{"id":"1","first_name":"Ada","last_name":"Lovelace"}""", null);
 
             Assert.Equal("Ada Lovelace", user.UserName);
         }
@@ -78,7 +78,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("A numeric identifier maps to its digits")]
         public void Facebook_ParseUserJson_NumericId_MapsToDigits()
         {
-            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options()).ParseUserJson("""{"id":1234567890,"name":"Ada"}""");
+            var user = new FacebookOAuth2Provider(new FacebookOAuth2Options(), null).ParseUserJson("""{"id":1234567890,"name":"Ada"}""", null);
 
             Assert.Equal("1234567890", user.UserId);
         }
@@ -89,7 +89,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"userId":"U4af4980629a1b2c3d4e5f60718293a4b","displayName":"Ada","pictureUrl":"https://example.com/a.png"}""";
 
-            var user = new LineOAuth2Provider(new LineOAuth2Options()).ParseUserJson(json);
+            var user = new LineOAuth2Provider(new LineOAuth2Options(), null).ParseUserJson(json, null);
 
             Assert.Equal("U4af4980629a1b2c3d4e5f60718293a4b", user.UserId);
             Assert.Equal("Ada", user.UserName);
@@ -102,7 +102,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"sub":"AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ","name":"Ada Lovelace","family_name":"Lovelace","given_name":"Ada","email":"ada@contoso.com"}""";
 
-            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson(json);
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options(), null).ParseUserJson(json, null);
 
             Assert.Equal("AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ", user.UserId);
             Assert.Equal("Ada Lovelace", user.UserName);
@@ -115,7 +115,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"sub":"AAAAAAAAAAAAAAAAAAAAAIkzqFVrSaSaFHy782bbtaQ","@odata.context":"https://substrate.office.com/profileB2/v2.0/me/$metadata#userinfo","givenname":"Ada","familyname":"Lovelace","email":"ada@outlook.com","locale":"en-GB"}""";
 
-            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson(json);
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options(), null).ParseUserJson(json, null);
 
             Assert.Equal("Ada Lovelace", user.UserName);
             Assert.Equal("ada@outlook.com", user.Email);
@@ -130,7 +130,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("""{"sub":"1","givenname":"","familyname":"Lovelace"}""", "Lovelace")]
         public void Azure_ParseUserJson_MissingName_FallsBackToNameParts(string json, string expected)
         {
-            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson(json);
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options(), null).ParseUserJson(json, null);
 
             Assert.Equal(expected, user.UserName);
         }
@@ -139,7 +139,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Microsoft Entra ID has no user name when neither name nor any name part is returned")]
         public void Azure_ParseUserJson_NoNameOrParts_MapsToNull()
         {
-            var user = new AzureOAuth2Provider(new AzureOAuth2Options()).ParseUserJson("""{"sub":"1","givenname":" "}""");
+            var user = new AzureOAuth2Provider(new AzureOAuth2Options(), null).ParseUserJson("""{"sub":"1","givenname":" "}""", null);
 
             Assert.Null(user.UserName);
         }
@@ -150,7 +150,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"sub":"auth0|5f7c8ec7c33c6c004bbafe82","name":"Ada Lovelace","nickname":"ada","email":"ada@example.com"}""";
 
-            var user = CreateAuth0Provider().ParseUserJson(json);
+            var user = CreateAuth0Provider().ParseUserJson(json, null);
 
             Assert.Equal("auth0|5f7c8ec7c33c6c004bbafe82", user.UserId);
             Assert.Equal("Ada Lovelace", user.UserName);
@@ -161,7 +161,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Auth0 falls back to nickname when name is missing")]
         public void Auth0_ParseUserJson_MissingName_FallsBackToNickname()
         {
-            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","nickname":"ada"}""");
+            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","nickname":"ada"}""", null);
 
             Assert.Equal("ada", user.UserName);
         }
@@ -170,7 +170,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Auth0 prefers the given and family names to the nickname when name is missing")]
         public void Auth0_ParseUserJson_MissingName_PrefersNamePartsToNickname()
         {
-            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","given_name":"Ada","family_name":"Lovelace","nickname":"ada"}""");
+            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","given_name":"Ada","family_name":"Lovelace","nickname":"ada"}""", null);
 
             Assert.Equal("Ada Lovelace", user.UserName);
         }
@@ -179,7 +179,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Auth0 falls back to nickname when name is JSON null")]
         public void Auth0_ParseUserJson_NullName_FallsBackToNickname()
         {
-            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","name":null,"nickname":"ada"}""");
+            var user = CreateAuth0Provider().ParseUserJson("""{"sub":"auth0|1","name":null,"nickname":"ada"}""", null);
 
             Assert.Equal("ada", user.UserName);
         }
@@ -190,7 +190,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             const string json = """{"sub":"00uid4BxXw6I6TV4m0g3","name":"Ada Lovelace","preferred_username":"ada@example.com","email":"ada@example.com"}""";
 
-            var user = CreateOktaProvider().ParseUserJson(json);
+            var user = CreateOktaProvider().ParseUserJson(json, null);
 
             Assert.Equal("00uid4BxXw6I6TV4m0g3", user.UserId);
             Assert.Equal("Ada Lovelace", user.UserName);
@@ -201,7 +201,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Okta falls back to preferred_username when name is missing")]
         public void Okta_ParseUserJson_MissingName_FallsBackToPreferredUsername()
         {
-            var user = CreateOktaProvider().ParseUserJson("""{"sub":"00u1","preferred_username":"ada@example.com"}""");
+            var user = CreateOktaProvider().ParseUserJson("""{"sub":"00u1","preferred_username":"ada@example.com"}""", null);
 
             Assert.Equal("ada@example.com", user.UserName);
         }
@@ -210,7 +210,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("Okta prefers the given and family names to preferred_username when name is missing")]
         public void Okta_ParseUserJson_MissingName_PrefersNamePartsToPreferredUsername()
         {
-            var user = CreateOktaProvider().ParseUserJson("""{"sub":"00u1","given_name":"Ada","family_name":"Lovelace","preferred_username":"ada@example.com"}""");
+            var user = CreateOktaProvider().ParseUserJson("""{"sub":"00u1","given_name":"Ada","family_name":"Lovelace","preferred_username":"ada@example.com"}""", null);
 
             Assert.Equal("Ada Lovelace", user.UserName);
         }
@@ -221,9 +221,9 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("")]
         public void ParseUserJson_EmptyJson_ThrowsArgumentNullException(string? json)
         {
-            var provider = new GoogleOAuth2Provider(new GoogleOAuth2Options());
+            var provider = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null);
 
-            Assert.Throws<ArgumentNullException>(() => provider.ParseUserJson(json!));
+            Assert.Throws<ArgumentNullException>(() => provider.ParseUserJson(json!, null));
         }
 
         [Theory]
@@ -232,19 +232,19 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("[]")]
         public void ParseUserJson_NotJsonObject_ThrowsJsonException(string json)
         {
-            var provider = new GoogleOAuth2Provider(new GoogleOAuth2Options());
+            var provider = new GoogleOAuth2Provider(new GoogleOAuth2Options(), null);
 
-            Assert.ThrowsAny<System.Text.Json.JsonException>(() => provider.ParseUserJson(json));
+            Assert.ThrowsAny<System.Text.Json.JsonException>(() => provider.ParseUserJson(json, null));
         }
 
         private static Auth0OAuth2Provider CreateAuth0Provider()
         {
-            return new Auth0OAuth2Provider(new Auth0OAuth2Options { Domain = "tenant.auth0.com" });
+            return new Auth0OAuth2Provider(new Auth0OAuth2Options { Domain = "tenant.auth0.com" }, null);
         }
 
         private static OktaOAuth2Provider CreateOktaProvider()
         {
-            return new OktaOAuth2Provider(new OktaOAuth2Options { Domain = "dev-123456.okta.com" });
+            return new OktaOAuth2Provider(new OktaOAuth2Options { Domain = "dev-123456.okta.com" }, null);
         }
     }
 }

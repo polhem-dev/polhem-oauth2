@@ -434,13 +434,15 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("RefreshTokenAsync is not supported for Facebook, which issues no refresh tokens")]
+        [DisplayName("RefreshTokenAsync is not supported for Facebook, which issues no refresh tokens, and reports it through the returned task")]
         public async Task Facebook_RefreshTokenAsync_ThrowsNotSupportedException()
         {
             var handler = new StubHttpMessageHandler();
             var provider = CreateProvider("Facebook", handler);
 
-            await Assert.ThrowsAsync<NotSupportedException>(() => provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None));
+            Task<TokenResponse> refresh = provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None);
+
+            await Assert.ThrowsAsync<NotSupportedException>(() => refresh);
             Assert.Empty(handler.Requests);
         }
 

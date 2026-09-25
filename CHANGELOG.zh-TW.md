@@ -5,6 +5,25 @@
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更。格式依循
 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。
 
+## [Unreleased]
+
+### 變更
+
+- 未傳入 `HttpClient` 時使用的共用 `HttpClient` 不再跟隨轉址。token 請求的本文帶著 client secret 與授權碼，307 或 308 轉址會把它們
+  轉送到另一個位置，所以轉址回應現在會讓請求失敗。自行傳入 `HttpClient` 的應用程式可以用同樣方式把 `AllowAutoRedirect` 設為 false。
+- 不發 refresh token 的 provider（Facebook）呼叫 `RefreshTokenAsync` 時，改為回傳失敗的 task，不再於呼叫當下擲例外；先取得 task、
+  稍後才 await 的呼叫端也能接到 `NotSupportedException`。
+- `LoopbackOAuth2Client` 在登入開始時讀一次 `Timeout` 與 `OpenBrowser`，登入進行中的修改從下一次登入起生效。`Timeout` 的文件改為
+  說明計時從開啟授權網址之前開始。
+- Polhem.OAuth2.AspNetCore 標示為相容於 trimming 與 native AOT，analyzer 會像檢查核心套件一樣檢查它。
+
+### 修正
+
+- System.Web 套件不再讓 web.config 中 `<httpCookies>` 的 `domain` 套用到登入 cookie。瀏覽器會拒收指定了 domain 的 `__Host-` cookie，
+  所以設了這個值時每次登入都會失敗。
+- ASP.NET Core 中，同一個 request 第二次呼叫 `CompleteAuthorizationAsync` 時，不再留下第一次呼叫的中轉登入讓 `RedirectToAppAsync` 送回。
+- System.Web 套件遇到指定了中轉目標應用程式的登入 cookie 時直接拒絕，不再當作網頁登入完成；它沒有後端中轉（ADR-006）。
+
 ## [1.2.0] - 2026-09-25
 
 ### 新增

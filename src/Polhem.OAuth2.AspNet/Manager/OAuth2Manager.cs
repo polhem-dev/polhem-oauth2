@@ -178,11 +178,10 @@ namespace Polhem.OAuth2.AspNet
 
             string? state = GetSingleValue(context.Request, "state");
 
-            string clientName;
-            PendingAuthorization pending;
+            PendingSignIn signIn;
             try
             {
-                (clientName, pending) = TakePendingAuthorization(context, state);
+                signIn = TakePendingAuthorization(context, state);
             }
             catch (OAuth2Exception ex)
             {
@@ -193,14 +192,14 @@ namespace Polhem.OAuth2.AspNet
                 return AuthorizationResult.Failure(ex);
             }
 
-            var client = GetClient(clientName)
-                ?? throw new InvalidOperationException($"The sign-in was started with the OAuth2 client '{clientName}', which is no longer registered.");
+            var client = GetClient(signIn.ClientName)
+                ?? throw new InvalidOperationException($"The sign-in was started with the OAuth2 client '{signIn.ClientName}', which is no longer registered.");
 
             var callback = new AuthorizationCallback(
                 GetSingleValue(context.Request, "code"), state, GetSingleValue(context.Request, "error"), GetSingleValue(context.Request, "error_description"));
 
             // WARNING: The HTTP context is not used after this await, which does not resume on the request's synchronization context.
-            return await client.CompleteAuthorizationAsync(callback, pending, cancellationToken).ConfigureAwait(false);
+            return await client.CompleteAuthorizationAsync(callback, signIn.Pending, cancellationToken).ConfigureAwait(false);
         }
 
         private static HttpContextBase GetCurrentContext()
@@ -211,7 +210,7 @@ namespace Polhem.OAuth2.AspNet
         }
 
         // Reads the cookie of the sign-in that the state names, and removes it on the response.
-        private static (string ClientName, PendingAuthorization Pending) TakePendingAuthorization(HttpContextBase context, string? state)
+        private static PendingSignIn TakePendingAuthorization(HttpContextBase context, string? state)
         {
             if (string.IsNullOrEmpty(state))
                 throw new OAuth2Exception("The state is missing.");
@@ -222,7 +221,11 @@ namespace Polhem.OAuth2.AspNet
                 ?? throw new OAuth2Exception("No sign-in started in this browser matches the state. It may have expired.");
 
             context.Response.Cookies.Add(CreateCookie(cookieName, string.Empty, DateTime.UtcNow.AddDays(-1)));
-            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), DateTimeOffset.UtcNow);
+            var signIn = PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), DateTimeOffset.UtcNow);
+            // System.Web has no back-end relay (ADR-006), so a relayed sign-in is refused rather than completed as a web sign-in.
+            if (signIn.AppRedirectUri is not null)
+                throw new OAuth2Exception("The sign-in was relayed to an application, which this package does not support.");
+            return signIn;
         }
 
         // A cookie that is not a valid URL token is reported like one that fails decryption, because both mean it was altered.
@@ -249,6 +252,9 @@ namespace Polhem.OAuth2.AspNet
         {
             return new HttpCookie(name, value)
             {
+                // The constructor copies the domain of <httpCookies> in web.config, and a browser rejects a __Host- cookie
+                // that names a domain, which would make every sign-in fail.
+                Domain = null,
                 HttpOnly = true,
                 Secure = true,
                 // The provider redirects back with a top-level GET request, which carries a SameSite=Lax cookie.

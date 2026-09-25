@@ -66,7 +66,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("LINE takes the email address from the ID token")]
         public void Line_ParseUserJsonWithIdToken_MapsEmailFromIdToken()
         {
-            var provider = new LineOAuth2Provider(new LineOAuth2Options { ClientId = ClientId });
+            var provider = new LineOAuth2Provider(new LineOAuth2Options { ClientId = ClientId }, null);
             var token = new TokenResponse("access", idToken: CreateIdToken("""{"aud":"1234567890","email":"ada@example.com"}"""));
 
             var user = provider.ParseUserJson("""{"userId":"U1","displayName":"Ada"}""", token);

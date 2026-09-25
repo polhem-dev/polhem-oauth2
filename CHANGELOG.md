@@ -5,6 +5,31 @@
 Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The shared `HttpClient` that a client uses when none is passed in no longer follows redirects. A token request carries the
+  client secret and the authorization code in its body, which a 307 or 308 redirect would send on to another location, so a
+  redirect response now fails the request. An application that passes its own `HttpClient` can set `AllowAutoRedirect` to
+  false the same way.
+- `RefreshTokenAsync` for a provider that issues no refresh tokens, Facebook, returns a faulted task instead of throwing when it
+  is called, so a caller that starts the task and awaits it later catches the `NotSupportedException` as well.
+- `LoopbackOAuth2Client` reads `Timeout` and `OpenBrowser` once when a sign-in starts, so a change made during a sign-in applies
+  to the next one. The documentation of `Timeout` now says that the time is counted from just before the authorization URL is
+  opened.
+- Polhem.OAuth2.AspNetCore is marked as compatible with trimming and native AOT, so the analyzers check it as they already
+  checked the core package.
+
+### Fixed
+
+- The System.Web package no longer lets the `domain` of `<httpCookies>` in web.config reach the sign-in cookie. Browsers
+  reject a `__Host-` cookie that names a domain, so with that setting every sign-in failed.
+- In ASP.NET Core, a second call to `CompleteAuthorizationAsync` in the same request no longer leaves the relayed sign-in of the
+  first call for `RedirectToAppAsync` to return.
+- The System.Web package refuses a sign-in cookie that names an application to relay to, instead of completing it as a web
+  sign-in. It has no back-end relay (ADR-006).
+
 ## [1.2.0] - 2026-09-25
 
 ### Added

@@ -20,6 +20,10 @@ namespace Polhem.OAuth2
     /// </remarks>
     public sealed class OAuth2Client
     {
+        private readonly OAuth2Provider _provider;
+        private readonly bool _isPublicClient;
+        private readonly bool _usePkce;
+
         /// <summary>
         /// Initializes a new instance of the <see cref="OAuth2Client"/> class.
         /// </summary>
@@ -50,16 +54,16 @@ namespace Polhem.OAuth2
             if (copy.GetValidationError(appRedirectUri) is { } error)
                 throw new ArgumentException(error, nameof(options));
 
-            Provider = OAuth2Provider.Create(copy, httpClientFactory);
-            IsPublicClient = publicClient;
+            _provider = OAuth2Provider.Create(copy, httpClientFactory);
+            _isPublicClient = publicClient;
             // RFC 8252 requires PKCE for native applications, because their client secret cannot be kept confidential.
-            UsePkce = publicClient || copy.UsePkce;
+            _usePkce = publicClient || copy.UsePkce;
         }
 
         /// <summary>
         /// Gets the provider name.
         /// </summary>
-        public string ProviderName => Provider.ProviderName;
+        public string ProviderName => _provider.ProviderName;
 
         /// <summary>
         /// Creates a client that asks for the HTTP client of each request to the provider, for an application that manages
@@ -86,19 +90,9 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Gets the provider, which holds the copied options.
+        /// Gets the redirect URI of the copied options, which were validated when the client was created.
         /// </summary>
-        internal OAuth2Provider Provider { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether the client is a public client, which does not send its client secret.
-        /// </summary>
-        internal bool IsPublicClient { get; }
-
-        /// <summary>
-        /// Gets a value indicating whether the flow uses PKCE.
-        /// </summary>
-        internal bool UsePkce { get; }
+        internal string RedirectUri => _provider.Options.RedirectUri;
 
         /// <summary>
         /// Creates the authorization request for a new sign-in, with a new random state and, when PKCE is used, a new code verifier.
@@ -109,7 +103,7 @@ namespace Polhem.OAuth2
         /// </returns>
         public AuthorizationRequest CreateAuthorizationRequest()
         {
-            return CreateAuthorizationRequest(Provider.Options.RedirectUri);
+            return CreateAuthorizationRequest(RedirectUri);
         }
 
         /// <summary>
@@ -120,10 +114,10 @@ namespace Polhem.OAuth2
         internal AuthorizationRequest CreateAuthorizationRequest(string redirectUri)
         {
             string state = CreateState();
-            string? codeVerifier = UsePkce ? Pkce.GenerateCodeVerifier() : null;
+            string? codeVerifier = _usePkce ? Pkce.GenerateCodeVerifier() : null;
             string? codeChallenge = codeVerifier is null ? null : Pkce.GenerateCodeChallenge(codeVerifier);
 
-            string url = Provider.GetAuthorizationUrl(state, redirectUri, codeChallenge);
+            string url = _provider.GetAuthorizationUrl(state, redirectUri, codeChallenge);
             return new AuthorizationRequest(url, new PendingAuthorization(state, codeVerifier, redirectUri));
         }
 
@@ -164,15 +158,15 @@ namespace Polhem.OAuth2
                     throw OAuth2Exception.FromProviderError(providerError, callback.ErrorDescription);
                 if (callback.Code is not { } code || string.IsNullOrWhiteSpace(code))
                     throw new OAuth2Exception("The authorization code is missing.");
-                if (UsePkce && pending.CodeVerifier is null)
+                if (_usePkce && pending.CodeVerifier is null)
                     throw new OAuth2Exception("The PKCE code verifier of the authorization request is missing.");
 
-                TokenResponse token = await Provider
-                    .ExchangeCodeAsync(code, pending.RedirectUri, UsePkce ? pending.CodeVerifier : null, IsPublicClient, cancellationToken)
+                TokenResponse token = await _provider
+                    .ExchangeCodeAsync(code, pending.RedirectUri, _usePkce ? pending.CodeVerifier : null, _isPublicClient, cancellationToken)
                     .ConfigureAwait(false);
-                UserInfo userInfo = await Provider.GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
+                UserInfo userInfo = await _provider.GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
 
-                return AuthorizationResult.Success(Provider.ProviderName, token, userInfo);
+                return AuthorizationResult.Success(_provider.ProviderName, token, userInfo);
             }
             catch (OAuth2Exception ex)
             {
@@ -214,7 +208,7 @@ namespace Polhem.OAuth2
             if (refreshToken.Length == 0)
                 throw new ArgumentException("The refresh token cannot be empty.", nameof(refreshToken));
 
-            return Provider.RefreshTokenAsync(refreshToken, IsPublicClient, cancellationToken);
+            return _provider.RefreshTokenAsync(refreshToken, _isPublicClient, cancellationToken);
         }
 
         // A state has the same requirements as a PKCE code verifier: enough cryptographically random bytes, encoded to be safe in a URL.

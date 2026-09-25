@@ -244,7 +244,7 @@ namespace Polhem.OAuth2.AspNetCore
 
             string separator = signIn.AppRedirectUri.IndexOf('?') >= 0 ? "&" : "?";
 
-            if (!result.IsSuccess || result.UserInfo is null)
+            if (!result.IsSuccess)
             {
                 // Only the error code of the provider is passed on; any other failure is reported without its details.
                 string error = result.Exception is OAuth2Exception { Error: { Length: > 0 } providerError } ? providerError : "sign_in_failed";

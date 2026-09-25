@@ -143,8 +143,8 @@ namespace Polhem.OAuth2
 
             for (int i = 0; i < _pendingAccepts.Length; i++)
             {
-                _ = _pendingAccepts[i]?.ContinueWith(
-                    ReleaseAbandonedAccept, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                if (_pendingAccepts[i] is { } accept)
+                    ReleaseWhenAbandoned(accept);
                 _pendingAccepts[i] = null;
             }
         }
@@ -204,15 +204,27 @@ namespace Polhem.OAuth2
             }
         }
 
-        // An accept still pending when the listener stops either fails, which is observed here so that it is not reported as an
-        // unobserved task exception, or in a rare race returns a connection that nobody will answer, which is closed here. In
-        // that race the wait in AcceptClientAsync may already have ended, and it finds the slot cleared.
-        private static void ReleaseAbandonedAccept(Task<TcpClient> accept)
+        /// <summary>
+        /// Releases what a task that nobody waits for any more produces: a failure is observed, so that it is not reported as
+        /// an unobserved task exception, and a connection or request it returns is closed.
+        /// </summary>
+        /// <remarks>
+        /// An accept still pending when the listener stops usually fails, but in a rare race returns a connection that nobody
+        /// will answer. In that race the wait in <see cref="AcceptClientAsync"/> may already have ended, and it finds the slot cleared.
+        /// </remarks>
+        /// <typeparam name="T">The type of the result, which is disposed.</typeparam>
+        /// <param name="task">The abandoned task, which may still be running.</param>
+        public static void ReleaseWhenAbandoned<T>(Task<T> task) where T : IDisposable
         {
-            if (accept.Status == TaskStatus.RanToCompletion)
-                accept.Result.Dispose();
-            else
-                _ = accept.Exception;
+            _ = task.ContinueWith(
+                abandoned =>
+                {
+                    if (abandoned.Status == TaskStatus.RanToCompletion)
+                        abandoned.Result.Dispose();
+                    else
+                        _ = abandoned.Exception;
+                },
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
     }
 }

@@ -121,16 +121,16 @@ namespace Polhem.OAuth2.AspNetCore
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
+            // A relayed sign-in that an earlier call in this request left behind must not be returned for this one.
+            context.Items.Remove(s_appSignInKey);
+
             var query = context.Request.Query;
             string? state = GetSingleValue(query, "state");
 
-            string clientName;
-            PendingAuthorization pending;
+            PendingSignIn signIn;
             try
             {
-                (clientName, pending) = TakePendingAuthorization(context, state, out string? appRedirectUri, out string? appCodeChallenge);
-                if (appRedirectUri is not null && appCodeChallenge is not null)
-                    context.Items[s_appSignInKey] = new AppSignIn(clientName, appRedirectUri, appCodeChallenge);
+                signIn = TakePendingAuthorization(context, state);
             }
             catch (OAuth2Exception ex)
             {
@@ -141,15 +141,18 @@ namespace Polhem.OAuth2.AspNetCore
                 return AuthorizationResult.Failure(ex);
             }
 
+            string clientName = signIn.ClientName;
             var client = GetClient(clientName)
                 ?? throw new InvalidOperationException($"The sign-in was started with the OAuth2 client '{clientName}', which is no longer registered.");
+            if (signIn.AppRedirectUri is { } appRedirectUri && signIn.AppCodeChallenge is { } appCodeChallenge)
+                context.Items[s_appSignInKey] = new AppSignIn(clientName, appRedirectUri, appCodeChallenge);
 
             var callback = new AuthorizationCallback(
                 GetSingleValue(query, "code"), state, GetSingleValue(query, "error"), GetSingleValue(query, "error_description"));
 
             using (var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.RequestAborted))
             {
-                return await client.CompleteAuthorizationAsync(callback, pending, requestCancellation.Token).ConfigureAwait(false);
+                return await client.CompleteAuthorizationAsync(callback, signIn.Pending, requestCancellation.Token).ConfigureAwait(false);
             }
         }
 
@@ -169,11 +172,8 @@ namespace Polhem.OAuth2.AspNetCore
         }
 
         // Reads the cookie of the sign-in that the state names, and removes it on the response.
-        private (string ClientName, PendingAuthorization Pending) TakePendingAuthorization(
-            HttpContext context, string? state, out string? appRedirectUri, out string? appCodeChallenge)
+        private PendingSignIn TakePendingAuthorization(HttpContext context, string? state)
         {
-            appRedirectUri = null;
-            appCodeChallenge = null;
             if (string.IsNullOrEmpty(state))
                 throw new OAuth2Exception("The state is missing.");
 
@@ -183,7 +183,7 @@ namespace Polhem.OAuth2.AspNetCore
                 ?? throw new OAuth2Exception("No sign-in started in this browser matches the state. It may have expired.");
 
             context.Response.Cookies.Delete(cookieName, CreateCookieOptions(maxAge: null));
-            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), _timeProvider.GetUtcNow(), out appRedirectUri, out appCodeChallenge);
+            return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), _timeProvider.GetUtcNow());
         }
 
         // A cookie that is not valid base64url is reported like one that fails decryption, because both mean it was altered.

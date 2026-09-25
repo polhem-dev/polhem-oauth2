@@ -54,17 +54,26 @@ namespace Polhem.OAuth2
         {
             if (options is null)
                 throw new ArgumentNullException(nameof(options));
-            if (!Uri.TryCreate(options.RedirectUri, UriKind.Absolute, out var redirectUri) || !LoopbackListener.IsLoopbackRedirectUri(redirectUri))
+
+            // The redirect URI is read from the copy that the client made and validated, not from the options, which the
+            // caller can still change.
+            var client = new OAuth2Client(options, httpClient, publicClient: true);
+            if (!Uri.TryCreate(client.RedirectUri, UriKind.Absolute, out var redirectUri) || !LoopbackListener.IsLoopbackRedirectUri(redirectUri))
                 throw new ArgumentException("The redirect URI must be an absolute http URI on localhost or a loopback address.", nameof(options));
 
-            _signIn = new PublicSignIn(new OAuth2Client(options, httpClient, publicClient: true));
-            _configuredRedirectUri = options.RedirectUri;
+            _signIn = new PublicSignIn(client);
+            _configuredRedirectUri = client.RedirectUri;
             _redirectUri = redirectUri;
         }
 
         /// <summary>
         /// Gets or sets how long <see cref="SignInAsync"/> waits for the provider to redirect back. The default is 5 minutes.
         /// </summary>
+        /// <remarks>
+        /// The time is counted from just before the authorization URL is opened, so the time that <see cref="OpenBrowser"/>
+        /// takes counts as well. <see cref="SignInAsync"/> reads this property when it starts, so a change made during a
+        /// sign-in applies to the next one.
+        /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException">The value is not positive, or is longer than <see cref="int.MaxValue"/> milliseconds.</exception>
         public TimeSpan Timeout
         {
@@ -84,6 +93,7 @@ namespace Polhem.OAuth2
         /// <remarks>
         /// <see cref="SignInAsync"/> calls it after the listener has started, and waits for the returned task before it waits
         /// for the redirect. An exception from the function or its task propagates from <see cref="SignInAsync"/>.
+        /// <see cref="SignInAsync"/> reads this property when it starts, so a change made during a sign-in applies to the next one.
         /// </remarks>
         public Func<Uri, Task>? OpenBrowser { get; set; }
 
@@ -115,6 +125,9 @@ namespace Polhem.OAuth2
                 if (PublicSignIn.CanceledBeforeStart(cancellationToken) is { } canceled)
                     return canceled;
 
+                TimeSpan timeoutValue = _timeout;
+                Func<Uri, Task>? openBrowser = OpenBrowser;
+
                 using (var listener = LoopbackListener.Start(_redirectUri))
                 using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
                 {
@@ -123,8 +136,8 @@ namespace Polhem.OAuth2
                     string redirectUri = _redirectUri.Port == 0 ? listener.RedirectUri.AbsoluteUri : _configuredRedirectUri;
                     AuthorizationRequest authorization = _signIn.Client.CreateAuthorizationRequest(redirectUri);
 
-                    timeout.CancelAfter(_timeout);
-                    await OpenAuthorizationUrlAsync(new Uri(authorization.Url)).ConfigureAwait(false);
+                    timeout.CancelAfter(timeoutValue);
+                    await OpenAuthorizationUrlAsync(openBrowser, new Uri(authorization.Url)).ConfigureAwait(false);
 
                     AuthorizationCallback callback;
                     try
@@ -164,9 +177,9 @@ namespace Polhem.OAuth2
             return _signIn.Client.RefreshTokenAsync(refreshToken, cancellationToken);
         }
 
-        private Task OpenAuthorizationUrlAsync(Uri url)
+        private static Task OpenAuthorizationUrlAsync(Func<Uri, Task>? openBrowser, Uri url)
         {
-            if (OpenBrowser is { } openBrowser)
+            if (openBrowser is not null)
                 return openBrowser(url);
 
             SystemBrowser.Open(url);
@@ -213,12 +226,9 @@ namespace Polhem.OAuth2
                     // Reads still in progress end promptly once the token is canceled, and their connections are closed.
                     reading.Cancel();
                     foreach (var read in pendingReads)
-                    {
-                        _ = read.ContinueWith(
-                            abandoned => ReleaseAbandoned(abandoned), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-                    }
-                    _ = pendingAccept?.ContinueWith(
-                        abandoned => ReleaseAbandoned(abandoned), CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                        LoopbackListener.ReleaseWhenAbandoned(read);
+                    if (pendingAccept is not null)
+                        LoopbackListener.ReleaseWhenAbandoned(pendingAccept);
                 }
             }
         }
@@ -247,16 +257,6 @@ namespace Polhem.OAuth2
             bool received = callback.Error is null && !string.IsNullOrEmpty(callback.Code);
             await request.RespondAsync("200 OK", received ? ReceivedMessage : RejectedMessage).ConfigureAwait(false);
             return callback;
-        }
-
-        // A task abandoned when the wait ends is observed here, so that a failure is not reported as an unobserved task
-        // exception, and a connection it produced is closed.
-        private static void ReleaseAbandoned<T>(Task<T> task) where T : IDisposable
-        {
-            if (task.Status == TaskStatus.RanToCompletion)
-                task.Result.Dispose();
-            else
-                _ = task.Exception;
         }
     }
 }

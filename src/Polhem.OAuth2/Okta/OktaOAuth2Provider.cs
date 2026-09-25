@@ -12,7 +12,7 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="options">The Okta OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
-        public OktaOAuth2Provider(OktaOAuth2Options options, Func<HttpClient>? httpClientFactory = null) : base(options, httpClientFactory)
+        public OktaOAuth2Provider(OktaOAuth2Options options, Func<HttpClient>? httpClientFactory) : base(options, httpClientFactory)
         {
         }
 

@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <!-- The package uses no reflection, and the analyzers keep it that way for applications that trim or compile ahead of time. -->
+    <IsAotCompatible>true</IsAotCompatible>
     <Description>OAuth2 sign-in for ASP.NET Core applications, with Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.</Description>
     <PackageTags>oauth2 pkce aspnetcore google facebook line entra-id azure-ad auth0 okta</PackageTags>
   </PropertyGroup>

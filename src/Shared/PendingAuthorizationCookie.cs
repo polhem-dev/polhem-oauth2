@@ -90,37 +90,22 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Decodes a pending sign-in, after it is unprotected.
-        /// </summary>
-        /// <param name="data">The bytes written by <see cref="Serialize"/>.</param>
-        /// <param name="now">The current time.</param>
-        /// <returns>The name of the client and the pending values.</returns>
-        /// <exception cref="OAuth2Exception">
-        /// The data does not hold a pending sign-in, or the sign-in started longer ago than <see cref="Lifetime"/>.
-        /// </exception>
-        public static (string ClientName, PendingAuthorization Pending) Deserialize(byte[] data, DateTimeOffset now)
-        {
-            return Deserialize(data, now, out _, out _);
-        }
-
-        /// <summary>
         /// Decodes a pending sign-in, after it is unprotected, together with the application it is relayed to, if any.
         /// </summary>
         /// <param name="data">The bytes written by <see cref="Serialize"/>.</param>
         /// <param name="now">The current time.</param>
-        /// <param name="appRedirectUri">The application redirect URI of a relayed sign-in, or null for a web sign-in.</param>
-        /// <param name="appCodeChallenge">The code challenge of a relayed sign-in, or null for a web sign-in.</param>
-        /// <returns>The name of the client and the pending values.</returns>
+        /// <returns>The pending sign-in.</returns>
         /// <exception cref="OAuth2Exception">
         /// The data does not hold a pending sign-in, or the sign-in started longer ago than <see cref="Lifetime"/>.
         /// </exception>
-        public static (string ClientName, PendingAuthorization Pending) Deserialize(
-            byte[] data, DateTimeOffset now, out string? appRedirectUri, out string? appCodeChallenge)
+        public static PendingSignIn Deserialize(byte[] data, DateTimeOffset now)
         {
             string? clientName;
             string? state;
             string? codeVerifier;
             string? redirectUri;
+            string? appRedirectUri;
+            string? appCodeChallenge;
             long issuedAt;
             try
             {
@@ -158,7 +143,9 @@ namespace Polhem.OAuth2
             if (age > Lifetime || age < -s_clockSkew)
                 throw new OAuth2Exception("The sign-in was started too long ago. Start it again.");
 
-            return (clientName, new PendingAuthorization(state, codeVerifier, redirectUri));
+            return new PendingSignIn(
+                clientName, new PendingAuthorization(state, codeVerifier, redirectUri), appRedirectUri is { Length: > 0 } ? appRedirectUri : null,
+                appCodeChallenge is { Length: > 0 } ? appCodeChallenge : null);
         }
     }
 }

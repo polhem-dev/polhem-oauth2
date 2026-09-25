@@ -16,12 +16,12 @@ namespace Polhem.OAuth2.UnitTests
             var pending = new PendingAuthorization("state", codeVerifier, "https://app.example.com/callback");
             byte[] data = PendingAuthorizationCookie.Serialize("Google", pending, s_issuedAt);
 
-            var (clientName, read) = PendingAuthorizationCookie.Deserialize(data, s_issuedAt.AddMinutes(5));
+            var signIn = PendingAuthorizationCookie.Deserialize(data, s_issuedAt.AddMinutes(5));
 
-            Assert.Equal("Google", clientName);
-            Assert.Equal("state", read.State);
-            Assert.Equal(codeVerifier, read.CodeVerifier);
-            Assert.Equal("https://app.example.com/callback", read.RedirectUri);
+            Assert.Equal("Google", signIn.ClientName);
+            Assert.Equal("state", signIn.Pending.State);
+            Assert.Equal(codeVerifier, signIn.Pending.CodeVerifier);
+            Assert.Equal("https://app.example.com/callback", signIn.Pending.RedirectUri);
         }
 
         [Theory]
@@ -33,9 +33,9 @@ namespace Polhem.OAuth2.UnitTests
         {
             byte[] data = PendingAuthorizationCookie.Serialize("Google", new PendingAuthorization("state", null, "https://app.example.com/callback"), s_issuedAt);
 
-            var (clientName, _) = PendingAuthorizationCookie.Deserialize(data, s_issuedAt.AddSeconds(ageSeconds));
+            var signIn = PendingAuthorizationCookie.Deserialize(data, s_issuedAt.AddSeconds(ageSeconds));
 
-            Assert.Equal("Google", clientName);
+            Assert.Equal("Google", signIn.ClientName);
         }
 
         [Theory]
@@ -95,11 +95,11 @@ namespace Polhem.OAuth2.UnitTests
             var pending = new PendingAuthorization("state", "verifier", "https://app.example.com/callback");
             byte[] data = PendingAuthorizationCookie.Serialize("Google", pending, s_issuedAt, "com.example.app:/signin", "challenge");
 
-            var (clientName, _) = PendingAuthorizationCookie.Deserialize(data, s_issuedAt, out string? appRedirectUri, out string? appCodeChallenge);
+            var signIn = PendingAuthorizationCookie.Deserialize(data, s_issuedAt);
 
-            Assert.Equal("Google", clientName);
-            Assert.Equal("com.example.app:/signin", appRedirectUri);
-            Assert.Equal("challenge", appCodeChallenge);
+            Assert.Equal("Google", signIn.ClientName);
+            Assert.Equal("com.example.app:/signin", signIn.AppRedirectUri);
+            Assert.Equal("challenge", signIn.AppCodeChallenge);
         }
 
         [Fact]
@@ -108,10 +108,10 @@ namespace Polhem.OAuth2.UnitTests
         {
             byte[] data = PendingAuthorizationCookie.Serialize("Google", new PendingAuthorization("state", null, "https://app.example.com/callback"), s_issuedAt);
 
-            PendingAuthorizationCookie.Deserialize(data, s_issuedAt, out string? appRedirectUri, out string? appCodeChallenge);
+            var signIn = PendingAuthorizationCookie.Deserialize(data, s_issuedAt);
 
-            Assert.Null(appRedirectUri);
-            Assert.Null(appCodeChallenge);
+            Assert.Null(signIn.AppRedirectUri);
+            Assert.Null(signIn.AppCodeChallenge);
         }
 
         [Theory]
@@ -120,7 +120,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("""{"client":"Google","state":"s","redirectUri":"https://app.example.com/callback","issuedAt":1789387200,"appChallenge":"challenge"}""")]
         public void Deserialize_PartialAppValues_ThrowsOAuth2Exception(string json)
         {
-            Assert.Throws<OAuth2Exception>(() => PendingAuthorizationCookie.Deserialize(Encoding.UTF8.GetBytes(json), s_issuedAt, out _, out _));
+            Assert.Throws<OAuth2Exception>(() => PendingAuthorizationCookie.Deserialize(Encoding.UTF8.GetBytes(json), s_issuedAt));
         }
     }
 }

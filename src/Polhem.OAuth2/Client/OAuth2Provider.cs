@@ -156,8 +156,10 @@ namespace Polhem.OAuth2
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
         public Task<TokenResponse> RefreshTokenAsync(string refreshToken, bool publicClient, CancellationToken cancellationToken)
         {
+            // Returned as a faulted task, like every other failure of the request, so that a caller who starts the task and
+            // awaits it later still catches the exception.
             if (!SupportsRefreshToken)
-                throw new NotSupportedException($"{ProviderName} does not issue refresh tokens.");
+                return Task.FromException<TokenResponse>(new NotSupportedException($"{ProviderName} does not issue refresh tokens."));
 
             var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
             {
@@ -207,7 +209,7 @@ namespace Polhem.OAuth2
         /// <returns>The parsed user information.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="json"/> is null or empty.</exception>
         /// <exception cref="JsonException"><paramref name="json"/> is not a JSON object.</exception>
-        public UserInfo ParseUserJson(string json, TokenResponse? token = null)
+        public UserInfo ParseUserJson(string json, TokenResponse? token)
         {
             if (string.IsNullOrEmpty(json))
                 throw new ArgumentNullException(nameof(json), "JSON string cannot be null or empty.");

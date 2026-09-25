@@ -14,7 +14,7 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="options">The Facebook OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
-        public FacebookOAuth2Provider(FacebookOAuth2Options options, Func<HttpClient>? httpClientFactory = null) : base(options, httpClientFactory)
+        public FacebookOAuth2Provider(FacebookOAuth2Options options, Func<HttpClient>? httpClientFactory) : base(options, httpClientFactory)
         {
         }
 

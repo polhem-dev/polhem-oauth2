@@ -576,6 +576,24 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("A second CompleteAuthorizationAsync in the same request does not return the relayed sign-in of the first")]
+        public async Task CompleteAuthorizationAsync_SecondCallInSameRequest_ForgetsEarlierRelayedSignIn()
+        {
+            var (manager, _) = CreateManager(SuccessfulProvider());
+            var start = StartRelayedSignIn(manager, AppRedirectUri, CreateChallenge().Challenge);
+            var context = CreateContext("?code=abc&state=" + start.State, start.Cookie);
+            await manager.CompleteAuthorizationAsync(context);
+
+            context.Request.QueryString = new QueryString("?code=abc&state=another-state");
+            var result = await manager.CompleteAuthorizationAsync(context);
+            bool relayed = await manager.RedirectToAppAsync(context, result);
+
+            Assert.False(result.IsSuccess);
+            Assert.False(relayed);
+            Assert.Equal(0, context.Response.Headers.Location.Count);
+        }
+
+        [Fact]
         [DisplayName("Relayed sign-ins in progress at the same time return to their own applications")]
         public async Task RelayedSignIns_InParallel_KeepTheirOwnApplications()
         {
