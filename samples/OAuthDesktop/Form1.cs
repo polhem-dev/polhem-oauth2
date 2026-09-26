@@ -49,7 +49,7 @@ namespace OAuthDesktop
             }
         }
 
-        private async void Login(string clientName)
+        private async Task LoginAsync(string clientName)
         {
             if (!_clients.TryGetValue(clientName, out var client))
             {
@@ -99,34 +99,34 @@ namespace OAuthDesktop
                                $"RawJson : \r\n{json}";
         }
 
-        private void btnGoogle_Click(object sender, EventArgs e)
+        private async void btnGoogle_Click(object sender, EventArgs e)
         {
-            Login("Google");
+            await LoginAsync("Google");
         }
 
-        private void btnFacebook_Click(object sender, EventArgs e)
+        private async void btnFacebook_Click(object sender, EventArgs e)
         {
-            Login("Facebook");
+            await LoginAsync("Facebook");
         }
 
-        private void btnLine_Click(object sender, EventArgs e)
+        private async void btnLine_Click(object sender, EventArgs e)
         {
-            Login("Line");
+            await LoginAsync("Line");
         }
 
-        private void btnAzure_Click(object sender, EventArgs e)
+        private async void btnAzure_Click(object sender, EventArgs e)
         {
-            Login("Azure");
+            await LoginAsync("Azure");
         }
 
-        private void btnAuth0_Click(object sender, EventArgs e)
+        private async void btnAuth0_Click(object sender, EventArgs e)
         {
-            Login("Auth0");
+            await LoginAsync("Auth0");
         }
 
-        private void btnOkta_Click(object sender, EventArgs e)
+        private async void btnOkta_Click(object sender, EventArgs e)
         {
-            Login("Okta");
+            await LoginAsync("Okta");
         }
     }
 }

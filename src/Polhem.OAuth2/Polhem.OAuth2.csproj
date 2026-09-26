@@ -26,7 +26,8 @@
   </ItemGroup>
 
   <!-- A file named *.NetStandard.cs is compiled for netstandard2.0 only, and a file named *.Net.cs for the .NET targets only.
-       .NET has the nullable analysis attributes, so only netstandard2.0 compiles the internal copies in Polyfills. -->
+       .NET has the nullable analysis attributes and the HttpContent overloads that take a cancellation token, so only
+       netstandard2.0 compiles the internal copies in Polyfills. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <Compile Remove="**/*.Net.cs" />
   </ItemGroup>

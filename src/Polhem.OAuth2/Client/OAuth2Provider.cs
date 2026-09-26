@@ -179,7 +179,7 @@ namespace Polhem.OAuth2
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
 
-                    string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     if (string.IsNullOrWhiteSpace(json))
                         throw new OAuth2Exception("The user information response is empty.");
 
@@ -370,7 +370,7 @@ namespace Polhem.OAuth2
                 request.Headers.Authorization = authorization;
                 using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
-                    string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     if (!response.IsSuccessStatusCode)
                     {
                         throw (Exception?)ReadErrorResponse(body)
