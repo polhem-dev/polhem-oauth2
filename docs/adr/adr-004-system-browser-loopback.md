@@ -93,8 +93,8 @@ tokens came back.
 | Google | Without the client secret (`--secret omit`) the token endpoint refused the code with `invalid_request`. With it, a refresh token was issued and the refresh succeeded; the response to the refresh carried no new refresh token. |
 | Microsoft Entra ID | A refresh token was issued, and the refresh succeeded. The scope came back as `openid email profile`, separated by spaces. |
 | Auth0 | A refresh token was issued, and the refresh succeeded. The response to the refresh carried no new refresh token, so this tenant does not rotate them. |
-| Okta | No refresh token was issued, and the granted scopes left out `offline_access`: this application is not allowed the refresh token grant. |
-| LINE | The code exchange and the refresh succeeded without the client secret, and a refresh token was issued. The granted scopes left out `email`, which the channel has not been approved for. |
+| Okta | No refresh token was issued, and the granted scopes left out `offline_access`: this application is not allowed the refresh token grant. After the Refresh Token grant was turned on for the application, a refresh token was issued and the refresh succeeded. |
+| LINE | The code exchange and the refresh succeeded without the client secret, and a refresh token was issued. The granted scopes left out `email`, which the channel has not been approved for. With "Use LINE Login in your mobile app" turned off, so that the channel served web apps only, the code exchange still succeeded without the secret, but the refresh failed with `invalid_client`; turning it back on made the refresh succeed again. |
 | Facebook | The code exchange succeeded without the client secret, with PKCE. The token type came back as `bearer` in lower case, no scope was returned, and no refresh token was issued. |
 
 ## Consequences

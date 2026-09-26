@@ -80,8 +80,8 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | Google | 不送 client secret（`--secret omit`）時，token 端點以 `invalid_request` 拒絕授權碼。送 secret 時有發 refresh token，refresh 成功；refresh 的回應沒有新的 refresh token。 |
 | Microsoft Entra ID | 有發 refresh token，refresh 成功。scope 回傳為 `openid email profile`，以空白分隔。 |
 | Auth0 | 有發 refresh token，refresh 成功。refresh 的回應沒有新的 refresh token，表示這個 tenant 沒有啟用輪替。 |
-| Okta | 沒有發 refresh token，核准的 scope 也沒有 `offline_access`：這個應用程式沒有被允許 refresh token grant。 |
-| LINE | 不送 client secret 也換 token 與 refresh 成功，並發了 refresh token。核准的 scope 沒有 `email`，channel 尚未取得該權限。 |
+| Okta | 沒有發 refresh token，核准的 scope 也沒有 `offline_access`：這個應用程式沒有被允許 refresh token grant。替應用程式開啟 Refresh Token grant 後，有發 refresh token，refresh 也成功。 |
+| LINE | 不送 client secret 也換 token 與 refresh 成功，並發了 refresh token。核准的 scope 沒有 `email`，channel 尚未取得該權限。關閉「Use LINE Login in your mobile app」、讓 channel 只供網頁應用程式使用時，不送 secret 仍能換 token，但 refresh 以 `invalid_client` 失敗；重新開啟後 refresh 又成功。 |
 | Facebook | 不送 client secret、以 PKCE 換 token 成功。token type 回傳為小寫的 `bearer`，沒有回傳 scope，也沒有發 refresh token。 |
 
 ## 影響
