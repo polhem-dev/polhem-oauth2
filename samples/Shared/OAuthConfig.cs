@@ -152,11 +152,8 @@ namespace OAuthSamples
                 ?? throw new InvalidDataException(
                     $"'{providerName}' is not a supported provider. The providers are {string.Join(", ", ProviderNames)}.");
 
-            foreach (var entry in _clients[clientType])
-            {
-                if (string.Equals(entry.ProviderName, provider.Name, StringComparison.Ordinal))
-                    return entry.Options;
-            }
+            if (_clients[clientType].FirstOrDefault(entry => string.Equals(entry.ProviderName, provider.Name, StringComparison.Ordinal)) is { } found)
+                return found.Options;
 
             throw new InvalidDataException($"'{_filePath}' has no '{ProvidersName}.{provider.Name}.{clientType}' section.");
         }
@@ -290,7 +287,7 @@ namespace OAuthSamples
             if (string.IsNullOrWhiteSpace(redirectUri))
                 throw new InvalidDataException($"'{_filePath}' needs a RedirectUri in '{AppRelayName}'.");
 
-            return new OAuthAppRelay(backend, redirectUri!);
+            return new OAuthAppRelay(backend, redirectUri);
         }
 
         /// <summary>

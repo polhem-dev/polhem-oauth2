@@ -19,12 +19,10 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentException"><paramref name="state"/> or <paramref name="redirectUri"/> is empty.</exception>
         public PendingAuthorization(string state, string? codeVerifier, string redirectUri)
         {
-            if (state is null)
-                throw new ArgumentNullException(nameof(state));
+            ArgumentNullException.ThrowIfNull(state);
             if (state.Length == 0)
                 throw new ArgumentException("The state cannot be empty.", nameof(state));
-            if (redirectUri is null)
-                throw new ArgumentNullException(nameof(redirectUri));
+            ArgumentNullException.ThrowIfNull(redirectUri);
             if (redirectUri.Length == 0)
                 throw new ArgumentException("The redirect URI cannot be empty.", nameof(redirectUri));
 

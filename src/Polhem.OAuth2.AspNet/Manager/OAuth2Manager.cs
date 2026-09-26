@@ -202,7 +202,7 @@ namespace Polhem.OAuth2.AspNet
             return await client.CompleteAuthorizationAsync(callback, signIn.Pending, cancellationToken).ConfigureAwait(false);
         }
 
-        private static HttpContextBase GetCurrentContext()
+        private static HttpContextWrapper GetCurrentContext()
         {
             return HttpContext.Current is { } current
                 ? new HttpContextWrapper(current)

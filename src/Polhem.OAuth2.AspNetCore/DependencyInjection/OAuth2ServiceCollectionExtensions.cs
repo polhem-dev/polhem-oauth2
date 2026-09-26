@@ -35,14 +35,13 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IServiceCollection AddOAuth2Client(
             this IServiceCollection services, string clientName, OAuth2Options options, HttpClient? httpClient = null)
         {
-            if (services is null)
-                throw new ArgumentNullException(nameof(services));
+            ArgumentNullException.ThrowIfNull(services);
             if (string.IsNullOrWhiteSpace(clientName))
                 throw new ArgumentException("The client name cannot be null, empty or white space.", nameof(clientName));
             if (IsRegistered(services, clientName))
                 throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
 
-            return AddRegistration(services, clientName, new OAuth2ClientRegistration(clientName, new OAuth2Client(options, httpClient)));
+            return AddRegistration(services, new OAuth2ClientRegistration(clientName, new OAuth2Client(options, httpClient)));
         }
 
         /// <summary>
@@ -70,19 +69,17 @@ namespace Microsoft.Extensions.DependencyInjection
         public static IServiceCollection AddOAuth2ClientWithHttpClientFactory(
             this IServiceCollection services, string clientName, OAuth2Options options, Func<IServiceProvider, HttpClient> httpClientFactory)
         {
-            if (services is null)
-                throw new ArgumentNullException(nameof(services));
-            if (httpClientFactory is null)
-                throw new ArgumentNullException(nameof(httpClientFactory));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(httpClientFactory);
             if (string.IsNullOrWhiteSpace(clientName))
                 throw new ArgumentException("The client name cannot be null, empty or white space.", nameof(clientName));
             if (IsRegistered(services, clientName))
                 throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
 
-            return AddRegistration(services, clientName, new OAuth2ClientRegistration(clientName, options, httpClientFactory));
+            return AddRegistration(services, new OAuth2ClientRegistration(clientName, options, httpClientFactory));
         }
 
-        private static IServiceCollection AddRegistration(IServiceCollection services, string clientName, OAuth2ClientRegistration registration)
+        private static IServiceCollection AddRegistration(IServiceCollection services, OAuth2ClientRegistration registration)
         {
             services.AddSingleton(registration);
             services.AddDataProtection();
@@ -124,10 +121,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <exception cref="InvalidOperationException">The relay is already registered.</exception>
         public static IServiceCollection AddOAuth2AppRelay(this IServiceCollection services, Action<OAuth2AppRelayOptions> configure)
         {
-            if (services is null)
-                throw new ArgumentNullException(nameof(services));
-            if (configure is null)
-                throw new ArgumentNullException(nameof(configure));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(configure);
             ThrowIfRelayRegistered(services);
 
             var options = new OAuth2AppRelayOptions();
@@ -158,10 +153,8 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <exception cref="InvalidOperationException">The relay is already registered.</exception>
         public static IServiceCollection AddOAuth2AppRelay(this IServiceCollection services, IConfiguration configuration)
         {
-            if (services is null)
-                throw new ArgumentNullException(nameof(services));
-            if (configuration is null)
-                throw new ArgumentNullException(nameof(configuration));
+            ArgumentNullException.ThrowIfNull(services);
+            ArgumentNullException.ThrowIfNull(configuration);
             ThrowIfRelayRegistered(services);
 
             var options = OAuth2AppRelayOptions.FromConfiguration(configuration, nameof(configuration));

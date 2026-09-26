@@ -60,12 +60,9 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="providerName"/>, <paramref name="token"/> or <paramref name="userInfo"/> is null.</exception>
         public static AuthorizationResult Success(string providerName, TokenResponse token, UserInfo userInfo)
         {
-            if (providerName is null)
-                throw new ArgumentNullException(nameof(providerName));
-            if (token is null)
-                throw new ArgumentNullException(nameof(token));
-            if (userInfo is null)
-                throw new ArgumentNullException(nameof(userInfo));
+            ArgumentNullException.ThrowIfNull(providerName);
+            ArgumentNullException.ThrowIfNull(token);
+            ArgumentNullException.ThrowIfNull(userInfo);
 
             return new AuthorizationResult(true, providerName, token, userInfo, null);
         }
@@ -78,8 +75,7 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="exception"/> is null.</exception>
         public static AuthorizationResult Failure(Exception exception)
         {
-            if (exception is null)
-                throw new ArgumentNullException(nameof(exception));
+            ArgumentNullException.ThrowIfNull(exception);
 
             return new AuthorizationResult(false, null, null, null, exception);
         }

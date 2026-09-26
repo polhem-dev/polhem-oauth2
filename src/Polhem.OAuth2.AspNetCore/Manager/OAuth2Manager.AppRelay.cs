@@ -63,8 +63,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// </exception>
         public virtual void RedirectToAppAuthorization(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
+            ArgumentNullException.ThrowIfNull(context);
 
             context.Response.Redirect(CreateAppAuthorizationUrl(context, clientName, appRedirectUri, codeChallenge));
         }
@@ -87,12 +86,9 @@ namespace Polhem.OAuth2.AspNetCore
         /// </exception>
         public virtual string CreateAppAuthorizationUrl(HttpContext context, string clientName, string appRedirectUri, string codeChallenge)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
-            if (appRedirectUri is null)
-                throw new ArgumentNullException(nameof(appRedirectUri));
-            if (codeChallenge is null)
-                throw new ArgumentNullException(nameof(codeChallenge));
+            ArgumentNullException.ThrowIfNull(context);
+            ArgumentNullException.ThrowIfNull(appRedirectUri);
+            ArgumentNullException.ThrowIfNull(codeChallenge);
 
             var relay = RequireRelay();
             if (!relay.IsRegistered(appRedirectUri))
@@ -151,8 +147,7 @@ namespace Polhem.OAuth2.AspNetCore
         public virtual bool TryCreateAppAuthorizationUrl(
             HttpContext context, string? clientName, string? appRedirectUri, string? codeChallenge, [NotNullWhen(true)] out string? url)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
+            ArgumentNullException.ThrowIfNull(context);
 
             var relay = RequireRelay();
             url = null;
@@ -229,10 +224,8 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
         public virtual async Task<string?> CreateAppRedirectUrlAsync(HttpContext context, AuthorizationResult result, CancellationToken cancellationToken = default)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
-            if (result is null)
-                throw new ArgumentNullException(nameof(result));
+            ArgumentNullException.ThrowIfNull(context);
+            ArgumentNullException.ThrowIfNull(result);
             if (!context.Items.TryGetValue(s_appSignInKey, out object? item) || item is not AppSignIn signIn)
                 return null;
 
@@ -242,7 +235,7 @@ namespace Polhem.OAuth2.AspNetCore
             if (!relay.IsRegistered(signIn.AppRedirectUri))
                 throw new InvalidOperationException("The sign-in was started with an application redirect URI that is no longer registered with the relay.");
 
-            string separator = signIn.AppRedirectUri.IndexOf('?') >= 0 ? "&" : "?";
+            string separator = signIn.AppRedirectUri.Contains('?') ? "&" : "?";
 
             if (!result.IsSuccess)
             {
@@ -289,12 +282,9 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
         public virtual async Task<UserInfo?> RedeemAppCodeAsync(string clientName, string code, string codeVerifier, CancellationToken cancellationToken = default)
         {
-            if (clientName is null)
-                throw new ArgumentNullException(nameof(clientName));
-            if (code is null)
-                throw new ArgumentNullException(nameof(code));
-            if (codeVerifier is null)
-                throw new ArgumentNullException(nameof(codeVerifier));
+            ArgumentNullException.ThrowIfNull(clientName);
+            ArgumentNullException.ThrowIfNull(code);
+            ArgumentNullException.ThrowIfNull(codeVerifier);
             RequireRelay();
 
             if (code.Length != RelayCodeLength || !Base64UrlText.IsBase64Url(code)

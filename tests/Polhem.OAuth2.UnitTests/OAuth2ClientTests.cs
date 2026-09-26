@@ -270,7 +270,7 @@ namespace Polhem.OAuth2.UnitTests
 
             var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("abc", request.Pending.State, null, null), request.Pending);
 
-            Assert.IsAssignableFrom<JsonException>(result.Exception);
+            Assert.IsType<JsonException>(result.Exception, exactMatch: false);
         }
 
         [Fact]

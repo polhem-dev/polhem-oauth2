@@ -13,17 +13,17 @@ try
 }
 catch (FileNotFoundException ex)
 {
-    Console.Error.WriteLine(ex.Message);
+    await Console.Error.WriteLineAsync(ex.Message);
     return 2;
 }
 catch (InvalidDataException ex)
 {
-    Console.Error.WriteLine(ex.Message);
+    await Console.Error.WriteLineAsync(ex.Message);
     return 2;
 }
 catch (JsonException ex)
 {
-    Console.Error.WriteLine($"{OAuthConfig.FileName} is not valid JSON: {ex.Message}");
+    await Console.Error.WriteLineAsync($"{OAuthConfig.FileName} is not valid JSON: {ex.Message}");
     return 2;
 }
 
@@ -34,7 +34,7 @@ try
 }
 catch (ArgumentException ex)
 {
-    Console.Error.WriteLine(ex.Message);
+    await Console.Error.WriteLineAsync(ex.Message);
     return 2;
 }
 
@@ -55,13 +55,13 @@ try
 }
 catch (SocketException ex)
 {
-    Console.Error.WriteLine($"Cannot listen on {options.RedirectUri}: {ex.Message}");
+    await Console.Error.WriteLineAsync($"Cannot listen on {options.RedirectUri}: {ex.Message}");
     return 2;
 }
 
 if (!result.IsSuccess || result.UserInfo is not { } user)
 {
-    Console.Error.WriteLine($"The sign-in failed: {result.Exception?.Message}");
+    await Console.Error.WriteLineAsync($"The sign-in failed: {result.Exception?.Message}");
     return 1;
 }
 

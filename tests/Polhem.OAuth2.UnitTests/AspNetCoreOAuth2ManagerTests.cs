@@ -303,7 +303,7 @@ namespace Polhem.OAuth2.UnitTests
 
             var result = await manager.CompleteAuthorizationAsync(AspNetCoreTestContext.Create($"?code=abc&state={signIn.State}", $"{signIn.CookieName}={value}"));
 
-            Assert.IsAssignableFrom<CryptographicException>(result.Exception);
+            Assert.IsType<CryptographicException>(result.Exception, exactMatch: false);
             Assert.Empty(handler.Requests);
         }
 

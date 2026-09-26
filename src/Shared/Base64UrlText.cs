@@ -15,12 +15,7 @@ namespace Polhem.OAuth2
         /// <returns>True if no character is outside the alphabet.</returns>
         public static bool IsBase64Url(string value)
         {
-            foreach (char c in value)
-            {
-                if (!IsBase64UrlCharacter(c))
-                    return false;
-            }
-            return true;
+            return value.All(IsBase64UrlCharacter);
         }
 
         /// <summary>

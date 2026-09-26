@@ -51,6 +51,22 @@ dotnet_diagnostic.CA1725.severity = warning
 # Culture-sensitive APIs must be given an IFormatProvider (Sonar S6580).
 dotnet_diagnostic.CA1305.severity = warning
 
+# Use the throw helpers instead of throwing by hand. The netstandard2.0 build gets them from Polyfills.
+dotnet_diagnostic.CA1510.severity = warning
+dotnet_diagnostic.CA1513.severity = warning
+
+# Prefer the overloads and members that newer targets add: memory-based stream writes, static hashing, and
+# string.Contains instead of comparing IndexOf with zero.
+dotnet_diagnostic.CA1835.severity = warning
+dotnet_diagnostic.CA1850.severity = warning
+dotnet_diagnostic.CA2249.severity = warning
+
+# Forward a cancellation token that is in scope.
+dotnet_diagnostic.CA2016.severity = warning
+
+# Assert.IsType with exactMatch: false instead of Assert.IsAssignableFrom, whose name reads backwards.
+dotnet_diagnostic.xUnit2032.severity = warning
+
 # ───── Security ─────
 
 # XXE protection: parse XML with safe settings.

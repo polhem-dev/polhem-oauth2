@@ -34,7 +34,8 @@ var app = builder.Build();
 app.Use(async (context, next) =>
 {
     await next(context);
-    app.Logger.LogInformation("{Method} {Path} -> {StatusCode}", context.Request.Method, context.Request.Path, context.Response.StatusCode);
+    if (app.Logger.IsEnabled(LogLevel.Information))
+        app.Logger.LogInformation("{Method} {Path} -> {StatusCode}", context.Request.Method, context.Request.Path, context.Response.StatusCode);
 });
 
 new FakeAuthorizationServer(WebClientId, WebClientSecret).Map(app);
@@ -69,4 +70,4 @@ app.Lifetime.ApplicationStarted.Register(() =>
     Console.WriteLine($"The fake provider listens on {origin}. The CA certificate is at {Path.GetFullPath(caCertificatePath)}.");
 });
 
-app.Run();
+await app.RunAsync();

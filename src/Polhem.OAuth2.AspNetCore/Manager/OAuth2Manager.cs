@@ -75,8 +75,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="ArgumentNullException"><paramref name="clientName"/> is null.</exception>
         public virtual OAuth2Client? GetClient(string clientName)
         {
-            if (clientName is null)
-                throw new ArgumentNullException(nameof(clientName));
+            ArgumentNullException.ThrowIfNull(clientName);
 
             return _clients.TryGetValue(clientName, out var client) ? client : null;
         }
@@ -137,8 +136,7 @@ namespace Polhem.OAuth2.AspNetCore
         /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled, or the request was aborted.</exception>
         public virtual async Task<AuthorizationResult> CompleteAuthorizationAsync(HttpContext context, CancellationToken cancellationToken = default)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
+            ArgumentNullException.ThrowIfNull(context);
 
             // A relayed sign-in that an earlier call in this request left behind must not be returned for this one.
             context.Items.Remove(s_appSignInKey);
@@ -177,8 +175,7 @@ namespace Polhem.OAuth2.AspNetCore
 
         private string StartSignIn(HttpContext context, string clientName, string? appRedirectUri, string? appCodeChallenge)
         {
-            if (context is null)
-                throw new ArgumentNullException(nameof(context));
+            ArgumentNullException.ThrowIfNull(context);
 
             var client = GetClient(clientName)
                 ?? throw new InvalidOperationException($"No OAuth2 client is registered under the name '{clientName}'.");

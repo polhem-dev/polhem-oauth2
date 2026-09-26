@@ -61,15 +61,18 @@ namespace Polhem.OAuth2
                 ? new[] { IPAddress.Loopback, IPAddress.IPv6Loopback }
                 : new[] { IPAddress.Parse(redirectUri.DnsSafeHost) };
 
-            for (int attempt = 1; ; attempt++)
+            // The last attempt does not retry on a conflict, so TryBind throws instead of returning null and the loop ends.
+            List<TcpListener>? listeners;
+            int attempt = 0;
+            do
             {
-                List<TcpListener>? listeners = TryBind(addresses, redirectUri.Port, retryOnConflict: redirectUri.Port == 0 && attempt < BindAttempts);
-                if (listeners is null)
-                    continue;
-
-                int port = ((IPEndPoint)listeners[0].LocalEndpoint).Port;
-                return new LoopbackListener(listeners, new UriBuilder(redirectUri) { Port = port }.Uri);
+                attempt++;
+                listeners = TryBind(addresses, redirectUri.Port, retryOnConflict: redirectUri.Port == 0 && attempt < BindAttempts);
             }
+            while (listeners is null);
+
+            int port = ((IPEndPoint)listeners[0].LocalEndpoint).Port;
+            return new LoopbackListener(listeners, new UriBuilder(redirectUri) { Port = port }.Uri);
         }
 
         /// <summary>
@@ -118,11 +121,7 @@ namespace Polhem.OAuth2
             using (cancellationToken.Register(() => canceled.TrySetResult(true)))
             {
                 var waiting = new List<Task>(_pendingAccepts.Length + 1) { canceled.Task };
-                foreach (var pending in _pendingAccepts)
-                {
-                    if (pending is not null)
-                        waiting.Add(pending);
-                }
+                waiting.AddRange(_pendingAccepts.OfType<Task>());
 
                 Task completed = await Task.WhenAny(waiting).ConfigureAwait(false);
                 cancellationToken.ThrowIfCancellationRequested();
@@ -130,8 +129,7 @@ namespace Polhem.OAuth2
                 // Dispose may have run since the wait ended: it clears the pending accepts and closes the connection that
                 // the completed one produced, so this listener has nothing to hand over.
                 int index = Array.IndexOf(_pendingAccepts, completed);
-                if (index < 0)
-                    throw new ObjectDisposedException(nameof(LoopbackListener));
+                ObjectDisposedException.ThrowIf(index < 0, this);
 
                 var accept = _pendingAccepts[index]!;
                 _pendingAccepts[index] = null;

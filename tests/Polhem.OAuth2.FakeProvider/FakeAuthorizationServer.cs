@@ -12,6 +12,7 @@ namespace Polhem.OAuth2.FakeProvider
     internal sealed class FakeAuthorizationServer
     {
         private const string AccessToken = "fake-access-token";
+        private const string InvalidGrant = "invalid_grant";
 
         private readonly ConcurrentDictionary<string, FakeAuthorizationCode> _codes = new(StringComparer.Ordinal);
         private readonly string _webClientId;
@@ -70,23 +71,23 @@ namespace Polhem.OAuth2.FakeProvider
             {
                 return form["refresh_token"] == "fake-refresh-token"
                     ? Results.Json(CreateToken())
-                    : TokenError("invalid_grant");
+                    : TokenError(InvalidGrant);
             }
             if (grantType != "authorization_code")
                 return TokenError("unsupported_grant_type");
 
             // A code is used once, whatever the outcome, as RFC 6749 requires.
             if (!_codes.TryRemove(form["code"].ToString(), out var issued))
-                return TokenError("invalid_grant");
+                return TokenError(InvalidGrant);
             if (form["client_id"] != issued.ClientId || form["redirect_uri"] != issued.RedirectUri)
-                return TokenError("invalid_grant");
+                return TokenError(InvalidGrant);
 
             if (issued.CodeChallenge is { } challenge)
             {
                 string verifier = form["code_verifier"].ToString();
                 string expected = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
                 if (verifier.Length == 0 || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(challenge)))
-                    return TokenError("invalid_grant");
+                    return TokenError(InvalidGrant);
             }
             else if (issued.ClientId != _webClientId || form["client_secret"] != _webClientSecret)
             {

@@ -228,7 +228,7 @@ namespace Polhem.OAuth2.UnitTests
 
             var result = await client.SignInAsync(cancellation.Token).WithTimeout();
 
-            Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
+            Assert.IsType<OperationCanceledException>(result.Exception, exactMatch: false);
         }
 
         [Fact]
@@ -246,7 +246,7 @@ namespace Polhem.OAuth2.UnitTests
             var result = await signIn.WithTimeout();
             await browser.Completed.WithTimeout();
 
-            Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
+            Assert.IsType<OperationCanceledException>(result.Exception, exactMatch: false);
         }
 
         [Fact]
@@ -266,7 +266,7 @@ namespace Polhem.OAuth2.UnitTests
             var result = await client.SignInAsync(new CancellationToken(canceled: true)).WithTimeout();
 
             Assert.False(opened);
-            Assert.IsAssignableFrom<OperationCanceledException>(result.Exception);
+            Assert.IsType<OperationCanceledException>(result.Exception, exactMatch: false);
         }
 
         [Fact]
@@ -296,7 +296,7 @@ namespace Polhem.OAuth2.UnitTests
             using var canceled = new CancellationTokenSource();
             canceled.Cancel();
             var next = await client.SignInAsync(canceled.Token);
-            Assert.IsAssignableFrom<OperationCanceledException>(next.Exception);
+            Assert.IsType<OperationCanceledException>(next.Exception, exactMatch: false);
         }
 
         [Fact]
@@ -319,7 +319,7 @@ namespace Polhem.OAuth2.UnitTests
 
             await Assert.ThrowsAsync<InvalidOperationException>(() => client.SignInAsync());
             cancellation.Cancel();
-            Assert.IsAssignableFrom<OperationCanceledException>((await first.WithTimeout()).Exception);
+            Assert.IsType<OperationCanceledException>((await first.WithTimeout()).Exception, exactMatch: false);
         }
 
         [Fact]

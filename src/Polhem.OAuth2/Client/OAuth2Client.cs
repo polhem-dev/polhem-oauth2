@@ -47,8 +47,7 @@ namespace Polhem.OAuth2
 
         private OAuth2Client(OAuth2Options options, Func<HttpClient>? httpClientFactory, bool publicClient, bool appRedirectUri)
         {
-            if (options is null)
-                throw new ArgumentNullException(nameof(options));
+            ArgumentNullException.ThrowIfNull(options);
 
             var copy = options.Clone();
             if (copy.GetValidationError(appRedirectUri) is { } error)
@@ -83,8 +82,7 @@ namespace Polhem.OAuth2
         /// </exception>
         public static OAuth2Client Create(OAuth2Options options, Func<HttpClient> httpClientFactory)
         {
-            if (httpClientFactory is null)
-                throw new ArgumentNullException(nameof(httpClientFactory));
+            ArgumentNullException.ThrowIfNull(httpClientFactory);
 
             return new OAuth2Client(options, httpClientFactory, publicClient: false, appRedirectUri: false);
         }
@@ -145,10 +143,8 @@ namespace Polhem.OAuth2
         public async Task<AuthorizationResult> CompleteAuthorizationAsync(
             AuthorizationCallback callback, PendingAuthorization pending, CancellationToken cancellationToken = default)
         {
-            if (callback is null)
-                throw new ArgumentNullException(nameof(callback));
-            if (pending is null)
-                throw new ArgumentNullException(nameof(pending));
+            ArgumentNullException.ThrowIfNull(callback);
+            ArgumentNullException.ThrowIfNull(pending);
 
             try
             {
@@ -204,8 +200,7 @@ namespace Polhem.OAuth2
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
         public Task<TokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
         {
-            if (refreshToken is null)
-                throw new ArgumentNullException(nameof(refreshToken));
+            ArgumentNullException.ThrowIfNull(refreshToken);
             if (refreshToken.Length == 0)
                 throw new ArgumentException("The refresh token cannot be empty.", nameof(refreshToken));
 

@@ -242,7 +242,7 @@ namespace Polhem.OAuth2.UnitTests
             var result = await OAuth2Manager.CompleteAuthorizationAsync(
                 new FakeHttpContext($"code=abc&state={signIn.State}", new HttpCookie(signIn.Cookie.Name, value)));
 
-            Assert.IsAssignableFrom<CryptographicException>(result.Exception);
+            Assert.IsType<CryptographicException>(result.Exception, exactMatch: false);
             Assert.Empty(handler.Requests);
         }
 

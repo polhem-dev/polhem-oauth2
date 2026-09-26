@@ -25,18 +25,18 @@ JSON
 
 dotnet run "$generator" -- "$work/config.json" "$work/out" dev.example
 if grep -qi secret "$work/out/OAuthApp.json"; then
-  echo "error: the generator packaged a secret:"
-  cat "$work/out/OAuthApp.json"
+  echo "error: the generator packaged a secret:" >&2
+  cat "$work/out/OAuthApp.json" >&2
   exit 1
 fi
 
 sed 's/"UsePkce" };/"UsePkce", "ClientSecret" };/' "$generator" > "$work/Loosened.cs"
 if cmp -s "$generator" "$work/Loosened.cs"; then
-  echo "error: the allowlist line of the generator changed, so this script cannot loosen it. Update the sed expression."
+  echo "error: the allowlist line of the generator changed, so this script cannot loosen it. Update the sed expression." >&2
   exit 1
 fi
 if dotnet run "$work/Loosened.cs" -- "$work/config.json" "$work/out-loosened" dev.example; then
-  echo "error: the generator wrote settings with a secret instead of failing."
+  echo "error: the generator wrote settings with a secret instead of failing." >&2
   exit 1
 fi
 

@@ -29,10 +29,7 @@ namespace Polhem.OAuth2
         /// <returns>The code challenge.</returns>
         public static string GenerateCodeChallenge(string codeVerifier)
         {
-            using (var sha256 = SHA256.Create())
-            {
-                return Base64Url.Encode(sha256.ComputeHash(Encoding.ASCII.GetBytes(codeVerifier)));
-            }
+            return Base64Url.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(codeVerifier)));
         }
     }
 }

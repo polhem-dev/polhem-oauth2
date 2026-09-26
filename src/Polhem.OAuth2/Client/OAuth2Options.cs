@@ -139,11 +139,15 @@ namespace Polhem.OAuth2
         /// <returns>A message that names the first endpoint property that is not valid, or null if every endpoint is valid.</returns>
         internal string? GetEndpointError()
         {
-            string? endpoint = !IsEndpointUri(AuthorizationEndpoint) ? nameof(AuthorizationEndpoint)
-                : !IsEndpointUri(TokenEndpoint) ? nameof(TokenEndpoint)
-                : !IsEndpointUri(UserInfoEndpoint) ? nameof(UserInfoEndpoint)
-                : null;
-            return endpoint is null ? null : $"{endpoint} must be an absolute https URI without a fragment.";
+            if (!IsEndpointUri(AuthorizationEndpoint))
+                return GetEndpointError(nameof(AuthorizationEndpoint));
+            if (!IsEndpointUri(TokenEndpoint))
+                return GetEndpointError(nameof(TokenEndpoint));
+            if (!IsEndpointUri(UserInfoEndpoint))
+                return GetEndpointError(nameof(UserInfoEndpoint));
+            return null;
+
+            static string GetEndpointError(string endpoint) => $"{endpoint} must be an absolute https URI without a fragment.";
         }
 
         private static bool IsEndpointUri(string endpoint)
@@ -169,7 +173,7 @@ namespace Polhem.OAuth2
         /// </remarks>
         public static bool IsAppRedirectUri(string? redirectUri)
         {
-            if (redirectUri is null || redirectUri.IndexOf('#') >= 0 || !Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+            if (redirectUri is null || redirectUri.Contains('#') || !Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
                 return false;
             // A custom scheme needs no period: Facebook requires fb<app id>, and Entra ID on Android requires msauth.
             // On Unix a path such as /callback parses as an absolute file URI, which the file scheme rejects.

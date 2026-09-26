@@ -22,7 +22,7 @@ namespace Polhem.OAuth2
             if (value.Length == 0)
                 return string.Empty;
 
-            string candidate = value.IndexOf("://", StringComparison.Ordinal) >= 0 ? value : Uri.UriSchemeHttps + "://" + value;
+            string candidate = value.Contains("://") ? value : Uri.UriSchemeHttps + "://" + value;
             if (!Uri.TryCreate(candidate, UriKind.Absolute, out var uri)
                 || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
                 || uri.UserInfo.Length != 0

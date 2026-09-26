@@ -50,10 +50,8 @@ namespace Polhem.OAuth2
         public AppOAuth2Client(
             OAuth2Options options, Func<Uri, Uri, CancellationToken, Task<Uri>> authenticate, HttpClient? httpClient = null)
         {
-            if (options is null)
-                throw new ArgumentNullException(nameof(options));
-            if (authenticate is null)
-                throw new ArgumentNullException(nameof(authenticate));
+            ArgumentNullException.ThrowIfNull(options);
+            ArgumentNullException.ThrowIfNull(authenticate);
 
             _signIn = new PublicSignIn(new OAuth2Client(options, httpClient, publicClient: true, appRedirectUri: true));
             _authenticate = authenticate;

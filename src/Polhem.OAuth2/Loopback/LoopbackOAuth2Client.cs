@@ -52,8 +52,7 @@ namespace Polhem.OAuth2
         /// </exception>
         public LoopbackOAuth2Client(OAuth2Options options, HttpClient? httpClient = null)
         {
-            if (options is null)
-                throw new ArgumentNullException(nameof(options));
+            ArgumentNullException.ThrowIfNull(options);
 
             // The redirect URI is read from the copy that the client made and validated, not from the options, which the
             // caller can still change.
@@ -224,7 +223,7 @@ namespace Polhem.OAuth2
                 finally
                 {
                     // Reads still in progress end promptly once the token is canceled, and their connections are closed.
-                    reading.Cancel();
+                    await reading.CancelAsync().ConfigureAwait(false);
                     foreach (var read in pendingReads)
                         LoopbackListener.ReleaseWhenAbandoned(read);
                     if (pendingAccept is not null)

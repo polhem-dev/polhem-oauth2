@@ -67,7 +67,7 @@ namespace Polhem.OAuth2.UnitTests
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string? body = request.Content is null ? null : await request.Content.ReadAsStringAsync();
+            string? body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             Requests.Add(new RecordedRequest(request.Method, request.RequestUri!, request.Headers.Authorization, body));
 
             if (_responses.Count == 0)

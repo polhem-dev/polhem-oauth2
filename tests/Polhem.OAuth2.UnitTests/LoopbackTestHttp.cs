@@ -23,7 +23,7 @@ namespace Polhem.OAuth2.UnitTests
             await client.ConnectAsync(address, port);
             var stream = client.GetStream();
             byte[] bytes = Encoding.ASCII.GetBytes(request);
-            await stream.WriteAsync(bytes, 0, bytes.Length);
+            await stream.WriteAsync(bytes, CancellationToken.None);
             using var reader = new StreamReader(stream, Encoding.UTF8);
             return await reader.ReadToEndAsync();
         }

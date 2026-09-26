@@ -25,6 +25,17 @@ PROFILES = {
 }
 
 
+def read_rates(reports: list[str]) -> dict[str, tuple[float, float]]:
+    """Returns the lowest (line rate, branch rate) of each package among the reports."""
+    rates = {}
+    for report in reports:
+        for package in ElementTree.parse(report).getroot().iter("package"):
+            name = package.get("name")
+            measured = (float(package.get("line-rate")), float(package.get("branch-rate")))
+            rates[name] = min(rates[name], measured) if name in rates else measured
+    return rates
+
+
 def main(folder: str, profile: str) -> int:
     floors = PROFILES[profile]
     reports = [
@@ -37,12 +48,7 @@ def main(folder: str, profile: str) -> int:
         print(f"No Cobertura report was found under {folder}.")
         return 1
 
-    rates = {}
-    for report in reports:
-        for package in ElementTree.parse(report).getroot().iter("package"):
-            name = package.get("name")
-            measured = (float(package.get("line-rate")), float(package.get("branch-rate")))
-            rates[name] = min(rates[name], measured) if name in rates else measured
+    rates = read_rates(reports)
 
     lines = [
         "| Package | Lines | Branches | Floors (lines, branches) |",

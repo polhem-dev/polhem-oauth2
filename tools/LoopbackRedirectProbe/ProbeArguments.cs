@@ -59,16 +59,8 @@ namespace LoopbackRedirectProbe
         {
             arguments = null;
 
-            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            for (int i = 0; i < args.Length; i += 2)
-            {
-                if (i + 1 >= args.Length || !args[i].StartsWith("--", StringComparison.Ordinal))
-                {
-                    error = $"Unexpected argument '{args[i]}'.";
-                    return false;
-                }
-                values[args[i][2..]] = args[i + 1];
-            }
+            if (!TryReadValues(args, out var values, out error))
+                return false;
 
             string? provider = values.TryGetValue("provider", out var requestedProvider)
                 ? OAuthConfig.ProviderNames.FirstOrDefault(name => string.Equals(name, requestedProvider, StringComparison.OrdinalIgnoreCase))
@@ -112,6 +104,23 @@ namespace LoopbackRedirectProbe
             }
 
             arguments = new ProbeArguments(provider, redirectUri, settingsPath, timeoutSeconds, scopes, omitSecret, refresh);
+            error = string.Empty;
+            return true;
+        }
+
+        // Reads the arguments as pairs of --name value.
+        private static bool TryReadValues(string[] args, out Dictionary<string, string> values, out string error)
+        {
+            values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (int i = 0; i < args.Length; i += 2)
+            {
+                if (i + 1 >= args.Length || !args[i].StartsWith("--", StringComparison.Ordinal))
+                {
+                    error = $"Unexpected argument '{args[i]}'.";
+                    return false;
+                }
+                values[args[i][2..]] = args[i + 1];
+            }
             error = string.Empty;
             return true;
         }

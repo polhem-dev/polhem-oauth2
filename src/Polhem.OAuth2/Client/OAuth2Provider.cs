@@ -10,6 +10,8 @@ namespace Polhem.OAuth2
     /// </summary>
     internal abstract class OAuth2Provider
     {
+        private const string ClientIdParameter = "client_id";
+
         private readonly Func<HttpClient> _httpClientFactory;
 
         /// <summary>
@@ -21,8 +23,7 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
         protected OAuth2Provider(OAuth2Options options, Func<HttpClient>? httpClientFactory)
         {
-            if (options is null)
-                throw new ArgumentNullException(nameof(options));
+            ArgumentNullException.ThrowIfNull(options);
             if (options.GetEndpointError() is { } error)
                 throw new ArgumentException(error, nameof(options));
 
@@ -78,8 +79,7 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
         public static OAuth2Provider Create(OAuth2Options options, Func<HttpClient>? httpClientFactory)
         {
-            if (options is null)
-                throw new ArgumentNullException(nameof(options));
+            ArgumentNullException.ThrowIfNull(options);
 
             return options.CreateProvider(httpClientFactory);
         }
@@ -121,7 +121,7 @@ namespace Polhem.OAuth2
                 ["grant_type"] = "authorization_code",
                 ["code"] = authorizationCode,
                 ["redirect_uri"] = GetTokenRedirectUri(redirectUri),
-                ["client_id"] = Options.ClientId
+                [ClientIdParameter] = Options.ClientId
             };
             if (codeVerifier is { Length: > 0 } verifier)
                 parameters["code_verifier"] = verifier;
@@ -153,7 +153,7 @@ namespace Polhem.OAuth2
             {
                 ["grant_type"] = "refresh_token",
                 ["refresh_token"] = refreshToken,
-                ["client_id"] = Options.ClientId
+                [ClientIdParameter] = Options.ClientId
             };
             return RequestTokenAsync(parameters, AddClientAuthentication(parameters, publicClient), cancellationToken);
         }
@@ -199,8 +199,7 @@ namespace Polhem.OAuth2
         /// <exception cref="JsonException"><paramref name="json"/> is not a JSON object.</exception>
         public UserInfo ParseUserJson(string json, TokenResponse? token)
         {
-            if (json is null)
-                throw new ArgumentNullException(nameof(json));
+            ArgumentNullException.ThrowIfNull(json);
             if (json.Length == 0)
                 throw new ArgumentException("The JSON cannot be empty.", nameof(json));
 
@@ -221,7 +220,7 @@ namespace Polhem.OAuth2
         {
             var parameters = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                ["client_id"] = Options.ClientId,
+                [ClientIdParameter] = Options.ClientId,
                 ["redirect_uri"] = redirectUri,
                 ["response_type"] = "code",
                 ["scope"] = string.Join(" ", Options.Scopes),
@@ -347,7 +346,7 @@ namespace Polhem.OAuth2
             {
                 // RFC 6749, section 2.3.1: the client ID and the secret are form-encoded before they are joined and encoded as
                 // base64. The client authenticates in the header, so the body leaves out the client ID (section 4.1.3).
-                parameters.Remove("client_id");
+                parameters.Remove(ClientIdParameter);
                 string credentials = FormEncode(Options.ClientId) + ":" + FormEncode(clientSecret);
                 return new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials)));
             }

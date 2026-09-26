@@ -89,8 +89,8 @@ namespace Polhem.OAuth2
             try
             {
                 var stream = _client.GetStream();
-                await stream.WriteAsync(head, 0, head.Length).ConfigureAwait(false);
-                await stream.WriteAsync(body, 0, body.Length).ConfigureAwait(false);
+                await stream.WriteAsync(head, CancellationToken.None).ConfigureAwait(false);
+                await stream.WriteAsync(body, CancellationToken.None).ConfigureAwait(false);
             }
             catch (IOException)
             {

@@ -721,7 +721,7 @@ namespace Polhem.OAuth2.UnitTests
                 .Build();
         }
 
-        private static OAuth2Options CreateOptions()
+        private static GoogleOAuth2Options CreateOptions()
         {
             return new GoogleOAuth2Options { ClientId = "client-id", RedirectUri = RedirectUri };
         }

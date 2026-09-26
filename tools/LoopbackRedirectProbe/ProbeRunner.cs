@@ -14,8 +14,8 @@ namespace LoopbackRedirectProbe
         {
             if (!ProbeArguments.TryParse(args, out var arguments, out var error))
             {
-                Console.Error.WriteLine(error);
-                Console.Error.WriteLine(ProbeArguments.Usage);
+                await Console.Error.WriteLineAsync(error);
+                await Console.Error.WriteLineAsync(ProbeArguments.Usage);
                 return 2;
             }
 
@@ -23,15 +23,7 @@ namespace LoopbackRedirectProbe
             LoopbackOAuth2Client client;
             try
             {
-                options = OAuthConfig.Load(arguments.SettingsPath).GetClient(arguments.Provider, OAuthClientType.Desktop);
-                if (arguments.RedirectUri is not null)
-                    options.RedirectUri = arguments.RedirectUri.OriginalString;
-                if (string.IsNullOrWhiteSpace(options.RedirectUri))
-                    return Fail($"Set RedirectUri in 'Providers.{arguments.Provider}.{OAuthClientType.Desktop}' of the settings file, or pass --redirect.", 2);
-                if (arguments.Scopes is not null)
-                    options.Scopes = arguments.Scopes;
-                if (arguments.OmitSecret)
-                    options.ClientSecret = string.Empty;
+                options = LoadOptions(arguments);
                 client = new LoopbackOAuth2Client(options) { Timeout = TimeSpan.FromSeconds(arguments.TimeoutSeconds) };
             }
             catch (FileNotFoundException ex)
@@ -74,24 +66,38 @@ namespace LoopbackRedirectProbe
                 return Fail($"Cannot listen for {options.RedirectUri}: {ex.Message}", 2);
             }
 
-            if (result.IsSuccess && result.UserInfo is { } user)
+            if (!result.IsSuccess)
             {
-                Console.WriteLine("The provider accepted the loopback redirect, and the code exchange succeeded.");
-                Console.WriteLine($"  User ID:   {user.UserId}");
-                Console.WriteLine($"  User name: {user.UserName}");
-                Console.WriteLine($"  Email:     {user.Email}");
-                WriteTokenFacts(result.Token);
-                return arguments.Refresh ? await RefreshAsync(client, result.Token) : 0;
+                return result.Exception switch
+                {
+                    TimeoutException => Fail(
+                        "No redirect with the state of this sign-in arrived before the timeout. If the browser shows a redirect URI error, the provider rejected this URI.", 1),
+                    HttpRequestException ex => Fail($"The provider accepted the redirect, but the code exchange failed: {ex.Message}", 1),
+                    var ex => Fail($"The sign-in failed: {ex.Message}", 1)
+                };
             }
 
-            return result.Exception switch
-            {
-                TimeoutException => Fail(
-                    "No redirect with the state of this sign-in arrived before the timeout. If the browser shows a redirect URI error, the provider rejected this URI.", 1),
-                HttpRequestException ex => Fail($"The provider accepted the redirect, but the code exchange failed: {ex.Message}", 1),
-                { } ex => Fail($"The sign-in failed: {ex.Message}", 1),
-                null => Fail("The sign-in failed without an exception.", 1)
-            };
+            Console.WriteLine("The provider accepted the loopback redirect, and the code exchange succeeded.");
+            Console.WriteLine($"  User ID:   {result.UserInfo.UserId}");
+            Console.WriteLine($"  User name: {result.UserInfo.UserName}");
+            Console.WriteLine($"  Email:     {result.UserInfo.Email}");
+            WriteTokenFacts(result.Token);
+            return arguments.Refresh ? await RefreshAsync(client, result.Token) : 0;
+        }
+
+        // Reads the desktop client of the provider from the settings file and applies the overrides of the command line.
+        private static OAuth2Options LoadOptions(ProbeArguments arguments)
+        {
+            var options = OAuthConfig.Load(arguments.SettingsPath).GetClient(arguments.Provider, OAuthClientType.Desktop);
+            if (arguments.RedirectUri is not null)
+                options.RedirectUri = arguments.RedirectUri.OriginalString;
+            if (string.IsNullOrWhiteSpace(options.RedirectUri))
+                throw new InvalidDataException($"Set RedirectUri in 'Providers.{arguments.Provider}.{OAuthClientType.Desktop}' of the settings file, or pass --redirect.");
+            if (arguments.Scopes is not null)
+                options.Scopes = arguments.Scopes;
+            if (arguments.OmitSecret)
+                options.ClientSecret = string.Empty;
+            return options;
         }
 
         // Describes the token response without any token: the type, the lifetime, the granted scopes as returned, and which

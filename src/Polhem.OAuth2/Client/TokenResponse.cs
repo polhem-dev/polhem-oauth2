@@ -27,8 +27,7 @@ namespace Polhem.OAuth2
             string? scope = null,
             string rawJson = "")
         {
-            if (accessToken is null)
-                throw new ArgumentNullException(nameof(accessToken));
+            ArgumentNullException.ThrowIfNull(accessToken);
             if (accessToken.Length == 0)
                 throw new ArgumentException("The access token cannot be empty.", nameof(accessToken));
 

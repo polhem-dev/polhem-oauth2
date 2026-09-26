@@ -35,11 +35,8 @@ namespace Polhem.OAuth2.AspNetCore
         {
             if (options.AppRedirectUris.Count == 0)
                 throw new ArgumentException("Register at least one application redirect URI.", paramName);
-            foreach (string uri in options.AppRedirectUris)
-            {
-                if (!OAuth2Options.IsAppRedirectUri(uri))
-                    throw new ArgumentException($"'{uri}' is not an absolute https URI or custom scheme URI without a fragment.", paramName);
-            }
+            if (options.AppRedirectUris.FirstOrDefault(uri => !OAuth2Options.IsAppRedirectUri(uri)) is { } invalidUri)
+                throw new ArgumentException($"'{invalidUri}' is not an absolute https URI or custom scheme URI without a fragment.", paramName);
             if (options.CodeLifetime <= TimeSpan.Zero || options.CodeLifetime > s_maxCodeLifetime)
                 throw new ArgumentException($"The code lifetime must be positive and at most {s_maxCodeLifetime.TotalMinutes:0} minutes.", paramName);
 
