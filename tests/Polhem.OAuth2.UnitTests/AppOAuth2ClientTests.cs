@@ -90,7 +90,7 @@ namespace Polhem.OAuth2.UnitTests
 
         [Theory]
         [DisplayName("SignInAsync sends a client secret that is set only to a provider that requires one from a public client")]
-        [InlineData("LINE", false)]
+        [InlineData("LINE", true)]
         [InlineData("Auth0", false)]
         [InlineData("Google", true)]
         public async Task SignInAsync_ClientSecretSet_FollowsProvider(string providerName, bool sent)
@@ -233,6 +233,7 @@ namespace Polhem.OAuth2.UnitTests
         [DisplayName("RefreshTokenAsync sends a client secret that is set only to a provider that requires one from a public client")]
         [InlineData("Auth0", false)]
         [InlineData("Google", true)]
+        [InlineData("LINE", true)]
         public async Task RefreshTokenAsync_PublicClient_FollowsProvider(string providerName, bool sendsSecret)
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"new","refresh_token":"next"}""");

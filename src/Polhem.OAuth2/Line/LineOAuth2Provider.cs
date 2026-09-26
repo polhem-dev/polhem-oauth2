@@ -20,6 +20,14 @@ namespace Polhem.OAuth2
         public override string ProviderName => "LINE";
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// A LINE Login channel that serves web apps only refuses a refresh without the client secret (ADR-004), and a desktop
+        /// application registers its loopback redirect URI as a web app. A secret that is set is therefore sent from a public
+        /// client as well; a mobile application sets none.
+        /// </remarks>
+        protected override bool RequiresClientSecret => true;
+
+        /// <inheritdoc/>
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
             // The profile response has no email field. LINE puts the address in the ID token, and only when the channel

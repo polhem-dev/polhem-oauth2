@@ -348,11 +348,11 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("RefreshTokenAsync does not send the client secret")]
+        [DisplayName("RefreshTokenAsync does not send the client secret to a provider that does not require it")]
         public async Task RefreshTokenAsync_PublicClient_OmitsClientSecret()
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"new-access"}""");
-            var options = new LineOAuth2Options
+            var options = new AzureOAuth2Options
             {
                 ClientId = "client-id",
                 ClientSecret = "client-secret",

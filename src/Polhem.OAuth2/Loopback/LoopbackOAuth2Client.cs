@@ -15,7 +15,7 @@ namespace Polhem.OAuth2
     /// <para>
     /// A client secret distributed with a desktop application can be extracted from it, so it cannot be kept confidential.
     /// For that reason the client always uses PKCE, whatever <see cref="OAuth2Options.UsePkce"/> is set to, and sends a
-    /// client secret that is set only to a provider that requires one from a public client, which at present is Google.
+    /// client secret that is set only to a provider that requires one from a public client, which at present is Google and LINE.
     /// </para>
     /// <para>The options are copied when the client is created, so later changes to them have no effect.</para>
     /// </remarks>

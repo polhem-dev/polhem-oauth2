@@ -70,7 +70,7 @@ else
 - The redirect URI must be an `http` URI on `localhost` or a loopback address, and it must be registered with the provider.
   Port 0 picks a free port for each sign-in, which only works with providers that accept any loopback port.
 - The client always uses PKCE. A client secret shipped with a desktop application can be extracted, so it is not sent,
-  except to Google.
+  except to Google and LINE, which refuse some requests without it (ADR-004 records the tests).
 - A timeout (`Timeout`, 5 minutes by default), cancellation, or an error from the provider becomes a failed result. A port
   that cannot be listened on throws `SocketException`, and a missing default browser throws `Win32Exception`
   (`PlatformNotSupportedException` on iOS, which cannot start a process).

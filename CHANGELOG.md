@@ -22,6 +22,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Changed
 
+- `LoopbackOAuth2Client` and `AppOAuth2Client` send a client secret that is set to LINE, as they already did to Google. A LINE
+  Login channel that serves web apps only refused a refresh without it (`invalid_client`), and a desktop application
+  registers its loopback redirect URI as a web app. A mobile application sets no secret and is not affected.
 - On .NET Framework, a client that uses the default `HttpClient` sets `ConnectionLeaseTimeout` on the `ServicePoint` of the token
   and user information hosts, so a pooled connection is replaced regularly and a DNS change is followed, as on .NET. The
   setting applies to the whole process for those hosts.

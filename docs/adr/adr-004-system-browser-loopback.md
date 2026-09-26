@@ -61,10 +61,11 @@ That approach has several problems:
   browser when `OpenBrowser` is null (`Win32Exception`, or `PlatformNotSupportedException` on iOS, where no process can be
   started) propagate.
 - The loopback client is a public client. It always uses PKCE, whatever `OAuth2Options.UsePkce` says, as RFC 8252 requires
-  of native applications, and it does not send the client secret, except to Google. Google's documentation lists the client
-  secret as optional for installed applications, but a test without it on 2026-09-26 failed: the token endpoint answered
-  `invalid_request`, so the secret is required and the exception stays. Every other provider tested below exchanged the code
-  without it. Web clients, which can keep a secret, send it whenever it is set.
+  of native applications, and it does not send the client secret, except to Google and LINE. Google's documentation lists the
+  client secret as optional for installed applications, but a test without it on 2026-09-26 failed: the token endpoint
+  answered `invalid_request`, so the secret is required and the exception stays. LINE was added on 2026-09-26: a channel that
+  serves web apps only, as a desktop application's loopback redirect needs, refused a refresh without the secret. Every other
+  provider tested below exchanged the code and refreshed without it. Web clients, which can keep a secret, send it whenever it is set.
 
 ## Provider test results
 
@@ -94,7 +95,7 @@ tokens came back.
 | Microsoft Entra ID | A refresh token was issued, and the refresh succeeded. The scope came back as `openid email profile`, separated by spaces. |
 | Auth0 | A refresh token was issued, and the refresh succeeded. The response to the refresh carried no new refresh token, so this tenant does not rotate them. |
 | Okta | No refresh token was issued, and the granted scopes left out `offline_access`: this application is not allowed the refresh token grant. After the Refresh Token grant was turned on for the application, a refresh token was issued and the refresh succeeded. |
-| LINE | The code exchange and the refresh succeeded without the client secret, and a refresh token was issued. The granted scopes left out `email`, which the channel has not been approved for. With "Use LINE Login in your mobile app" turned off, so that the channel served web apps only, the code exchange still succeeded without the secret, but the refresh failed with `invalid_client`; turning it back on made the refresh succeed again. |
+| LINE | The code exchange and the refresh succeeded without the client secret, and a refresh token was issued. The granted scopes left out `email`, which the channel has not been approved for. With "Use LINE Login in your mobile app" turned off, so that the channel served web apps only, the code exchange still succeeded without the secret, but the refresh failed with `invalid_client`; turning it back on made the refresh succeed again. Since LINE receives a secret that is set, the code exchange and the refresh succeeded in both modes, and the access token lasted 30 days (2592000 seconds) instead of 12 hours (43200 seconds). |
 | Facebook | The code exchange succeeded without the client secret, with PKCE. The token type came back as `bearer` in lower case, no scope was returned, and no refresh token was issued. |
 
 ## Consequences

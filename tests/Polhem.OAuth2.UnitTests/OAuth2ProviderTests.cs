@@ -186,7 +186,7 @@ namespace Polhem.OAuth2.UnitTests
         public async Task ExchangeCodeAsync_PublicClient_SendsVerifierWithoutSecret()
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
-            var provider = CreateProvider("LINE", handler, clientSecret: "secret");
+            var provider = CreateProvider("Auth0", handler, clientSecret: "secret");
 
             await provider.ExchangeCodeAsync("code-value", RedirectUri, "verifier-value", publicClient: true, CancellationToken.None);
 
@@ -208,14 +208,14 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
-        [DisplayName("Of the providers, only Google receives a client secret that is set from a public client")]
+        [DisplayName("Of the providers, only Google and LINE receive a client secret that is set from a public client")]
         [InlineData("Google", true)]
-        [InlineData("LINE", false)]
+        [InlineData("LINE", true)]
         [InlineData("Azure", false)]
         [InlineData("Facebook", false)]
         [InlineData("Auth0", false)]
         [InlineData("Okta", false)]
-        public async Task ExchangeCodeAsync_PublicClientWithSecret_SendsSecretOnlyToGoogle(string providerName, bool sendsSecret)
+        public async Task ExchangeCodeAsync_PublicClientWithSecret_SendsSecretOnlyWhereRequired(string providerName, bool sendsSecret)
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
             var provider = CreateProvider(providerName, handler, clientSecret: "secret");

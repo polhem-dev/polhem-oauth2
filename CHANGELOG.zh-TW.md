@@ -20,6 +20,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 變更
 
+- `LoopbackOAuth2Client` 與 `AppOAuth2Client` 有設定 client secret 時會送給 LINE，與原本送給 Google 相同。只供網頁應用程式使用的
+  LINE Login channel 沒有 secret 時會拒絕 refresh（`invalid_client`），而桌面應用程式的 loopback 回呼正是登記為網頁應用程式。行動 App 不設 secret，不受影響。
 - 在 .NET Framework 上，使用預設 `HttpClient` 的 client 會對 token 與使用者資訊端點主機的 `ServicePoint` 設定 `ConnectionLeaseTimeout`，
   連線池裡的連線會定期汰換並跟上 DNS 變更，與 .NET 上相同。這個設定對整個程序裡連到這些主機的連線都有效。
 - `TokenResponse.Scope` 的文件不再宣稱 scope 以空白分隔；它就是 token 端點回傳的原值，不做任何轉換。
