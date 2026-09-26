@@ -15,6 +15,9 @@ The reasons are recorded in `docs/adr/adr-002-language-policy.md`.
 
 - The rules live in `.editorconfig`, `src/Directory.Build.props` and `tests/Directory.Build.props`, and
   `TreatWarningsAsErrors` turns every violation into a build error. Read those files instead of restating rules here.
+- SonarCloud analyzes every push and pull request in the `sonarcloud` job of `.github/workflows/build-ci.yml`, with the
+  settings in `SonarQube.Analysis.xml`. Sonar rules that an analyzer can check are mirrored in `.editorconfig`, so they
+  fail the build before SonarCloud sees them.
 
 ## Decisions
 

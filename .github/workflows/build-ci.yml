@@ -57,3 +57,82 @@ jobs:
       - name: Check the OAuthMaui settings generator
         if: runner.os == 'Linux'
         run: bash .github/scripts/check_oauthmaui_generator.sh
+
+  # SonarCloud analysis. It runs apart from the build job above, because the scanner wraps the build and turns warnings
+  # back into warnings, so the build job stays the gate for TreatWarningsAsErrors. It runs on Windows, where the tests
+  # also run on net48 and so cover the System.Web package. Settings tied to the files of this repository are in
+  # SonarQube.Analysis.xml.
+  sonarcloud:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      # Secrets are not passed to pull requests from forks, and the repository may not have the token yet. The analysis
+      # is then skipped instead of failing the run.
+      - name: Check for the SonarCloud token
+        id: token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if ($env:SONAR_TOKEN) { "enabled=true" >> $env:GITHUB_OUTPUT }
+          else { Write-Host "SONAR_TOKEN is not available, so the SonarCloud analysis is skipped." }
+
+      - name: Checkout code
+        if: steps.token.outputs.enabled == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # SonarCloud reads the history to find new code and to assign issues to authors.
+          fetch-depth: 0
+
+      - name: Setup .NET
+        if: steps.token.outputs.enabled == 'true'
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Setup Java (for SonarScanner)
+        if: steps.token.outputs.enabled == 'true'
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5.2.0
+        with:
+          distribution: zulu
+          java-version: '17'
+
+      - name: Cache SonarCloud packages
+        if: steps.token.outputs.enabled == 'true'
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Install SonarScanner for .NET
+        if: steps.token.outputs.enabled == 'true'
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: SonarScanner begin
+        if: steps.token.outputs.enabled == 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          dotnet sonarscanner begin
+          /k:"polhem-dev_polhem-oauth2"
+          /o:"polhem-dev"
+          /d:sonar.token="$env:SONAR_TOKEN"
+          /d:sonar.host.url="https://sonarcloud.io"
+          /s:"$env:GITHUB_WORKSPACE\SonarQube.Analysis.xml"
+
+      - name: Build
+        if: steps.token.outputs.enabled == 'true'
+        run: dotnet build Polhem.OAuth2.slnx --configuration Release --no-incremental
+
+      - name: Test with coverage
+        if: steps.token.outputs.enabled == 'true'
+        run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build --collect "Code Coverage;Format=xml" --results-directory TestResults/sonar
+
+      - name: SonarScanner end
+        if: steps.token.outputs.enabled == 'true'
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+  SonarCloud analysis settings, read by the "SonarScanner begin" step of .github/workflows/build-ci.yml through
+  /s:"$env:GITHUB_WORKSPACE\SonarQube.Analysis.xml".
+
+  The command line keeps the settings that are not about the files of this repository: the project key (/k:), the
+  organization (/o:), the token (/d:sonar.token, from the SONAR_TOKEN secret) and the host URL. Quality profiles and the
+  quality gate are set in the SonarCloud UI.
+
+  SonarScanner for .NET takes this XML format for /s:, not sonar-project.properties.
+-->
+<SonarQubeAnalysisProperties xmlns="http://www.sonarsource.com/msbuild/integration/2015/1">
+  <!-- The Visual Studio XML reports that "dotnet test -collect "Code Coverage;Format=xml"" writes. The job runs on
+       Windows, so the reports include net48, the only framework that runs the tests of the System.Web package. -->
+  <Property Name="sonar.cs.vscoveragexml.reportsPaths">TestResults/sonar/**/*.xml</Property>
+
+  <!-- Tests, samples and tools are analyzed but not measured for coverage. The fake provider under tests/ is a test
+       server, not shipped code. -->
+  <Property Name="sonar.coverage.exclusions">tests/**,samples/**,tools/**</Property>
+</SonarQubeAnalysisProperties>
