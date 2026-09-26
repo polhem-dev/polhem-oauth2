@@ -7,6 +7,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-26
+
 ### 新增
 
 - Polhem.OAuth2 新增 net8.0 組建。.NET 8 或 9 的應用程式原本載入 netstandard2.0 組建，其預設 `HttpClient` 的連線池連線沒有壽命，
@@ -162,7 +164,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - loopback 監聽程式只接受 Host 標頭為回呼網址主機、且帶著本次登入 state 的請求，並且同時讀取多條連線。
 - provider 端點必須使用 https。
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0
 [1.2.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.2.0
 [1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0

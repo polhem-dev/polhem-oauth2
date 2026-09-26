@@ -26,6 +26,9 @@ Polhem.OAuth2.AzureOAuth2Options
 Polhem.OAuth2.AzureOAuth2Options.AzureOAuth2Options() -> void
 Polhem.OAuth2.AzureOAuth2Options.Tenant.get -> string!
 Polhem.OAuth2.AzureOAuth2Options.Tenant.set -> void
+Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.ClientAuthenticationMethod.ClientSecretBasic = 1 -> Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.ClientAuthenticationMethod.ClientSecretPost = 0 -> Polhem.OAuth2.ClientAuthenticationMethod
 Polhem.OAuth2.FacebookOAuth2Options
 Polhem.OAuth2.FacebookOAuth2Options.FacebookOAuth2Options() -> void
 Polhem.OAuth2.GoogleOAuth2Options
@@ -50,12 +53,14 @@ Polhem.OAuth2.OAuth2Exception
 Polhem.OAuth2.OAuth2Exception.Error.get -> string?
 Polhem.OAuth2.OAuth2Exception.ErrorDescription.get -> string?
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception() -> void
-Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message) -> void
-Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message, System.Exception! innerException) -> void
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message, string! error, string? errorDescription) -> void
+Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message) -> void
+Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message, System.Exception? innerException) -> void
 Polhem.OAuth2.OAuth2Options
 Polhem.OAuth2.OAuth2Options.AuthorizationEndpoint.get -> string!
 Polhem.OAuth2.OAuth2Options.AuthorizationEndpoint.set -> void
+Polhem.OAuth2.OAuth2Options.ClientAuthentication.get -> Polhem.OAuth2.ClientAuthenticationMethod
+Polhem.OAuth2.OAuth2Options.ClientAuthentication.set -> void
 Polhem.OAuth2.OAuth2Options.ClientId.get -> string!
 Polhem.OAuth2.OAuth2Options.ClientId.set -> void
 Polhem.OAuth2.OAuth2Options.ClientSecret.get -> string!

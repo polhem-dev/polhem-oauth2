@@ -7,6 +7,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-26
+
 ### Added
 
 - Polhem.OAuth2 has a net8.0 build. An application on .NET 8 or 9 loaded the netstandard2.0 build before, whose default
@@ -198,7 +200,8 @@ below are relative to the last Bee.OAuth2 release. How to move an application ov
   sign-in, and it reads connections side by side.
 - Provider endpoints must use https.
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0
 [1.2.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.2.0
 [1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
 [1.0.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.0.0
