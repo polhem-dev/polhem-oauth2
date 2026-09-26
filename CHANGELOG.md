@@ -48,6 +48,9 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ### Fixed
 
+- The token request and the user information request read the response body without the cancellation token, so canceling or
+  a timeout did not stop a slow body. On .NET 8 and later the read now stops; the netstandard2.0 build checks the token before
+  the read.
 - `LoopbackOAuth2Client` showed the page of a failed sign-in for a redirect with an empty `error` parameter and a code, although
   the sign-in completed. An empty error now counts as none on the page as well.
 - The System.Web package no longer lets the `domain` of `<httpCookies>` in web.config reach the sign-in cookie. Browsers

@@ -38,6 +38,8 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ### 修正
 
+- token 請求與使用者資訊請求讀取回應內容時沒有傳入 cancellation token，取消或逾時都無法中斷緩慢的回應內容。現在於 .NET 8 以上會中斷讀取；
+  netstandard2.0 版本則在開始讀取前檢查 token。
 - `LoopbackOAuth2Client` 收到帶授權碼、但 `error` 參數為空的導回時，登入其實成功，頁面卻顯示失敗。現在頁面也把空的 error 視為沒有錯誤。
 - System.Web 套件不再讓 web.config 中 `<httpCookies>` 的 `domain` 套用到登入 cookie。瀏覽器會拒收指定了 domain 的 `__Host-` cookie，
   所以設了這個值時每次登入都會失敗。
