@@ -172,7 +172,9 @@ Android 則比照 `tests/Polhem.OAuth2.DeviceTests/scripts/prepare-android-emula
 | LINE | 成功；沒有 email | 成功；沒有 email | 不可行（見背景） | 成功；沒有 email |
 | Facebook | 成功 | 成功 | 成功 | 成功 |
 
-- 上表 iOS 欄的「僅實測 App」與「未測」，以及 Android 的中轉，因此補齊。
+- 同一天在 Mac Catalyst（Mac 本機已信任開發憑證）上，中轉 Facebook、LINE、Microsoft Entra ID、Auth0 與 Okta 都成功；
+  加上 2026-09-19 的 Google，中轉在 iOS、Mac Catalyst 與 Android 上對每一家都已實測。
+- 上表 iOS 欄的「僅實測 App」與「未測」，以及所有已測平台上的中轉，因此補齊。
 - 信任憑證之前，中轉停在 Safari 的憑證警告頁；關閉它成為帶 `OperationCanceledException` 的失敗結果，sample 顯示為已取消。
 
 ### 自動化測試

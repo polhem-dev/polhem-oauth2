@@ -203,7 +203,10 @@ emulator's user certificates as `tests/Polhem.OAuth2.DeviceTests/scripts/prepare
 | LINE | Accepted; no email address | Accepted; no email address | Not possible (see the context) | Accepted; no email address |
 | Facebook | Accepted | Accepted | Accepted | Accepted |
 
-- This closes the "Test application only" and "Not tested" cells above for iOS, and the relay on Android.
+- The same day on Mac Catalyst, where the Mac already trusted the development certificate, the relay to Facebook, LINE,
+  Microsoft Entra ID, Auth0 and Okta was accepted, so with Google from 2026-09-19 the relay works with every provider on
+  iOS, Mac Catalyst and Android.
+- This closes the "Test application only" and "Not tested" cells above for iOS, and the relay on every platform tested.
 - Before the certificate was trusted, the relay stopped at Safari's certificate warning. Closing it became a failed result
   with `OperationCanceledException`, shown by the sample as canceled.
 
