@@ -9,7 +9,7 @@ namespace Polhem.OAuth2
     /// The netstandard2.0 build compiles this class, and the project file excludes it from the other targets, where the
     /// method is part of <see cref="SHA256"/>.
     /// </remarks>
-    internal static class SHA256Extensions
+    internal static class Sha256Extensions
     {
         extension(SHA256)
         {
