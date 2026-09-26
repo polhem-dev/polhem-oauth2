@@ -3,6 +3,11 @@
 **English** | [繁體中文](https://github.com/polhem-dev/polhem-oauth2/blob/main/README.zh-TW.md)
 
 [![Build CI](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml/badge.svg)](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=alert_status)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=bugs)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=vulnerabilities)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=code_smells)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=coverage)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 
 Lightweight OAuth2 sign-in for .NET. Desktop and console applications sign in through the system browser with a loopback
 redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Android, iOS and Mac Catalyst sign in through

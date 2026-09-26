@@ -3,6 +3,11 @@
 [English](README.md) | **繁體中文**
 
 [![Build CI](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml/badge.svg)](https://github.com/polhem-dev/polhem-oauth2/actions/workflows/build-ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=alert_status)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=bugs)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=vulnerabilities)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=code_smells)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=coverage)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 
 輕量的 .NET OAuth2 登入套件。桌面與主控台應用程式透過系統瀏覽器、loopback 回呼與 PKCE 登入，可在 Windows、macOS、Linux 上使用。
 Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式透過 `WebAuthenticator` 登入，可以直連，也可以經由自己的後端中轉。
