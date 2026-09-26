@@ -186,6 +186,25 @@ Android on an emulator with Android 15.
   page on Mac Catalyst returned `access_denied`, which became a failed result with `OAuth2Exception`, as for any provider
   error.
 
+### Retest of 2026-09-26 on iOS
+
+Signed in with the library of `main` after 1.2.0 through `samples/OAuthMaui` on the iPhone 17 Pro simulator (iOS 26.5),
+with `samples/OAuthAspNetCore` as the back end. For the relay, the development certificate of the back end was added to the
+simulator's trusted roots with `xcrun simctl keychain <device> add-root-cert`.
+
+| Provider | Direct, iOS | Back-end relay, iOS |
+|----------|-------------|---------------------|
+| Google | Accepted, without a client secret | Accepted |
+| Microsoft Entra ID | Accepted | Accepted |
+| Auth0 | Accepted | Accepted, after Auth0's consent page for the web application |
+| Okta | Accepted | Accepted |
+| LINE | Accepted; the user information had no email address | Accepted; no email address |
+| Facebook | Accepted | Accepted |
+
+- This closes the "Test application only" and "Not tested" cells above for iOS.
+- Before the certificate was trusted, the relay stopped at Safari's certificate warning. Closing it became a failed result
+  with `OperationCanceledException`, shown by the sample as canceled.
+
 ### Automated tests
 
 - `tests/Polhem.OAuth2.DeviceTests` runs the unit tests of the core package on Android, iOS, Mac Catalyst and Windows, in

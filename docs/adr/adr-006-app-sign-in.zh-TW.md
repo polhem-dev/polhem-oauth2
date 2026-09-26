@@ -157,6 +157,23 @@ Mac Catalyst 的 loopback 結果來自實測應用程式裡自寫的監聽程式
   關閉登入視窗。每一種都成為帶 `OperationCanceledException` 的失敗結果，sample 顯示為已取消。Mac Catalyst 上在 Google 自己的
   頁面按取消會回傳 `access_denied`，和其他 provider 錯誤一樣，成為帶 `OAuth2Exception` 的失敗結果。
 
+### 2026-09-26 iOS 重測
+
+以 1.2.0 之後 `main` 的函式庫，透過 `samples/OAuthMaui` 在 iPhone 17 Pro 模擬器（iOS 26.5）登入，後端為 `samples/OAuthAspNetCore`。
+中轉前，以 `xcrun simctl keychain <device> add-root-cert` 把後端的開發憑證加進模擬器信任的根憑證。
+
+| Provider | 直連，iOS | 後端中轉，iOS |
+|----------|-----------|---------------|
+| Google | 成功，未帶 client secret | 成功 |
+| Microsoft Entra ID | 成功 | 成功 |
+| Auth0 | 成功 | 成功，網頁應用程式先經過 Auth0 的授權同意頁 |
+| Okta | 成功 | 成功 |
+| LINE | 成功；使用者資訊沒有 email | 成功；沒有 email |
+| Facebook | 成功 | 成功 |
+
+- 上表 iOS 欄的「僅實測 App」與「未測」因此補齊。
+- 信任憑證之前，中轉停在 Safari 的憑證警告頁；關閉它成為帶 `OperationCanceledException` 的失敗結果，sample 顯示為已取消。
+
 ### 自動化測試
 
 - `tests/Polhem.OAuth2.DeviceTests` 在 Android、iOS、Mac Catalyst 與 Windows 上以 Release 執行核心套件的單元測試，核心套件因此
