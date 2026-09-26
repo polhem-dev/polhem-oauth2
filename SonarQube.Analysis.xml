@@ -17,4 +17,8 @@
   <!-- Tests, samples and tools are analyzed but not measured for coverage. The fake provider under tests/ is a test
        server, not shipped code. -->
   <Property Name="sonar.coverage.exclusions">tests/**,samples/**,tools/**</Property>
+
+  <!-- Each sample is a standalone project that a reader opens on its own, so samples repeat code on purpose: OAuthDesktop
+       and OAuthWinForms are the same form on .NET and on .NET Framework. -->
+  <Property Name="sonar.cpd.exclusions">samples/**</Property>
 </SonarQubeAnalysisProperties>
