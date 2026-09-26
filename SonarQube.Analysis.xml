@@ -21,4 +21,7 @@
   <!-- Each sample is a standalone project that a reader opens on its own, so samples repeat code on purpose: OAuthDesktop
        and OAuthWinForms are the same form on .NET and on .NET Framework. -->
   <Property Name="sonar.cpd.exclusions">samples/**</Property>
+
+  <!-- The Python scripts under .github/scripts use built-in generic types such as list[str], which need Python 3.9. -->
+  <Property Name="sonar.python.version">3.9, 3.10, 3.11, 3.12, 3.13, 3.14</Property>
 </SonarQubeAnalysisProperties>
