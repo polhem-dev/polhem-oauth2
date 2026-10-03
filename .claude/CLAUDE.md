@@ -33,6 +33,12 @@ Design decisions and their reasons are recorded in `docs/adr/`. Read the relevan
 - The language rule above does not apply to `local/`, because its documents are not maintained together.
 - A session in a git worktree cannot see `local/`. Hand off work that depends on it to a session in the main working tree.
 
+## Workflow
+
+- How changes reach `main`, and who merges them, is the polhem-dev organization's contributing guide,
+  <https://github.com/polhem-dev/.github/blob/main/CONTRIBUTING.md>: contributors work from a fork and open a pull
+  request, and only the maintainer merges. `main` is protected, so nothing is pushed to it directly.
+
 ## Build and test
 
 ```bash
