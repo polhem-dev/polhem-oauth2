@@ -1,9 +1,9 @@
 name: Build CI
 
-# A change that touches only `.md` files starts no run. This is safe only because `main` has no branch protection: if
-# `build` or `sonarcloud` ever becomes a required check, a required check that never starts would leave every
-# Markdown-only pull request waiting forever. Then drop the `paths-ignore` of the pull_request trigger and detect such
-# a pull request inside each job instead, as polhem-jsonrpc does with `.github/scripts/detect-docs-only.sh`.
+# The `build` jobs are required checks of `main`, so the pull_request trigger has no `paths-ignore`: a required check
+# that never starts would leave a Markdown-only pull request waiting forever. Such a pull request is recognized inside
+# each job by `.github/scripts/detect-docs-only.sh` instead, which skips the job's remaining steps. A push to `main` that
+# touches only `.md` files starts no run.
 on:
   push:
     branches: [main]
@@ -11,8 +11,6 @@ on:
       - '**.md'
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**.md'
 
 permissions:
   contents: read
@@ -33,8 +31,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Detect documentation-only pull request
+        id: changes
+        shell: bash
+        run: bash .github/scripts/detect-docs-only.sh
 
       - name: Setup .NET
+        if: steps.changes.outputs.build == 'true'
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7  # v5.2.0
         with:
           # The tests also run on .NET 8, against the net8.0 build of the core package, so its runtime is installed too.
@@ -43,27 +49,29 @@ jobs:
             10.0.x
 
       - name: Build
+        if: steps.changes.outputs.build == 'true'
         run: dotnet build Polhem.OAuth2.slnx --configuration Release ${{ runner.os != 'Windows' && '-p:EnableWindowsTargeting=true' || '' }}
 
       - name: Test
+        if: steps.changes.outputs.build == 'true'
         run: dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build
 
       # Coverage is measured with the collector that the test SDK includes: the core and ASP.NET Core packages on Linux and
       # net10.0, and the System.Web package on Windows and net48, where its tests run. The floors are in the script.
       - name: Check coverage
-        if: runner.os == 'Linux'
+        if: steps.changes.outputs.build == 'true' && runner.os == 'Linux'
         run: |
           dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build --framework net10.0 --collect "Code Coverage;Format=cobertura" --results-directory coverage
           python3 .github/scripts/check_coverage.py coverage net10.0
 
       - name: Check coverage of the System.Web package
-        if: runner.os == 'Windows'
+        if: steps.changes.outputs.build == 'true' && runner.os == 'Windows'
         run: |
           dotnet test tests/Polhem.OAuth2.UnitTests/Polhem.OAuth2.UnitTests.csproj --configuration Release --no-build --framework net48 --collect "Code Coverage;Format=cobertura" --results-directory coverage-net48
           python .github/scripts/check_coverage.py coverage-net48 net48
 
       - name: Check the OAuthMaui settings generator
-        if: runner.os == 'Linux'
+        if: steps.changes.outputs.build == 'true' && runner.os == 'Linux'
         run: bash .github/scripts/check_oauthmaui_generator.sh
 
   # SonarCloud analysis. It runs apart from the build job above, because the scanner wraps the build and turns warnings
@@ -75,22 +83,27 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # SonarCloud reads the history to find new code and to assign issues to authors.
+          fetch-depth: 0
+
+      - name: Detect documentation-only pull request
+        id: changes
+        shell: bash
+        run: bash .github/scripts/detect-docs-only.sh
+
       # Secrets are not passed to pull requests from forks, and the repository may not have the token yet. The analysis
       # is then skipped instead of failing the run.
       - name: Check for the SonarCloud token
         id: token
+        if: steps.changes.outputs.build == 'true'
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if ($env:SONAR_TOKEN) { "enabled=true" >> $env:GITHUB_OUTPUT }
           else { Write-Host "SONAR_TOKEN is not available, so the SonarCloud analysis is skipped." }
-
-      - name: Checkout code
-        if: steps.token.outputs.enabled == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
-        with:
-          # SonarCloud reads the history to find new code and to assign issues to authors.
-          fetch-depth: 0
 
       - name: Setup .NET
         if: steps.token.outputs.enabled == 'true'
