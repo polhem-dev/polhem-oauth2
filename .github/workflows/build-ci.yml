@@ -1,10 +1,18 @@
 name: Build CI
 
+# A change that touches only `.md` files starts no run. This is safe only because `main` has no branch protection: if
+# `build` or `sonarcloud` ever becomes a required check, a required check that never starts would leave every
+# Markdown-only pull request waiting forever. Then drop the `paths-ignore` of the pull_request trigger and detect such
+# a pull request inside each job instead, as polhem-jsonrpc does with `.github/scripts/detect-docs-only.sh`.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
 
 permissions:
   contents: read
