@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤。
+已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`。
 
 ## 背景
 
@@ -27,6 +27,8 @@
     以及 cookie 無法解密時的 `CryptographicException`。
   - `LoopbackOAuth2Client.SignInAsync` 另外還有：ADR-004 描述的失敗。
   - `AppOAuth2Client.SignInAsync` 另外還有：ADR-006 描述的失敗。
+  - `OAuth2Client.GetUserInfoAsync`（取得前端送來的 access token 的使用者）：與 `CompleteAuthorizationAsync` 相同的四種型別，
+    其中包括 provider 拒絕 token、或說出的 client 不被接受時的 `OAuth2Exception`。改為擲出例外的檢查，見 ADR-007。
 - 呼叫端的取消，會從 `OAuth2Client` 與網頁 manager 以 `OperationCanceledException` 往外拋；ASP.NET Core 在請求中斷時也一樣。
   取消代表沒有人在等這個結果，而不是登入失敗。loopback client 與應用程式 client 則如 ADR-004 與 ADR-006 所述，把取消轉成失敗結果。
 - 其他例外一律往外拋。設定或程式錯誤擲出 `InvalidOperationException`：client 名稱沒有註冊、登入 cookie 裡的 client 已不再註冊、

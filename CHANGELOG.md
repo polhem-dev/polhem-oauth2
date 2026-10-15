@@ -13,6 +13,12 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
   the user keeps the email address private, the address comes from `/user/emails`: the primary one, if it is verified. A
   failure of that request leaves `Email` null instead of failing the sign-in. GitHub requires the client secret for every code
   exchange, so it is sent from a public client too, and a mobile application signs in to GitHub through the back-end relay.
+- `OAuth2Client.GetUserInfoAsync(accessToken)` returns the user of an access token that a front end obtained and sent to the
+  back end. Before it asks for the user information, it checks with the provider that the token was issued to `ClientId` or
+  one of the new `OAuth2Options.AcceptedClientIds`, and the check cannot be skipped. It supports Google, LINE, Facebook and
+  GitHub; Facebook and GitHub need `ClientSecret`, and GitHub accepts only tokens issued to `ClientId`. Microsoft Entra ID,
+  Auth0 and Okta throw `NotSupportedException`, whose message points to the ID token. A refused, expired or foreign token is a
+  failed result. See ADR-007.
 
 ### Changed
 

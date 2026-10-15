@@ -12,6 +12,11 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - `GitHubOAuth2Options` 以 GitHub 登入，GitHub App 與 OAuth App 都可以。`UserId` 是數字帳號 ID。使用者不公開 email 時，改從
   `/user/emails` 取得主要且已驗證的 email；這個請求失敗時 `Email` 為 null，登入不會因此失敗。GitHub 每次換 token 都要求
   client secret，所以 public client 也會送出；行動應用程式要經由後端中轉登入 GitHub。
+- `OAuth2Client.GetUserInfoAsync(accessToken)` 回傳前端取得、交給後端的 access token 所屬的使用者。取得使用者資訊之前，
+  會先向 provider 確認 token 是發給 `ClientId` 或新增的 `OAuth2Options.AcceptedClientIds` 之一，而且這項查證無法跳過。
+  支援 Google、LINE、Facebook 與 GitHub；Facebook 與 GitHub 需要 `ClientSecret`，GitHub 只接受發給 `ClientId` 的 token。
+  Microsoft Entra ID、Auth0 與 Okta 擲出 `NotSupportedException`，訊息指向 ID token。被拒絕、已過期或發給其他 client 的 token
+  是失敗結果。見 ADR-007。
 
 ### 變更
 

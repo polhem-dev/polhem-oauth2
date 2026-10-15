@@ -12,3 +12,4 @@ Each record explains a design decision in Polhem.OAuth2 and the reasons behind i
 | [ADR-004](adr-004-system-browser-loopback.md) | Sign in from desktop applications through the system browser and a loopback redirect |
 | [ADR-005](adr-005-web-sign-in-cookie.md) | Keep each web sign-in in its own protected cookie |
 | [ADR-006](adr-006-app-sign-in.md) | Sign in from mobile applications directly or through the application's own back end |
+| [ADR-007](adr-007-access-token-from-front-end.md) | Return the user of an access token from a front end only after the provider names its client |
