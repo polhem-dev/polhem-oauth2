@@ -288,7 +288,7 @@ namespace Polhem.OAuth2.UnitTests
 
         [Theory]
         [DisplayName("GetUserInfoAsync turns another unsuccessful status of the GitHub check into a failed result")]
-        [InlineData(HttpStatusCode.UnprocessableEntity)]
+        [InlineData((HttpStatusCode)422)]
         [InlineData(HttpStatusCode.Forbidden)]
         [InlineData(HttpStatusCode.InternalServerError)]
         public async Task GetUserInfoAsync_GitHubCheckFails_FailsWithHttpRequestException(HttpStatusCode statusCode)
