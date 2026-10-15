@@ -213,7 +213,11 @@ namespace Polhem.OAuth2
         /// <para>
         /// The check is supported for Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client
         /// secret, so their options need <see cref="OAuth2Options.ClientSecret"/>. GitHub checks only tokens issued to
-        /// <see cref="OAuth2Options.ClientId"/>, so its front end and back end use the same GitHub application. Microsoft Entra ID, Auth0 and Okta are not supported: the front end
+        /// <see cref="OAuth2Options.ClientId"/>, so its front end and back end use the same GitHub application.
+        /// </para>
+        /// <para>
+        /// Each call sends at least one request to the provider, whatever token it is given, and the provider limits how many
+        /// it answers. Limit how often the endpoint of the back end that calls this method can be used. Microsoft Entra ID, Auth0 and Okta are not supported: the front end
         /// sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
         /// validates the token itself: its signature with the provider's published keys, its issuer and expiry, and an
         /// audience that is exactly one of the accepted client IDs for an ID token, or the API for an access token. A

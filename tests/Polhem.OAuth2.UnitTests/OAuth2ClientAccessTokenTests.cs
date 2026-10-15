@@ -302,6 +302,20 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("GetUserInfoAsync checks a GitHub token at the API that serves the user information, such as a GitHub Enterprise Server")]
+        public async Task GetUserInfoAsync_GitHubEnterpriseServer_ChecksTokenAtSameApi()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.NotFound, """{"message":"Not Found"}""");
+            var options = CreateOptions("GitHub", clientSecret: "client-secret");
+            options.UserInfoEndpoint = "https://github.example.com/api/v3/user/";
+            var client = new OAuth2Client(options, handler.CreateClient());
+
+            await client.GetUserInfoAsync(AccessToken);
+
+            Assert.Equal("https://github.example.com/api/v3/applications/client-id/token", handler.Requests[0].Uri.AbsoluteUri);
+        }
+
+        [Fact]
         [DisplayName("GetUserInfoAsync throws InvalidOperationException when GitHub refuses the client credentials")]
         public async Task GetUserInfoAsync_GitHubRefusesCredentials_ThrowsInvalidOperationException()
         {

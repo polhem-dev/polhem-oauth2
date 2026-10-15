@@ -13,16 +13,13 @@ namespace Polhem.OAuth2
         // https://docs.github.com/en/rest/about-the-rest-api/api-versions lists the supported versions and when each one ends.
         internal const string ApiVersion = "2022-11-28";
 
-        // https://docs.github.com/en/rest/apps/oauth-applications#check-a-token
-        private const string ApplicationsEndpoint = "https://api.github.com/applications";
-
         /// <summary>
         /// Initializes a new instance of the <see cref="GitHubOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The GitHub OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
         public GitHubOAuth2Provider(GitHubOAuth2Options options, Func<HttpClient>? httpClientFactory)
-            : base(options, httpClientFactory, ApplicationsEndpoint)
+            : base(options, httpClientFactory)
         {
         }
 
@@ -80,7 +77,7 @@ namespace Polhem.OAuth2
                     $"GitHub checks an access token with the client secret of the application, so {nameof(OAuth2Options.ClientSecret)} must be set.");
             }
 
-            string url = ApplicationsEndpoint + "/" + Uri.EscapeDataString(Options.ClientId) + "/token";
+            string url = GetCheckTokenUrl();
             using (var request = new HttpRequestMessage(HttpMethod.Post, url))
             {
                 request.Content = CreateCheckTokenBody(accessToken);
@@ -148,6 +145,22 @@ namespace Polhem.OAuth2
                 content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
                 return content;
             }
+        }
+
+        // https://docs.github.com/en/rest/apps/oauth-applications#check-a-token. The endpoint sits at the root of the API that
+        // serves the user information, https://api.github.com/user, so a GitHub Enterprise Server API is followed as well.
+        private string GetCheckTokenUrl()
+        {
+            const string UserPath = "/user";
+            string endpoint = Options.UserInfoEndpoint;
+            int query = endpoint.IndexOf('?');
+            string path = (query < 0 ? endpoint : endpoint.Substring(0, query)).TrimEnd('/');
+            if (!path.EndsWith(UserPath, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"The GitHub token check is found next to {nameof(OAuth2Options.UserInfoEndpoint)}, which must end with {UserPath}.");
+            }
+            return path.Substring(0, path.Length - UserPath.Length) + "/applications/" + Uri.EscapeDataString(Options.ClientId) + "/token";
         }
 
         // The address list sits next to the user information endpoint: https://api.github.com/user/emails.

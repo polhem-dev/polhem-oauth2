@@ -65,6 +65,7 @@ namespace Polhem.OAuth2
         /// List the client IDs of the front ends that sign users in and send their access tokens to this back end, such as
         /// the iOS and Android clients of a Google project. An access token issued to any other client is refused, because
         /// another application could otherwise sign in to this back end with a token that one of its users gave it.
+        /// GitHub checks only tokens issued to <see cref="ClientId"/>, so for GitHub this list accepts nothing more.
         /// </remarks>
         public string[] AcceptedClientIds { get; set; } = Array.Empty<string>();
 
