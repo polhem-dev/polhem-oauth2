@@ -35,6 +35,7 @@ namespace OAuthDesktop
             btnAzure = new Button();
             btnAuth0 = new Button();
             btnOkta = new Button();
+            btnGitHub = new Button();
             SuspendLayout();
             // 
             // btnGoogle
@@ -52,7 +53,7 @@ namespace OAuthDesktop
             edtUserInfo.Location = new Point(12, 12);
             edtUserInfo.Multiline = true;
             edtUserInfo.Name = "edtUserInfo";
-            edtUserInfo.Size = new Size(481, 236);
+            edtUserInfo.Size = new Size(562, 236);
             edtUserInfo.TabIndex = 1;
             // 
             // btnFacebook
@@ -104,12 +105,23 @@ namespace OAuthDesktop
             btnOkta.Text = "Okta";
             btnOkta.UseVisualStyleBackColor = true;
             btnOkta.Click += btnOkta_Click;
+            // 
+            // btnGitHub
+            //
+            btnGitHub.Location = new Point(498, 255);
+            btnGitHub.Name = "btnGitHub";
+            btnGitHub.Size = new Size(75, 23);
+            btnGitHub.TabIndex = 7;
+            btnGitHub.Text = "GitHub";
+            btnGitHub.UseVisualStyleBackColor = true;
+            btnGitHub.Click += btnGitHub_Click;
             //
             // Form1
             //
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(505, 290);
+            ClientSize = new Size(586, 290);
+            Controls.Add(btnGitHub);
             Controls.Add(btnOkta);
             Controls.Add(btnAuth0);
             Controls.Add(btnAzure);
@@ -136,5 +148,6 @@ namespace OAuthDesktop
         private Button btnAzure;
         private Button btnAuth0;
         private Button btnOkta;
+        private Button btnGitHub;
     }
 }

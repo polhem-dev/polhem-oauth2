@@ -108,6 +108,18 @@
         "ClientId": "",
         "RedirectUri": "dev.polhem.oauthmaui:/oauth2redirect"
       }
+    },
+    "GitHub": {
+      "Desktop": {
+        "ClientId": "",
+        "ClientSecret": "",
+        "RedirectUri": "http://127.0.0.1:0/callback"
+      },
+      "Web": {
+        "ClientId": "",
+        "ClientSecret": "",
+        "RedirectUri": "https://localhost:7032/auth/callback"
+      }
     }
   },
   "AppRelay": {

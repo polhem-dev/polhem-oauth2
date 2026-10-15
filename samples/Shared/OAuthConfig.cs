@@ -35,7 +35,8 @@ namespace OAuthSamples
             new Provider("Line", typeof(LineOAuth2Options)),
             new Provider("Azure", typeof(AzureOAuth2Options), "Tenant"),
             new Provider("Auth0", typeof(Auth0OAuth2Options), "Domain"),
-            new Provider("Okta", typeof(OktaOAuth2Options), "Domain", "AuthorizationServerId")
+            new Provider("Okta", typeof(OktaOAuth2Options), "Domain", "AuthorizationServerId"),
+            new Provider("GitHub", typeof(GitHubOAuth2Options))
         };
 
         // Enumerations such as ClientAuthentication are written by name in the file.

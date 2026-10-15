@@ -7,7 +7,8 @@
 Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with the library are under "Test results".
 Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it; the relay
 protects its cache entries, checks the application redirect URI again when it returns the sign-in, can start a sign-in
-from the values of a request without throwing, and bounds the lifetime of a code.
+from the values of a request without throwing, and bounds the lifetime of a code. Revised on 2026-10-15 for GitHub, which
+an application signs in to only through the back end.
 
 ## Context
 
@@ -39,6 +40,7 @@ code with PKCE and without a client secret:
 | LINE | LINE Login channel, iOS bundle ID | `line3rdp.<bundle id>://auth` | Accepted | Accepted | — |
 | LINE | LINE Login channel, Android package name and signature | `line3rdp.<package>://auth`, or a custom scheme | — | — | Refused: "Invalid redirect custom scheme" |
 | Facebook | iOS platform with the bundle ID; no Android platform was needed | `fb<app id>://authorize` | Accepted | Accepted | Accepted |
+| GitHub | GitHub App or OAuth App, callback URL | `<scheme>://<path>` | Redirect accepted; code exchange refused without the client secret | Not tested | Not tested |
 
 Notes on the table:
 
@@ -53,6 +55,10 @@ Notes on the table:
 - Auth0 marks a custom scheme as a non-verifiable callback URI and asks the user to confirm every sign-in. Microsoft asks a
   personal account to confirm that the application comes from a trusted source.
 - Redirects to an https URI bound to the application (RFC 8252, section 7.2) were not tested.
+- GitHub was added on 2026-10-15, with `samples/OAuthMaui` on the iPhone 17 Pro simulator rather than the throwaway
+  application. Its settings page refuses `<scheme>:/<path>` and accepts `<scheme>://<path>`. GitHub redirected to the
+  application, but its token endpoint requires the client secret for every code exchange and answered
+  `incorrect_client_credentials`, so an application signs in to GitHub through the back-end relay only.
 
 ## Decision
 
@@ -209,6 +215,18 @@ emulator's user certificates as `tests/Polhem.OAuth2.DeviceTests/scripts/prepare
 - This closes the "Test application only" and "Not tested" cells above for iOS, and the relay on every platform tested.
 - Before the certificate was trusted, the relay stopped at Safari's certificate warning. Closing it became a failed result
   with `OperationCanceledException`, shown by the sample as canceled.
+
+### GitHub, 2026-10-15
+
+Signed in through `samples/OAuthMaui` on the iPhone 17 Pro simulator (iOS 26.5), with `samples/OAuthAspNetCore` as the back
+end and a GitHub App with expiring user tokens.
+
+| Provider | Direct, iOS | Relay, iOS | Mac Catalyst | Android |
+|----------|-------------|------------|--------------|---------|
+| GitHub | Not possible: redirected to the application, then `incorrect_client_credentials` | Accepted | Not tested | Not tested |
+
+- The relay returned the numeric account ID, the name and the email address.
+- Mac Catalyst was not tested because the current .NET for Mac Catalyst workload rejects the sample's minimum OS version.
 
 ### Automated tests
 

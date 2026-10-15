@@ -35,6 +35,7 @@ namespace OAuthWinForms
             this.btnAzure = new System.Windows.Forms.Button();
             this.btnAuth0 = new System.Windows.Forms.Button();
             this.btnOkta = new System.Windows.Forms.Button();
+            this.btnGitHub = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnGoogle
@@ -54,7 +55,7 @@ namespace OAuthWinForms
             this.edtUserInfo.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.edtUserInfo.Multiline = true;
             this.edtUserInfo.Name = "edtUserInfo";
-            this.edtUserInfo.Size = new System.Drawing.Size(640, 295);
+            this.edtUserInfo.Size = new System.Drawing.Size(748, 295);
             this.edtUserInfo.TabIndex = 1;
             // 
             // btnFacebook
@@ -112,11 +113,23 @@ namespace OAuthWinForms
             this.btnOkta.UseVisualStyleBackColor = true;
             this.btnOkta.Click += new System.EventHandler(this.btnOkta_Click);
             //
+            // btnGitHub
+            //
+            this.btnGitHub.Location = new System.Drawing.Point(664, 318);
+            this.btnGitHub.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.btnGitHub.Name = "btnGitHub";
+            this.btnGitHub.Size = new System.Drawing.Size(100, 29);
+            this.btnGitHub.TabIndex = 7;
+            this.btnGitHub.Text = "GitHub";
+            this.btnGitHub.UseVisualStyleBackColor = true;
+            this.btnGitHub.Click += new System.EventHandler(this.btnGitHub_Click);
+            //
             // Form1
             //
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(673, 362);
+            this.ClientSize = new System.Drawing.Size(781, 362);
+            this.Controls.Add(this.btnGitHub);
             this.Controls.Add(this.btnOkta);
             this.Controls.Add(this.btnAuth0);
             this.Controls.Add(this.btnAzure);
@@ -145,6 +158,7 @@ namespace OAuthWinForms
         private System.Windows.Forms.Button btnAzure;
         private System.Windows.Forms.Button btnAuth0;
         private System.Windows.Forms.Button btnOkta;
+        private System.Windows.Forms.Button btnGitHub;
     }
 }
 

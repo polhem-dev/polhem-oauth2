@@ -5,7 +5,7 @@
 ## 狀態
 
 已採納（2026-09-14）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client`、client secret 的規則與監聽程式。2026-09-19 修訂，
-寫明這個流程實際測過的平台，以及 iOS 上的例外。2026-09-21 修訂，說明接受 `localhost` 與 RFC 8252 不同之處。
+寫明這個流程實際測過的平台，以及 iOS 上的例外。2026-09-21 修訂，說明接受 `localhost` 與 RFC 8252 不同之處。2026-10-15 修訂，加入 GitHub。
 
 ## 背景
 
@@ -50,9 +50,10 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
   （`InvalidOperationException`）、`OpenBrowser` 為 null 而找不到預設瀏覽器（`Win32Exception`；iOS 無法啟動處理程序，
   擲出 `PlatformNotSupportedException`），則往外拋。
 - loopback client 是 public client。它一律使用 PKCE，不看 `OAuth2Options.UsePkce` 的設定，這是 RFC 8252 對原生應用程式的要求；
-  它也不送 client secret，只有 Google 與 LINE 例外。Google 的文件把 client secret 列為已安裝應用程式的選填參數，
+  它也不送 client secret，只有 Google、LINE 與 GitHub 例外。Google 的文件把 client secret 列為已安裝應用程式的選填參數，
   但 2026-09-26 不送 secret 的實測失敗：token 端點回應 `invalid_request`，所以 secret 是必要的，這個例外維持。
   LINE 於 2026-09-26 加入：只供網頁應用程式使用的 channel（桌面應用程式的 loopback 回呼就屬於這一類）沒有 secret 時拒絕 refresh。
+  GitHub 於 2026-10-15 加入：它的文件把 secret 列為換 token 的必要參數，不送 secret 的實測也以 `incorrect_client_credentials` 失敗。
   下方實測的其他 provider 都在沒有 secret 的情況下換到 token 並 refresh。
   能夠保密 secret 的網頁 client，只要設了就一律送出。
 
@@ -84,6 +85,16 @@ Bee.OAuth2 有兩個桌面套件：給 .NET Framework 4.8 的 `Bee.OAuth2.WinFor
 | Okta | 沒有發 refresh token，核准的 scope 也沒有 `offline_access`：這個應用程式沒有被允許 refresh token grant。替應用程式開啟 Refresh Token grant 後，有發 refresh token，refresh 也成功。 |
 | LINE | 不送 client secret 也換 token 與 refresh 成功，並發了 refresh token。核准的 scope 沒有 `email`，channel 尚未取得該權限。關閉「Use LINE Login in your mobile app」、讓 channel 只供網頁應用程式使用時，不送 secret 仍能換 token，但 refresh 以 `invalid_client` 失敗；重新開啟後 refresh 又成功。改為設定了 secret 就送給 LINE 之後，兩種模式的換 token 與 refresh 都成功，access token 的有效期也從 12 小時（43200 秒）變成 30 天（2592000 秒）。 |
 | Facebook | 不送 client secret、以 PKCE 換 token 成功。token type 回傳為小寫的 `bearer`，沒有回傳 scope，也沒有發 refresh token。 |
+
+### GitHub，2026-10-15
+
+一個開啟使用者 token 到期的 GitHub App，callback URL 登記為 `http://127.0.0.1/callback`，以探測工具的 `--refresh yes` 登入。
+
+| 回呼網址 | 結果 |
+|----------|------|
+| `http://127.0.0.1:<可用 port>/callback` | 開啟 PKCE 時被接受，送 client secret 換 token 成功。token type 回傳為小寫的 `bearer`，access token 有效 8 小時（28800 秒），有發 refresh token；scope 回傳為空，因為 GitHub App 的權限取自 App 的設定而不是 scope。refresh 成功，並回傳新的 refresh token。不送 client secret（`--secret omit`）時，token 端點回應 `incorrect_client_credentials`。 |
+| `http://127.0.0.1:53682/callback` | 被接受，結果相同。 |
+| `http://localhost:53682/callback` | 沒有導回：host 必須與登記的一致，port 則不必。 |
 
 ## 影響
 
