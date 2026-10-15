@@ -20,6 +20,20 @@ namespace Polhem.OAuth2
         public override string ProviderName => "Azure";
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// Microsoft asks applications to treat an access token for Microsoft Graph as opaque, and offers no endpoint that
+        /// tells another application which client it was issued to, so the check is not supported.
+        /// </remarks>
+        protected override Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
+        {
+            return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
+                "Microsoft Entra ID offers no way to check which client an access token, such as one for Microsoft Graph, "
+                + "was issued to. Have the front end request an access token for an API of your own, and validate it in the "
+                + "back end as a JSON Web Token whose audience is that API, for example with JwtBearer authentication, "
+                + "instead of passing it to this method."));
+        }
+
+        /// <inheritdoc/>
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
             // The user information endpoint returns no object ID, so the user is identified by sub. A personal Microsoft
