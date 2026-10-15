@@ -33,9 +33,16 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         /// <remarks>
-        /// <c>/user</c> has an email address only when the user made one public. Otherwise the primary address is read from
-        /// <c>/user/emails</c>, if it is verified. That request needs the <c>user:email</c> scope, and when it fails the user
-        /// information has no email address rather than the sign-in failing.
+        /// <para>
+        /// <c>/user</c> has an email address only when the user made one public, which GitHub allows only for a verified
+        /// address. Otherwise the primary address is read from <c>/user/emails</c>, if it is verified. That request needs
+        /// the <c>user:email</c> scope. When it returns an unsuccessful status, fails, times out, or returns a body that is
+        /// not JSON, the user information has no email address rather than the sign-in failing.
+        /// </para>
+        /// <para>
+        /// <see cref="UserInfo.RawJson"/> is the response of <c>/user</c>, so it does not contain an address read from
+        /// <c>/user/emails</c>.
+        /// </para>
         /// </remarks>
         public override async Task<UserInfo> GetUserInfoAsync(TokenResponse token, CancellationToken cancellationToken)
         {

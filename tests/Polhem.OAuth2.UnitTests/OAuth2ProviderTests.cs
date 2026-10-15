@@ -547,8 +547,8 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
-        [DisplayName("The User-Agent of the library replaces the default User-Agent of an HttpClient that the application passes in")]
-        public async Task ExchangeCodeAsync_ClientWithDefaultUserAgent_SendsLibraryUserAgent()
+        [DisplayName("The library adds itself after the default User-Agent of an HttpClient that the application passes in")]
+        public async Task ExchangeCodeAsync_ClientWithDefaultUserAgent_KeepsApplicationUserAgent()
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
             using var httpClient = handler.CreateClient();
@@ -557,7 +557,7 @@ namespace Polhem.OAuth2.UnitTests
 
             await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
 
-            Assert.StartsWith("Polhem.OAuth2/", Assert.Single(handler.Requests).Header("User-Agent"), StringComparison.Ordinal);
+            Assert.StartsWith("MyApp/2.0 Polhem.OAuth2/", Assert.Single(handler.Requests).Header("User-Agent"), StringComparison.Ordinal);
         }
 
         [Fact]

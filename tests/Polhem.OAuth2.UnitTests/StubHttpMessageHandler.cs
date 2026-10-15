@@ -69,6 +69,9 @@ namespace Polhem.OAuth2.UnitTests
             cancellationToken.ThrowIfCancellationRequested();
             string? body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
             var headers = request.Headers.ToDictionary(header => header.Key, header => string.Join(", ", header.Value), StringComparer.OrdinalIgnoreCase);
+            // The products of User-Agent are separated by spaces on the wire, not by commas.
+            if (request.Headers.UserAgent.Count > 0)
+                headers["User-Agent"] = request.Headers.UserAgent.ToString();
             Requests.Add(new RecordedRequest(request.Method, request.RequestUri!, request.Headers.Authorization, body, headers));
 
             if (_responses.Count == 0)

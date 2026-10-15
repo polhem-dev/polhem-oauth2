@@ -359,8 +359,9 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Sends a request to the provider with the HTTP client of the provider, after naming this library in the
-        /// <c>User-Agent</c> header. Every request to the provider goes through it.
+        /// Sends a request to the provider with the HTTP client of the provider, after adding this library to the
+        /// <c>User-Agent</c> header. It is the only member that uses the HTTP client, so every request to the provider gets
+        /// the header.
         /// </summary>
         /// <param name="request">The request.</param>
         /// <param name="cancellationToken">Cancels the request.</param>
@@ -371,10 +372,14 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            // The header is set on each request rather than on the client, so that it also reaches a provider through an
-            // HttpClient that the application passes in. The GitHub API refuses a request without it.
+            // The header is set on the request rather than on the client, so that it also reaches a provider through an
+            // HttpClient that the application passes in. The GitHub API refuses a request without it. A request header
+            // replaces the default header of the client, so the products of the application's own User-Agent come first.
+            var httpClient = _httpClientFactory();
+            foreach (var product in httpClient.DefaultRequestHeaders.UserAgent)
+                request.Headers.UserAgent.Add(product);
             request.Headers.UserAgent.Add(LibraryUserAgent.Create());
-            return _httpClientFactory().SendAsync(request, cancellationToken);
+            return httpClient.SendAsync(request, cancellationToken);
         }
 
         /// <summary>
