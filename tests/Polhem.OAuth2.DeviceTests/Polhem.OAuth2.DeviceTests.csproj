@@ -31,6 +31,16 @@
     <TestResultsDirectory>$(MSBuildProjectDirectory)/bin/TestResults/</TestResultsDirectory>
   </PropertyGroup>
 
+  <!-- WARNING: The iOS and Mac Catalyst workloads 27.0 keep the members of NSObject subclasses alive with generated
+       [DynamicDependency] attributes instead of marking them in a linker step. For explicit interface implementations in
+       Microsoft.Maui.Controls.Compatibility, which DeviceRunners.VisualRunners.Maui references, the generated names do not
+       resolve, and the trim fails with IL2037. This property brings back the marking step that the earlier workloads
+       used, and the application is still trimmed. Earlier workloads do not read it. Try removing it when the workload
+       changes: without it, a Release build for Mac Catalyst with workload 27.0.10722 fails with IL2037. -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios' Or $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+    <_UseDynamicDependenciesForMarkNSObjects>false</_UseDynamicDependenciesForMarkNSObjects>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="DeviceRunners.Testing.Targets" Version="0.1.0-preview.12" />
     <PackageReference Include="DeviceRunners.VisualRunners.Maui" Version="0.1.0-preview.12" />
