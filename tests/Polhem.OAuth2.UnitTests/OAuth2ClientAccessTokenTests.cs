@@ -315,6 +315,22 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("https://github.example.com/api/v3/applications/client-id/token", handler.Requests[0].Uri.AbsoluteUri);
         }
 
+        [Theory]
+        [DisplayName("GetUserInfoAsync throws InvalidOperationException, before any request, when the GitHub user information path does not end with /user")]
+        [InlineData("https://user")]
+        [InlineData("https://user/")]
+        [InlineData("https://api.github.com/users")]
+        public async Task GetUserInfoAsync_GitHubUserInfoPathWithoutUser_ThrowsInvalidOperationException(string userInfoEndpoint)
+        {
+            var handler = new StubHttpMessageHandler();
+            var options = CreateOptions("GitHub", clientSecret: "client-secret");
+            options.UserInfoEndpoint = userInfoEndpoint;
+            var client = new OAuth2Client(options, handler.CreateClient());
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetUserInfoAsync(AccessToken));
+            Assert.Empty(handler.Requests);
+        }
+
         [Fact]
         [DisplayName("GetUserInfoAsync throws InvalidOperationException when GitHub refuses the client credentials")]
         public async Task GetUserInfoAsync_GitHubRefusesCredentials_ThrowsInvalidOperationException()

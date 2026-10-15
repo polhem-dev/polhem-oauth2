@@ -152,15 +152,17 @@ namespace Polhem.OAuth2
         private string GetCheckTokenUrl()
         {
             const string UserPath = "/user";
-            string endpoint = Options.UserInfoEndpoint;
-            int query = endpoint.IndexOf('?');
-            string path = (query < 0 ? endpoint : endpoint.Substring(0, query)).TrimEnd('/');
+            // The options were validated, so the endpoint is an absolute https URI. Only its path is examined, so that a host
+            // name cannot be mistaken for the /user segment.
+            var endpoint = new Uri(Options.UserInfoEndpoint);
+            string path = endpoint.AbsolutePath.TrimEnd('/');
             if (!path.EndsWith(UserPath, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
-                    $"The GitHub token check is found next to {nameof(OAuth2Options.UserInfoEndpoint)}, which must end with {UserPath}.");
+                    $"The GitHub token check is found next to {nameof(OAuth2Options.UserInfoEndpoint)}, whose path must end with {UserPath}.");
             }
-            return path.Substring(0, path.Length - UserPath.Length) + "/applications/" + Uri.EscapeDataString(Options.ClientId) + "/token";
+            return endpoint.GetLeftPart(UriPartial.Authority) + path.Substring(0, path.Length - UserPath.Length)
+                + "/applications/" + Uri.EscapeDataString(Options.ClientId) + "/token";
         }
 
         // The address list sits next to the user information endpoint: https://api.github.com/user/emails.
