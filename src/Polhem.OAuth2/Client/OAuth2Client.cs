@@ -216,7 +216,7 @@ namespace Polhem.OAuth2
         /// sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
         /// validates the token itself: its signature with the provider's published keys, its issuer and expiry, and an
         /// audience that is exactly one of the accepted client IDs for an ID token, or the API for an access token. A
-        /// validator that skips the audience accepts tokens issued to any application of the same provider.
+        /// validator that skips the audience can accept tokens issued to any application of the same provider.
         /// </para>
         /// <para>
         /// LINE and Facebook accept the token only in the query of the check, so an HTTP client that logs request URIs, such as
