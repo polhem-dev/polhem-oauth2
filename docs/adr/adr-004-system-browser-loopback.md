@@ -5,8 +5,8 @@
 ## Status
 
 Accepted (2026-09-14). Revised on 2026-09-14, before the first release, for `OAuth2Client`, the client secret rule, and the
-listener. Revised on 2026-09-19 to name the platforms the flow has been tested on and the exception on iOS, and on 2026-09-21 to
-say where accepting `localhost` departs from RFC 8252.
+listener. Revised on 2026-09-19 to name the platforms the flow has been tested on and the exception on iOS, on 2026-09-21 to
+say where accepting `localhost` departs from RFC 8252, and on 2026-10-15 for GitHub.
 
 ## Context
 
@@ -61,11 +61,12 @@ That approach has several problems:
   browser when `OpenBrowser` is null (`Win32Exception`, or `PlatformNotSupportedException` on iOS, where no process can be
   started) propagate.
 - The loopback client is a public client. It always uses PKCE, whatever `OAuth2Options.UsePkce` says, as RFC 8252 requires
-  of native applications, and it does not send the client secret, except to Google and LINE. Google's documentation lists the
+  of native applications, and it does not send the client secret, except to Google, LINE and GitHub. Google's documentation lists the
   client secret as optional for installed applications, but a test without it on 2026-09-26 failed: the token endpoint
   answered `invalid_request`, so the secret is required and the exception stays. LINE was added on 2026-09-26: a channel that
-  serves web apps only, as a desktop application's loopback redirect needs, refused a refresh without the secret. Every other
-  provider tested below exchanged the code and refreshed without it. Web clients, which can keep a secret, send it whenever it is set.
+  serves web apps only, as a desktop application's loopback redirect needs, refused a refresh without the secret. GitHub was
+  added on 2026-10-15: its documentation lists the secret as required for the code exchange, and a test without it failed
+  with `incorrect_client_credentials`. Every other provider tested below exchanged the code and refreshed without it. Web clients, which can keep a secret, send it whenever it is set.
 
 ## Provider test results
 
@@ -97,6 +98,17 @@ tokens came back.
 | Okta | No refresh token was issued, and the granted scopes left out `offline_access`: this application is not allowed the refresh token grant. After the Refresh Token grant was turned on for the application, a refresh token was issued and the refresh succeeded. |
 | LINE | The code exchange and the refresh succeeded without the client secret, and a refresh token was issued. The granted scopes left out `email`, which the channel has not been approved for. With "Use LINE Login in your mobile app" turned off, so that the channel served web apps only, the code exchange still succeeded without the secret, but the refresh failed with `invalid_client`; turning it back on made the refresh succeed again. Since LINE receives a secret that is set, the code exchange and the refresh succeeded in both modes, and the access token lasted 30 days (2592000 seconds) instead of 12 hours (43200 seconds). |
 | Facebook | The code exchange succeeded without the client secret, with PKCE. The token type came back as `bearer` in lower case, no scope was returned, and no refresh token was issued. |
+
+### GitHub, 2026-10-15
+
+A GitHub App with expiring user tokens, its callback URL registered as `http://127.0.0.1/callback`, signed in with the
+probe's `--refresh yes`.
+
+| Redirect URI | Result |
+|--------------|--------|
+| `http://127.0.0.1:<free port>/callback` | Accepted with PKCE, and the code exchange succeeded with the client secret. The token type came back as `bearer` in lower case, the access token lasted 8 hours (28800 seconds), a refresh token was issued, and the scope came back empty, because a GitHub App takes its permissions from its settings rather than from scopes. The refresh succeeded and returned a new refresh token. Without the client secret (`--secret omit`) the token endpoint answered `incorrect_client_credentials`. |
+| `http://127.0.0.1:53682/callback` | Accepted, with the same results. |
+| `http://localhost:53682/callback` | Did not come back: the host must match the registered one, although the port need not. |
 
 ## Consequences
 

@@ -27,7 +27,7 @@ dotnet run -- --provider Google
 
 | Option | Meaning |
 |--------|---------|
-| `--provider` | `Google`, `Facebook`, `Line`, `Azure`, `Auth0` or `Okta` |
+| `--provider` | `Google`, `Facebook`, `Line`, `Azure`, `Auth0`, `Okta` or `GitHub` |
 | `--redirect` | Optional. A loopback redirect URI that replaces the `RedirectUri` of the provider's `Desktop` section for this run. |
 | `--settings` | The settings file. The default is `OAuthConfig.json` in the output folder, which the build copies from the repository root. |
 | `--timeout` | Seconds to wait for the redirect. The default is 180. |

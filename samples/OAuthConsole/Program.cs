@@ -3,7 +3,7 @@ using System.Text.Json;
 using OAuthSamples;
 using Polhem.OAuth2;
 
-// Usage: dotnet run -- <Google|Facebook|Line|Azure|Auth0|Okta>
+// Usage: dotnet run -- <Google|Facebook|Line|Azure|Auth0|Okta|GitHub>
 string providerName = args.Length > 0 ? args[0] : "Google";
 
 OAuth2Options options;

@@ -26,7 +26,7 @@ dotnet run -- --provider Google
 
 | 選項 | 說明 |
 |------|------|
-| `--provider` | `Google`、`Facebook`、`Line`、`Azure`、`Auth0` 或 `Okta` |
+| `--provider` | `Google`、`Facebook`、`Line`、`Azure`、`Auth0`、`Okta` 或 `GitHub` |
 | `--redirect` | 選填。這次執行改用這個 loopback 回呼網址，取代設定檔裡該 provider `Desktop` 區段的 `RedirectUri`。 |
 | `--settings` | 設定檔路徑，預設是輸出目錄下、建置時從 repo 根目錄複製過來的 `OAuthConfig.json`。 |
 | `--timeout` | 等待導回的秒數，預設 180。 |
