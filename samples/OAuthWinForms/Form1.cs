@@ -133,5 +133,10 @@ namespace OAuthWinForms
         {
             await LoginAsync("Okta");
         }
+
+        private async void btnGitHub_Click(object sender, EventArgs e)
+        {
+            await LoginAsync("GitHub");
+        }
     }
 }
