@@ -268,6 +268,18 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("GetUserInfoAsync tells a Microsoft Entra ID caller to validate a token for its own API instead")]
+        public async Task GetUserInfoAsync_Azure_NotSupportedExceptionNamesAlternative()
+        {
+            var client = new OAuth2Client(CreateOptions("Azure", clientSecret: "secret"), new StubHttpMessageHandler().CreateClient());
+
+            var exception = await Assert.ThrowsAsync<NotSupportedException>(() => client.GetUserInfoAsync(AccessToken));
+
+            Assert.Contains("JwtBearer", exception.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain(AccessToken, exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
         [DisplayName("GetUserInfoAsync rejects a null, empty or white-space access token")]
         public async Task GetUserInfoAsync_MissingAccessToken_ThrowsArgumentException()
         {
