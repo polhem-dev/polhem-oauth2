@@ -7,6 +7,22 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 ## [Unreleased]
 
+### Added
+
+- `GitHubOAuth2Options` signs in with GitHub, through a GitHub App or an OAuth App. `UserId` is the numeric account ID. When
+  the user keeps the email address private, the address comes from `/user/emails`: the primary one, if it is verified. A
+  failure of that request leaves `Email` null instead of failing the sign-in. GitHub requires the client secret for every code
+  exchange, so it is sent from a public client too, and a mobile application signs in to GitHub through the back-end relay.
+
+### Changed
+
+- A token response with status 200 that names an `error` fails with an `OAuth2Exception` that carries the provider's error
+  code, instead of the generic error about a missing access token. GitHub reports failures of its token endpoint this way.
+- Every request to a provider names the library in its `User-Agent` header, as `Polhem.OAuth2/<version>`, after the products
+  of the default `User-Agent` of an `HttpClient` that the application passes in. The GitHub API refuses a request without one.
+- Token requests send `Accept: application/json`. RFC 6749 already has the token endpoint answer in JSON, and GitHub
+  answers in form encoding without the header.
+
 ## [1.3.0] - 2026-09-26
 
 ### Added

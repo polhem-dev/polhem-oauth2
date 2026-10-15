@@ -14,7 +14,7 @@ redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Androi
 `WebAuthenticator`, directly or through their own back end. ASP.NET Core and ASP.NET (System.Web) applications use the
 authorization code flow with PKCE, and keep each sign-in in a protected cookie.
 
-Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0 and Okta.
+Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta and GitHub.
 
 ## Packages
 
@@ -31,13 +31,16 @@ dotnet add package Polhem.OAuth2
 ## Options
 
 Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Options`, `LineOAuth2Options`,
-`AzureOAuth2Options` (Microsoft Entra ID), `Auth0OAuth2Options` and `OktaOAuth2Options`.
+`AzureOAuth2Options` (Microsoft Entra ID), `Auth0OAuth2Options`, `OktaOAuth2Options` and `GitHubOAuth2Options`.
 
 - `ClientId` and `RedirectUri` are required. A client copies and checks the options when it is created, so later changes
   to them have no effect, and invalid options throw `ArgumentException` right away.
 - Auth0 and Okta need `Domain`, such as `your-tenant.auth0.com`. Okta uses the `default` authorization server unless
   `AuthorizationServerId` names another one; an empty value selects the org authorization server. Okta creates the `default`
   server only in an org of the Integrator Free Plan or with API Access Management, so another org sets the empty value.
+- GitHub works with a GitHub App or an OAuth App, and asks for the scopes `read:user user:email`. A GitHub App ignores scopes
+  and takes its permissions from its settings: give it the read-only Email addresses permission, or the user information
+  has no email address when the user keeps it private.
 - Microsoft Entra ID uses the `common` tenant. An application registered for a single tenant sets `Tenant` to the tenant
   ID or domain name.
 - Every endpoint must be an absolute `https` URI without a fragment. A query is kept, so an endpoint can carry a parameter of the
@@ -75,7 +78,7 @@ else
 - The redirect URI must be an `http` URI on `localhost` or a loopback address, and it must be registered with the provider.
   Port 0 picks a free port for each sign-in, which only works with providers that accept any loopback port.
 - The client always uses PKCE. A client secret shipped with a desktop application can be extracted, so it is not sent,
-  except to Google and LINE, which refuse some requests without it (ADR-004 records the tests).
+  except to Google, LINE and GitHub, which refuse some requests without it (ADR-004 records the tests).
 - A timeout (`Timeout`, 5 minutes by default), cancellation, or an error from the provider becomes a failed result. A port
   that cannot be listened on throws `SocketException`, and a missing default browser throws `Win32Exception`
   (`PlatformNotSupportedException` on iOS, which cannot start a process).
@@ -93,7 +96,7 @@ The reasons behind this design, and how each provider handled loopback redirects
 
 ### Registering a loopback redirect URI
 
-These registrations were tested with each provider on 2026-09-14.
+These registrations were tested with each provider on 2026-09-14, and with GitHub on 2026-10-15.
 
 | Provider | Application type | Redirect URI | Port |
 |----------|------------------|--------------|------|
@@ -103,6 +106,7 @@ These registrations were tested with each provider on 2026-09-14.
 | Okta | Native, with client authentication None and PKCE required | `http://localhost:53682/callback` | Must match |
 | LINE | LINE Login channel, Callback URL | `http://localhost:53682/callback` | Must match. The channel must include the Mobile app type: a channel of the Web app type alone requires the client secret, which a public client does not send |
 | Facebook | Facebook Login, Valid OAuth Redirect URIs | `http://localhost:53682/callback` | Register the port you use. Facebook accepted PKCE without the client secret in the tests of ADR-004 and ADR-006, but does not document it |
+| GitHub | GitHub App or OAuth App, callback URL, registered as `http://127.0.0.1/callback` | `http://127.0.0.1:0/callback` | Any port was accepted. The host must match: `localhost` did not come back |
 
 - Google: the tested client had its redirect URIs registered. Google's documentation differs on whether a desktop app needs
   them, and lists the client secret as optional for installed applications.
@@ -121,7 +125,8 @@ An application on Android, iOS or Mac Catalyst signs in in one of two ways
   PKCE and without a client secret.
 - **Through the back end**, for an application that signs in to its own ASP.NET Core back end. The back end signs in as a
   web client and gives the application a single-use code, which the application redeems for the user information. Google
-  and LINE accept no direct redirect to an Android application, so on Android they need this way.
+  and LINE accept no direct redirect to an Android application, so on Android they need this way. GitHub requires the client
+  secret for every code exchange, so an application signs in to GitHub only this way.
 
 `WebAuthenticator` does not work on Windows, so the Windows platform of a MAUI application signs in with
 `LoopbackOAuth2Client`, as a desktop application does.
@@ -362,24 +367,29 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
   issue a new one each time. Whether a provider issues one depends on the request: Microsoft Entra ID, Auth0 and Okta issue
   one when `Scopes` includes `offline_access` (Auth0 and Okta also need it allowed for the application); Google issues one
   to a desktop or mobile application, and to a web application only when `AuthorizationEndpoint` carries
-  `?access_type=offline&prompt=consent`; LINE issues one always; Facebook never.
+  `?access_type=offline&prompt=consent`; LINE issues one always; Facebook never; GitHub when the app expires user tokens, which
+  a new app does unless that is turned off.
 - `Exception` holds only the failures a sign-in is expected to produce, such as a failed HTTP request, a state that does
   not match, or an error from the provider. Configuration and programming errors, such as an unregistered client name, are
   thrown. See [ADR-003](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-003-exception-semantics.md).
 - An error from the provider is an `OAuth2Exception`: `Error` holds the error code, such as `access_denied`, and
   `ErrorDescription` the provider's text. Anyone who sends the user a link can set the values of an error in a redirect,
   so encode them before showing them. The token endpoint of Facebook reports a Graph API error instead: `Error` holds its
-  numeric code, such as `100`, and `ErrorDescription` its message.
+  numeric code, such as `100`, and `ErrorDescription` its message. GitHub reports some errors of its token endpoint, such as
+  `bad_verification_code`, with status 200; they become an `OAuth2Exception` all the same.
 
 ## Identifying users
 
 - Identify a user by the provider name together with `UserInfo.UserId`, not by `Email`: an address can change, and
   providers differ in whether they verify it.
 - The provider name is `AuthorizationResult.ProviderName`: `Google`, `Facebook`, `LINE`, `Azure` (Microsoft Entra ID),
-  `Auth0` or `Okta`. It does not depend on the name a client is registered under.
+  `Auth0`, `Okta` or `GitHub`. It does not depend on the name a client is registered under.
 - For Microsoft Entra ID, `UserId` is the `sub` claim, which is different for each application the user signs in to. The `oid`
   claim of `Token.IdToken` is the same in every application, for an application that needs that; validate the token first.
 - For Facebook, `UserId` is also different for each app. For LINE it is the same in every channel of one provider.
+- For GitHub, `UserId` is the numeric account ID, which stays when the user renames the account; the login does not, and
+  another account can take it. When the user keeps the email address private, the library reads the primary verified
+  address from `/user/emails`; if that request fails, `Email` is null and the sign-in still succeeds.
 - LINE returns the email address only in the ID token, and only when the channel may read it and the user agreed. The
   library reads it from the ID token that the token endpoint returned, and checks that the token was issued to the client,
   but does not check its signature.
@@ -472,7 +482,8 @@ separately:
   packaged settings would hold a field whose name contains `Secret`.
   Google and LINE refuse a direct redirect to an Android application
   ([ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md)), so they have no
-  `Android` section, and the sample signs in to them through the back end there.
+  `Android` section, and the sample signs in to them through the back end there. GitHub requires the client secret, so it
+  has neither an `iOS` nor an `Android` section.
 - The top-level `AppRelay` section configures the back-end relay: `BackendUrl` is where the ASP.NET Core sample runs, and
   `RedirectUri` is the relay callback of the application, which the ASP.NET Core sample registers with
   `AddOAuth2AppRelay`. The relay runs over HTTPS, so the simulator or emulator must trust the ASP.NET Core development

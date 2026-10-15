@@ -7,6 +7,20 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 ## [Unreleased]
 
+### 新增
+
+- `GitHubOAuth2Options` 以 GitHub 登入，GitHub App 與 OAuth App 都可以。`UserId` 是數字帳號 ID。使用者不公開 email 時，改從
+  `/user/emails` 取得主要且已驗證的 email；這個請求失敗時 `Email` 為 null，登入不會因此失敗。GitHub 每次換 token 都要求
+  client secret，所以 public client 也會送出；行動應用程式要經由後端中轉登入 GitHub。
+
+### 變更
+
+- token 端點以狀態碼 200 回傳、卻帶有 `error` 的回應，現在會成為帶著 provider 錯誤代碼的 `OAuth2Exception`，不再是「沒有
+  access token」的泛用錯誤。GitHub 的 token 端點就是這樣回報失敗。
+- 每個送往 provider 的請求都在 `User-Agent` 標頭以 `Polhem.OAuth2/<版本>` 標明函式庫，排在應用程式傳入之 `HttpClient` 預設
+  `User-Agent` 的內容之後。GitHub API 會拒絕沒有 `User-Agent` 的請求。
+- token 請求一律送 `Accept: application/json`。RFC 6749 本來就規定 token 端點回傳 JSON；GitHub 沒有這個標頭時會以表單編碼回傳。
+
 ## [1.3.0] - 2026-09-26
 
 ### 新增

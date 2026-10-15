@@ -5,7 +5,8 @@
 ## Status
 
 Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAuth2Client` and the web sign-in cookie, and on
-2026-09-21 for the error object of Facebook and for `AppOAuth2Client`, which ADR-006 added.
+2026-09-21 for the error object of Facebook and for `AppOAuth2Client`, which ADR-006 added, and on 2026-10-15 for token
+errors that GitHub reports with status 200.
 
 ## Context
 
@@ -19,7 +20,8 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
   - an error returned by the provider, in the redirect or by the token endpoint, with its code in `Error` and its text in
     `ErrorDescription`. The token endpoint of Facebook reports a Graph API error object instead of the strings of RFC 6749,
     section 5.2: its numeric `code` becomes `Error`, or its `type` when it has no code, and its `message` becomes
-    `ErrorDescription`;
+    `ErrorDescription`. A token response with status 200 that names an error is read the same way, because GitHub reports
+    failures of its token endpoint like that, and RFC 6749 gives a successful response no error field;
   - a state that is missing or does not match, and a missing authorization code or PKCE code verifier;
   - a token response without an access token, and an empty user information response.
 - Completing a sign-in turns only the failures a sign-in is expected to produce into a failed result:
