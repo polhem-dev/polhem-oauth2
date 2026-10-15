@@ -211,9 +211,16 @@ namespace Polhem.OAuth2
         /// that is not valid JSON. Any other exception propagates.
         /// </para>
         /// <para>
-        /// The check is supported for Google, LINE and Facebook. Facebook checks the token with the app secret, so its options
-        /// need <see cref="OAuth2Options.ClientSecret"/>. Microsoft Entra ID, Auth0 and Okta are not supported: the front end
-        /// sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
+        /// The check is supported for Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client
+        /// secret, so their options need <see cref="OAuth2Options.ClientSecret"/>. GitHub checks only tokens issued to
+        /// <see cref="OAuth2Options.ClientId"/>, so its front end and back end use the same GitHub application.
+        /// </para>
+        /// <para>
+        /// Checking a token sends a request to the provider, whether or not the token turns out to be valid, and the provider
+        /// limits how many it answers. Limit how often the endpoint of the back end that calls this method can be used.
+        /// </para>
+        /// <para>
+        /// Microsoft Entra ID, Auth0 and Okta are not supported: the front end sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
         /// validates the token itself: its signature with the provider's published keys, its issuer and expiry, and an
         /// audience that is exactly one of the accepted client IDs for an ID token, or the API for an access token. A
         /// validator that skips the audience can accept tokens issued to any application of the same provider.
