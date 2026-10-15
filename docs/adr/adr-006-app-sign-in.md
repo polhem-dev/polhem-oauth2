@@ -40,7 +40,7 @@ code with PKCE and without a client secret:
 | LINE | LINE Login channel, iOS bundle ID | `line3rdp.<bundle id>://auth` | Accepted | Accepted | — |
 | LINE | LINE Login channel, Android package name and signature | `line3rdp.<package>://auth`, or a custom scheme | — | — | Refused: "Invalid redirect custom scheme" |
 | Facebook | iOS platform with the bundle ID; no Android platform was needed | `fb<app id>://authorize` | Accepted | Accepted | Accepted |
-| GitHub | GitHub App or OAuth App, callback URL | `<scheme>://<path>` | Redirect accepted; code exchange refused without the client secret | Not tested | Not tested |
+| GitHub | GitHub App or OAuth App, callback URL | `<scheme>://<path>` | Redirect accepted; code exchange refused without the client secret | Redirect accepted; code exchange refused without the client secret | Not tested |
 
 Notes on the table:
 
@@ -55,8 +55,8 @@ Notes on the table:
 - Auth0 marks a custom scheme as a non-verifiable callback URI and asks the user to confirm every sign-in. Microsoft asks a
   personal account to confirm that the application comes from a trusted source.
 - Redirects to an https URI bound to the application (RFC 8252, section 7.2) were not tested.
-- GitHub was added on 2026-10-15, with `samples/OAuthMaui` on the iPhone 17 Pro simulator rather than the throwaway
-  application. Its settings page refuses `<scheme>:/<path>` and accepts `<scheme>://<path>`. GitHub redirected to the
+- GitHub was added on 2026-10-15, with `samples/OAuthMaui` on the iPhone 17 Pro simulator and on Mac Catalyst rather than
+  the throwaway application. Its settings page refuses `<scheme>:/<path>` and accepts `<scheme>://<path>`. GitHub redirected to the
   application, but its token endpoint requires the client secret for every code exchange and answered
   `incorrect_client_credentials`, so an application signs in to GitHub through the back-end relay only.
 
@@ -218,15 +218,16 @@ emulator's user certificates as `tests/Polhem.OAuth2.DeviceTests/scripts/prepare
 
 ### GitHub, 2026-10-15
 
-Signed in through `samples/OAuthMaui` on the iPhone 17 Pro simulator (iOS 26.5), with `samples/OAuthAspNetCore` as the back
-end and a GitHub App with expiring user tokens.
+Signed in through `samples/OAuthMaui` on the iPhone 17 Pro simulator (iOS 26.5) and on Mac Catalyst (macOS 26.7.1), with
+`samples/OAuthAspNetCore` as the back end and a GitHub App with expiring user tokens.
 
-| Provider | Direct, iOS | Relay, iOS | Mac Catalyst | Android |
-|----------|-------------|------------|--------------|---------|
-| GitHub | Not possible: redirected to the application, then `incorrect_client_credentials` | Accepted | Not tested | Not tested |
+| Provider | Direct, iOS | Relay, iOS | Direct, Mac Catalyst | Relay, Mac Catalyst | Android |
+|----------|-------------|------------|----------------------|---------------------|---------|
+| GitHub | Not possible: redirected to the application, then `incorrect_client_credentials` | Accepted | Not possible, as on iOS | Accepted | Not tested |
 
 - The relay returned the numeric account ID, the name and the email address.
-- Mac Catalyst was not tested because the current .NET for Mac Catalyst workload rejects the sample's minimum OS version.
+- Mac Catalyst was tested after the minimum OS version of the sample was raised to 17.0, which the .NET for Mac Catalyst
+  workload of that day requires.
 
 ### Automated tests
 

@@ -36,7 +36,7 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 | LINE | LINE Login channel 的 iOS bundle ID | `line3rdp.<bundle id>://auth` | 接受 | 接受 | — |
 | LINE | LINE Login channel 的 Android 套件名稱與簽章 | `line3rdp.<套件名稱>://auth`，或自訂 scheme | — | — | 拒絕：「Invalid redirect custom scheme」 |
 | Facebook | iOS 平台填 bundle ID；Android 不需要登記 Android 平台 | `fb<app id>://authorize` | 接受 | 接受 | 接受 |
-| GitHub | GitHub App 或 OAuth App 的 callback URL | `<scheme>://<path>` | 導回被接受；不帶 client secret 換 token 被拒 | 未測 | 未測 |
+| GitHub | GitHub App 或 OAuth App 的 callback URL | `<scheme>://<path>` | 導回被接受；不帶 client secret 換 token 被拒 | 導回被接受；不帶 client secret 換 token 被拒 | 未測 |
 
 表格補充：
 
@@ -50,7 +50,7 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 - Auth0 把自訂 scheme 標為無法驗證的回呼網址（non-verifiable callback URI），每次登入都請使用者確認。
   Microsoft 則要求個人帳號確認應用程式來自可信任的來源。
 - 綁定應用程式的 https 回呼網址（RFC 8252 第 7.2 節）尚未測試。
-- GitHub 於 2026-10-15 加入，改用 `samples/OAuthMaui` 在 iPhone 17 Pro 模擬器上實測，而不是用完即丟的應用程式。
+- GitHub 於 2026-10-15 加入，改用 `samples/OAuthMaui` 在 iPhone 17 Pro 模擬器與 Mac Catalyst 上實測，而不是用完即丟的應用程式。
   它的設定頁不接受 `<scheme>:/<path>`，接受 `<scheme>://<path>`。GitHub 有導回應用程式，但它的 token 端點每次換 token
   都要求 client secret，回應 `incorrect_client_credentials`，所以應用程式只能透過後端中轉登入 GitHub。
 
@@ -184,14 +184,15 @@ Android 則比照 `tests/Polhem.OAuth2.DeviceTests/scripts/prepare-android-emula
 
 ### GitHub，2026-10-15
 
-透過 `samples/OAuthMaui` 在 iPhone 17 Pro 模擬器（iOS 26.5）上登入，後端為 `samples/OAuthAspNetCore`，使用開啟使用者 token 到期的 GitHub App。
+透過 `samples/OAuthMaui` 在 iPhone 17 Pro 模擬器（iOS 26.5）與 Mac Catalyst（macOS 26.7.1）上登入，後端為 `samples/OAuthAspNetCore`，
+使用開啟使用者 token 到期的 GitHub App。
 
-| Provider | 直連，iOS | 中轉，iOS | Mac Catalyst | Android |
-|----------|-----------|-----------|--------------|---------|
-| GitHub | 不可行：有導回應用程式，接著回應 `incorrect_client_credentials` | 成功 | 未測 | 未測 |
+| Provider | 直連，iOS | 中轉，iOS | 直連，Mac Catalyst | 中轉，Mac Catalyst | Android |
+|----------|-----------|-----------|--------------------|--------------------|---------|
+| GitHub | 不可行：有導回應用程式，接著回應 `incorrect_client_credentials` | 成功 | 不可行，與 iOS 相同 | 成功 | 未測 |
 
 - 中轉回傳了數字帳號 ID、名稱與 email。
-- Mac Catalyst 沒有測：目前的 .NET for Mac Catalyst workload 不接受 sample 設定的最低作業系統版本。
+- Mac Catalyst 是在 sample 的最低作業系統版本調到 17.0 之後實測的，這是當天 .NET for Mac Catalyst workload 的要求。
 
 ### 自動化測試
 
