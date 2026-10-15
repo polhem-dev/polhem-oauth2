@@ -38,6 +38,18 @@ public class FakeProviderSignInTests
     }
 
     [AppSignInFact]
+    [DisplayName("A direct sign-in to the GitHub mode of the fake provider returns the numeric ID and the primary email address")]
+    public async Task AppSignIn_FakeGitHub_ReturnsUserWithPrimaryEmail()
+    {
+        var client = new AppOAuth2Client(FakeProvider.CreateGitHubOptions(FakeProviderValues.ClientId, FakeProviderValues.AppRedirectUri), AuthenticateAsync);
+
+        var result = await client.SignInAsync().WithTimeout();
+
+        Assert.True(result.IsSuccess, result.Exception?.ToString());
+        Assert.True(FakeProvider.IsKnownGitHubUser(result.UserInfo));
+    }
+
+    [AppSignInFact]
     [DisplayName("A sign-in through the back-end relay returns the user after the application redeems its code")]
     public async Task RelaySignIn_FakeProvider_RedeemsUser()
     {

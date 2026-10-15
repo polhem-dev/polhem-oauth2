@@ -191,24 +191,10 @@ namespace Polhem.OAuth2
         /// <exception cref="OAuth2Exception">The response is empty.</exception>
         /// <exception cref="JsonException">The response is not a JSON object.</exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
-        public async Task<UserInfo> GetUserInfoAsync(TokenResponse token, CancellationToken cancellationToken)
+        public virtual async Task<UserInfo> GetUserInfoAsync(TokenResponse token, CancellationToken cancellationToken)
         {
-            using (var request = new HttpRequestMessage(HttpMethod.Get, GetUserInfoUrl()))
-            {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-
-                using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
-                {
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
-
-                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    if (string.IsNullOrWhiteSpace(json))
-                        throw new OAuth2Exception("The user information response is empty.");
-
-                    return ParseUserJson(json, token);
-                }
-            }
+            string json = await GetUserInfoJsonAsync(token, cancellationToken).ConfigureAwait(false);
+            return ParseUserJson(json, token);
         }
 
         /// <summary>
@@ -324,9 +310,77 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Reads the error that an unsuccessful response of the token endpoint or the token verification endpoint reports.
-        /// The default reads the <c>error</c> and
-        /// <c>error_description</c> strings of RFC 6749, section 5.2.
+        /// Adds the headers that the provider's API asks for to a request for user information, after the access token is
+        /// set. The default adds nothing.
+        /// </summary>
+        /// <param name="request">The request.</param>
+        protected virtual void PrepareUserInfoRequest(HttpRequestMessage request)
+        {
+        }
+
+        /// <summary>
+        /// Creates a GET request for user information that carries the access token as a bearer token.
+        /// </summary>
+        /// <param name="url">The URL of the request.</param>
+        /// <param name="accessToken">The access token.</param>
+        /// <returns>The request, which the caller disposes.</returns>
+        protected HttpRequestMessage CreateUserInfoRequest(string url, string accessToken)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+            PrepareUserInfoRequest(request);
+            return request;
+        }
+
+        /// <summary>
+        /// Retrieves the JSON of the user information endpoint with the access token.
+        /// </summary>
+        /// <param name="token">The tokens returned by the token endpoint.</param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>The JSON, which is not empty.</returns>
+        /// <exception cref="HttpRequestException">The request failed, or the endpoint returned an unsuccessful status code.</exception>
+        /// <exception cref="OAuth2Exception">The response is empty.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        protected async Task<string> GetUserInfoJsonAsync(TokenResponse token, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(token);
+
+            using (var request = CreateUserInfoRequest(GetUserInfoUrl(), token.AccessToken))
+            using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
+            {
+                if (!response.IsSuccessStatusCode)
+                    throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
+
+                string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(json))
+                    throw new OAuth2Exception("The user information response is empty.");
+                return json;
+            }
+        }
+
+        /// <summary>
+        /// Sends a request to the provider with the HTTP client of the provider, after naming this library in the
+        /// <c>User-Agent</c> header. Every request to the provider goes through it.
+        /// </summary>
+        /// <param name="request">The request.</param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>The response, which the caller disposes.</returns>
+        /// <exception cref="HttpRequestException">The request failed.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        protected Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            // The header is set on each request rather than on the client, so that it also reaches a provider through an
+            // HttpClient that the application passes in. The GitHub API refuses a request without it.
+            request.Headers.UserAgent.Add(LibraryUserAgent.Create());
+            return _httpClientFactory().SendAsync(request, cancellationToken);
+        }
+
+        /// <summary>
+        /// Reads the error that a response of the token endpoint, or an unsuccessful response of the token verification
+        /// endpoint, reports. The token endpoint's successful responses are read too, because GitHub reports an error with
+        /// status 200. The default reads the <c>error</c> and <c>error_description</c> strings of RFC 6749, section 5.2.
         /// </summary>
         /// <param name="response">The root object of the token response.</param>
         /// <returns>The exception for the error, or null when the response names no error.</returns>
@@ -372,7 +426,7 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
+            using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
             {
                 string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                 // The messages name the status code but never the request URI, which can carry the access token in its query.
@@ -474,7 +528,10 @@ namespace Polhem.OAuth2
             {
                 request.Content = new FormUrlEncodedContent(parameters);
                 request.Headers.Authorization = authorization;
-                using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
+                // RFC 6749, section 5.1, has the token endpoint answer in JSON, but GitHub answers in form encoding unless
+                // the request asks for JSON.
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
                     string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     if (!response.IsSuccessStatusCode)
@@ -503,11 +560,15 @@ namespace Polhem.OAuth2
             }
         }
 
-        private static TokenResponse ReadTokenResponse(string json)
+        private TokenResponse ReadTokenResponse(string json)
         {
             using (var document = OAuth2Json.ParseObject(json))
             {
                 var root = document.RootElement;
+                // GitHub reports a failed token request with status 200 and the error in the body. RFC 6749 gives a
+                // successful response no error field, so a response that names one is an error from any provider.
+                if (ReadError(root) is { } error)
+                    throw error;
                 if (OAuth2Json.GetProtocolString(root, "access_token") is not { Length: > 0 } accessToken)
                     throw new OAuth2Exception("The token response does not contain an access token.");
 

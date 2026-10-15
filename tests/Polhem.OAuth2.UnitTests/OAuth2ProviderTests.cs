@@ -17,6 +17,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("GitHub")]
         public void Create_OptionsType_ReturnsMatchingProvider(string providerName)
         {
             var provider = OAuth2Provider.Create(CreateOptions(providerName), httpClient: null);
@@ -208,9 +209,10 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
-        [DisplayName("Of the providers, only Google and LINE receive a client secret that is set from a public client")]
+        [DisplayName("Of the providers, only Google, LINE and GitHub receive a client secret that is set from a public client")]
         [InlineData("Google", true)]
         [InlineData("LINE", true)]
+        [InlineData("GitHub", true)]
         [InlineData("Azure", false)]
         [InlineData("Facebook", false)]
         [InlineData("Auth0", false)]
@@ -418,6 +420,144 @@ namespace Polhem.OAuth2.UnitTests
 
             await Assert.ThrowsAnyAsync<JsonException>(
                 () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+        }
+
+        [Theory]
+        [DisplayName("A token response with status 200 that names an error is reported as OAuth2Exception with the error code, as GitHub sends it")]
+        [InlineData("Google")]
+        [InlineData("Facebook")]
+        [InlineData("LINE")]
+        [InlineData("Azure")]
+        [InlineData("Auth0")]
+        [InlineData("Okta")]
+        [InlineData("GitHub")]
+        public async Task ExchangeCodeAsync_SuccessStatusWithError_ThrowsOAuth2ExceptionWithErrorCode(string providerName)
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"error":"bad_verification_code","error_description":"The code passed is incorrect or expired."}""");
+            var provider = CreateProvider(providerName, handler);
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(
+                () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+
+            Assert.Equal("bad_verification_code", exception.Error);
+            Assert.Equal("The code passed is incorrect or expired.", exception.ErrorDescription);
+            Assert.DoesNotContain("incorrect", exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("A token response with status 200 that names an error is an error even when it also has an access token")]
+        public async Task ExchangeCodeAsync_SuccessStatusWithErrorAndToken_ThrowsOAuth2Exception()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access","error":"invalid_grant"}""");
+            var provider = CreateProvider("GitHub", handler);
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(
+                () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+
+            Assert.Equal("invalid_grant", exception.Error);
+        }
+
+        [Fact]
+        [DisplayName("RefreshTokenAsync reports a response with status 200 that names an error as OAuth2Exception")]
+        public async Task RefreshTokenAsync_SuccessStatusWithError_ThrowsOAuth2Exception()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"error":"bad_refresh_token"}""");
+            var provider = CreateProvider("GitHub", handler);
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(
+                () => provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None));
+
+            Assert.Equal("bad_refresh_token", exception.Error);
+        }
+
+        [Fact]
+        [DisplayName("Facebook reports a Graph API error object in a response with status 200 as OAuth2Exception with its code")]
+        public async Task Facebook_ExchangeCodeAsync_SuccessStatusWithErrorObject_ThrowsOAuth2Exception()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"error":{"message":"This authorization code has been used.","type":"OAuthException","code":100}}""");
+            var provider = CreateProvider("Facebook", handler);
+
+            var exception = await Assert.ThrowsAsync<OAuth2Exception>(
+                () => provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+
+            Assert.Equal("100", exception.Error);
+        }
+
+        [Theory]
+        [DisplayName("A successful token response whose error field is empty, null or not a string is still read as tokens")]
+        [InlineData("""{"access_token":"access","error":""}""")]
+        [InlineData("""{"access_token":"access","error":null}""")]
+        [InlineData("""{"access_token":"access","error":123}""")]
+        public async Task ExchangeCodeAsync_SuccessStatusWithEmptyError_ReturnsToken(string json)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, json);
+            var provider = CreateProvider("Google", handler);
+
+            var token = await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            Assert.Equal("access", token.AccessToken);
+        }
+
+        [Theory]
+        [DisplayName("Every provider asks the token endpoint for JSON, which GitHub returns only when asked")]
+        [InlineData("Google", false)]
+        [InlineData("Facebook", false)]
+        [InlineData("LINE", true)]
+        [InlineData("Azure", true)]
+        [InlineData("Auth0", false)]
+        [InlineData("Okta", true)]
+        [InlineData("GitHub", true)]
+        public async Task TokenRequest_EachProvider_SendsAcceptJson(string providerName, bool refresh)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
+            var provider = CreateProvider(providerName, handler);
+
+            _ = refresh
+                ? await provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None)
+                : await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            Assert.Equal("application/json", Assert.Single(handler.Requests).Header("Accept"));
+        }
+
+        [Theory]
+        [DisplayName("Every provider names the library and its assembly version in the User-Agent of the token and user information requests")]
+        [InlineData("Google")]
+        [InlineData("Facebook")]
+        [InlineData("LINE")]
+        [InlineData("Azure")]
+        [InlineData("Auth0")]
+        [InlineData("Okta")]
+        [InlineData("GitHub")]
+        public async Task Requests_EachProvider_SendUserAgentWithVersion(string providerName)
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"access_token":"access"}""")
+                .Respond(HttpStatusCode.OK, """{"sub":"1","id":1,"userId":"1","email":"ada@example.com"}""");
+            var provider = CreateProvider(providerName, handler);
+
+            var token = await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+            await provider.GetUserInfoAsync(token, CancellationToken.None);
+
+            string expected = "Polhem.OAuth2/" + typeof(OAuth2Provider).Assembly.GetName().Version!.ToString(3);
+            Assert.Equal(2, handler.Requests.Count);
+            Assert.All(handler.Requests, request => Assert.StartsWith(expected, request.Header("User-Agent"), StringComparison.Ordinal));
+            Assert.All(handler.Requests, request => Assert.DoesNotContain("+", request.Header("User-Agent"), StringComparison.Ordinal));
+        }
+
+        [Fact]
+        [DisplayName("The User-Agent of the library replaces the default User-Agent of an HttpClient that the application passes in")]
+        public async Task ExchangeCodeAsync_ClientWithDefaultUserAgent_SendsLibraryUserAgent()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
+            using var httpClient = handler.CreateClient();
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("MyApp/2.0");
+            var provider = OAuth2Provider.Create(CreateOptions("GitHub"), httpClient);
+
+            await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            Assert.StartsWith("Polhem.OAuth2/", Assert.Single(handler.Requests).Header("User-Agent"), StringComparison.Ordinal);
         }
 
         [Fact]

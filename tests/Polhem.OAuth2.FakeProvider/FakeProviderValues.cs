@@ -38,5 +38,12 @@ namespace Polhem.OAuth2.FakeProvider
         public const string UserId = "fake-user-1";
         public const string UserName = "Fake User";
         public const string Email = "fake.user@example.com";
+
+        /// <summary>
+        /// The numeric account ID under <c>/github</c>, where the user has no public email address.
+        /// </summary>
+        public const long GitHubUserId = 1234567;
+
+        public const string GitHubLogin = "fake-user";
     }
 }
