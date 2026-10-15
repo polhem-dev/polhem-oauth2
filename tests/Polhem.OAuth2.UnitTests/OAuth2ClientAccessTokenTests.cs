@@ -267,11 +267,14 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Empty(handler.Requests);
         }
 
-        [Fact]
-        [DisplayName("GetUserInfoAsync tells a Microsoft Entra ID caller to validate a token for its own API instead")]
-        public async Task GetUserInfoAsync_Azure_NotSupportedExceptionNamesAlternative()
+        [Theory]
+        [DisplayName("GetUserInfoAsync tells a caller of an OpenID Connect provider to validate an ID token or a token for its own API instead")]
+        [InlineData("Azure")]
+        [InlineData("Auth0")]
+        [InlineData("Okta")]
+        public async Task GetUserInfoAsync_OidcProvider_NotSupportedExceptionNamesAlternative(string providerName)
         {
-            var client = new OAuth2Client(CreateOptions("Azure", clientSecret: "secret"), new StubHttpMessageHandler().CreateClient());
+            var client = new OAuth2Client(CreateOptions(providerName, clientSecret: "secret"), new StubHttpMessageHandler().CreateClient());
 
             var exception = await Assert.ThrowsAsync<NotSupportedException>(() => client.GetUserInfoAsync(AccessToken));
 

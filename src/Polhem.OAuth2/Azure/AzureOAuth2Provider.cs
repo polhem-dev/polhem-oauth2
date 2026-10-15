@@ -28,9 +28,9 @@ namespace Polhem.OAuth2
         {
             return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
                 "Microsoft Entra ID offers no way to check which client an access token, such as one for Microsoft Graph, "
-                + "was issued to. Have the front end request an access token for an API of your own, and validate it in the "
-                + "back end as a JSON Web Token whose audience is that API, for example with JwtBearer authentication, "
-                + "instead of passing it to this method."));
+                + "was issued to. Validate the ID token of the sign-in in the back end instead, whose audience is the client ID "
+                + "of the front end, or have the front end request an access token for an API of your own and validate it as "
+                + "a JSON Web Token whose audience is that API, for example with JwtBearer authentication."));
         }
 
         /// <inheritdoc/>

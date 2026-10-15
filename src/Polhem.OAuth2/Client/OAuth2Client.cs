@@ -212,9 +212,11 @@ namespace Polhem.OAuth2
         /// </para>
         /// <para>
         /// The check is supported for Google, LINE and Facebook. Facebook checks the token with the app secret, so its options
-        /// need <see cref="OAuth2Options.ClientSecret"/>. Microsoft Entra ID cannot check an access token for Microsoft Graph:
-        /// the front end requests a token for an API of the back end instead, which the back end validates itself as a JSON Web
-        /// Token whose audience is that API.
+        /// need <see cref="OAuth2Options.ClientSecret"/>. Microsoft Entra ID, Auth0 and Okta are not supported: the front end
+        /// sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
+        /// validates the token itself: its signature with the provider's published keys, its issuer and expiry, and an
+        /// audience that is exactly one of the accepted client IDs for an ID token, or the API for an access token. A
+        /// validator that skips the audience can accept tokens issued to any application of the same provider.
         /// </para>
         /// <para>
         /// LINE and Facebook accept the token only in the query of the check, so an HTTP client that logs request URIs, such as
