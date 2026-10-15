@@ -68,7 +68,11 @@ namespace Polhem.OAuth2.UnitTests
         {
             cancellationToken.ThrowIfCancellationRequested();
             string? body = request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
-            Requests.Add(new RecordedRequest(request.Method, request.RequestUri!, request.Headers.Authorization, body));
+            var headers = request.Headers.ToDictionary(header => header.Key, header => string.Join(", ", header.Value), StringComparer.OrdinalIgnoreCase);
+            // The products of User-Agent are separated by spaces on the wire, not by commas.
+            if (request.Headers.UserAgent.Count > 0)
+                headers["User-Agent"] = request.Headers.UserAgent.ToString();
+            Requests.Add(new RecordedRequest(request.Method, request.RequestUri!, request.Headers.Authorization, body, headers));
 
             if (_responses.Count == 0)
                 throw new InvalidOperationException("No response is queued for this request.");
@@ -77,12 +81,15 @@ namespace Polhem.OAuth2.UnitTests
 
         public sealed class RecordedRequest
         {
-            public RecordedRequest(HttpMethod method, Uri uri, AuthenticationHeaderValue? authorization, string? body)
+            private readonly Dictionary<string, string> _headers;
+
+            public RecordedRequest(HttpMethod method, Uri uri, AuthenticationHeaderValue? authorization, string? body, Dictionary<string, string> headers)
             {
                 Method = method;
                 Uri = uri;
                 Authorization = authorization;
                 Body = body;
+                _headers = headers;
             }
 
             public HttpMethod Method { get; }
@@ -92,6 +99,14 @@ namespace Polhem.OAuth2.UnitTests
             public AuthenticationHeaderValue? Authorization { get; }
 
             public string? Body { get; }
+
+            /// <summary>
+            /// Gets the values of a request header joined with commas, or null when the request does not have it.
+            /// </summary>
+            public string? Header(string name)
+            {
+                return _headers.TryGetValue(name, out string? value) ? value : null;
+            }
 
             public string? FormValue(string name)
             {

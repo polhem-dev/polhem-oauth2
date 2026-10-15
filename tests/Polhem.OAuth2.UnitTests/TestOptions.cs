@@ -8,7 +8,7 @@ namespace Polhem.OAuth2.UnitTests
         /// <summary>
         /// Creates valid options of the provider that a name selects, with the client ID <c>client-id</c>.
         /// </summary>
-        /// <param name="providerName">Google, Facebook, LINE, Azure, Auth0 or Okta.</param>
+        /// <param name="providerName">Google, Facebook, LINE, Azure, Auth0, Okta or GitHub.</param>
         /// <param name="redirectUri">The redirect URI.</param>
         /// <param name="clientSecret">The client secret, or an empty string for none.</param>
         /// <returns>The options.</returns>
@@ -22,6 +22,7 @@ namespace Polhem.OAuth2.UnitTests
                 "Azure" => new AzureOAuth2Options(),
                 "Auth0" => new Auth0OAuth2Options { Domain = "tenant.auth0.com" },
                 "Okta" => new OktaOAuth2Options { Domain = "dev-123456.okta.com" },
+                "GitHub" => new GitHubOAuth2Options(),
                 _ => throw new ArgumentOutOfRangeException(nameof(providerName), providerName, "Unknown provider.")
             };
             options.ClientId = "client-id";

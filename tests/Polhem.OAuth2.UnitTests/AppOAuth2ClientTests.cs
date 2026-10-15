@@ -312,6 +312,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("GitHub")]
         public async Task SignInAsync_EachProvider_BuildsAuthorizationUrl(string providerName)
         {
             var browser = new FakeAuthenticator("?state=forged");

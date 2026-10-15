@@ -31,6 +31,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("https://oauth2.googleapis.com/tokeninfo", check.Uri.AbsoluteUri);
             Assert.Equal(AccessToken, check.FormValue("access_token"));
             Assert.Equal(AccessToken, handler.Requests[1].Authorization?.Parameter);
+            Assert.All(handler.Requests, request => Assert.StartsWith("Polhem.OAuth2/", request.Header("User-Agent"), StringComparison.Ordinal));
         }
 
         [Fact]

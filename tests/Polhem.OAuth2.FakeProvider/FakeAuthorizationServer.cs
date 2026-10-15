@@ -9,6 +9,11 @@ namespace Polhem.OAuth2.FakeProvider
     /// The authorization, token and user information endpoints of Auth0, reduced to what a sign-in needs. The authorization
     /// endpoint consents without a page, so a browser that follows the redirects completes the sign-in on its own.
     /// </summary>
+    /// <remarks>
+    /// Under <c>/github</c> the same server answers the way GitHub does: the token endpoint reports an error with status 200,
+    /// answers in form encoding unless the request asks for JSON, and issues no refresh token; the API refuses a request
+    /// without a <c>User-Agent</c> header; and <c>/user</c> has no email address, which <c>/user/emails</c> lists instead.
+    /// </remarks>
     internal sealed class FakeAuthorizationServer
     {
         private const string AccessToken = "fake-access-token";
@@ -29,6 +34,11 @@ namespace Polhem.OAuth2.FakeProvider
             endpoints.MapGet("/authorize", Authorize);
             endpoints.MapPost("/oauth/token", ExchangeAsync);
             endpoints.MapGet("/userinfo", GetUser);
+
+            endpoints.MapGet("/github/login/oauth/authorize", Authorize);
+            endpoints.MapPost("/github/login/oauth/access_token", ExchangeGitHubAsync);
+            endpoints.MapGet("/github/user", GetGitHubUser);
+            endpoints.MapGet("/github/user/emails", GetGitHubEmails);
         }
 
         private IResult Authorize(HttpRequest request)
@@ -65,36 +75,57 @@ namespace Polhem.OAuth2.FakeProvider
         private async Task<IResult> ExchangeAsync(HttpRequest request)
         {
             var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
+            return Redeem(form, refreshable: true) is { } error ? TokenError(error) : Results.Json(CreateToken());
+        }
+
+        private async Task<IResult> ExchangeGitHubAsync(HttpRequest request)
+        {
+            if (!HasUserAgent(request))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+
+            var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
+            // GitHub's OAuth Apps issue no refresh token, so a refresh grant fails like any unknown grant.
+            var fields = Redeem(form, refreshable: false) is { } error
+                ? new Dictionary<string, string> { ["error"] = error, ["error_description"] = "The fake provider refused the request." }
+                : new Dictionary<string, string> { ["access_token"] = AccessToken, ["token_type"] = "bearer", ["scope"] = "read:user,user:email" };
+
+            // Status 200 in both cases, as GitHub answers.
+            bool json = request.Headers.Accept.Any(value => value is not null && value.Contains("application/json", StringComparison.OrdinalIgnoreCase));
+            return json
+                ? Results.Json(fields)
+                : Results.Text(QueryString.Create(fields!).ToUriComponent().TrimStart('?'), "application/x-www-form-urlencoded");
+        }
+
+        // Returns the error code of the token request, or null when it succeeds.
+        private string? Redeem(IFormCollection form, bool refreshable)
+        {
             string grantType = form["grant_type"].ToString();
 
-            if (grantType == "refresh_token")
-            {
-                return form["refresh_token"] == "fake-refresh-token"
-                    ? Results.Json(CreateToken())
-                    : TokenError(InvalidGrant);
-            }
-            if (grantType != "authorization_code")
-                return TokenError("unsupported_grant_type");
+            if (grantType == "refresh_token" && refreshable)
+                return form["refresh_token"] == "fake-refresh-token" ? null : InvalidGrant;
+            // GitHub does not require grant_type for the code exchange.
+            if (grantType != "authorization_code" && (refreshable || grantType.Length > 0))
+                return "unsupported_grant_type";
 
             // A code is used once, whatever the outcome, as RFC 6749 requires.
             if (!_codes.TryRemove(form["code"].ToString(), out var issued))
-                return TokenError(InvalidGrant);
+                return InvalidGrant;
             if (form["client_id"] != issued.ClientId || form["redirect_uri"] != issued.RedirectUri)
-                return TokenError(InvalidGrant);
+                return InvalidGrant;
 
             if (issued.CodeChallenge is { } challenge)
             {
                 string verifier = form["code_verifier"].ToString();
                 string expected = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
                 if (verifier.Length == 0 || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(challenge)))
-                    return TokenError(InvalidGrant);
+                    return InvalidGrant;
             }
             else if (issued.ClientId != _webClientId || form["client_secret"] != _webClientSecret)
             {
-                return TokenError("invalid_client");
+                return "invalid_client";
             }
 
-            return Results.Json(CreateToken());
+            return null;
         }
 
         private static IResult GetUser(HttpRequest request)
@@ -108,6 +139,44 @@ namespace Polhem.OAuth2.FakeProvider
                 ["name"] = FakeProviderValues.UserName,
                 ["email"] = FakeProviderValues.Email
             });
+        }
+
+        private static IResult GetGitHubUser(HttpRequest request)
+        {
+            if (!HasUserAgent(request))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            if (request.Headers.Authorization != "Bearer " + AccessToken)
+                return Results.Unauthorized();
+
+            // A user who keeps the email address private has none here.
+            return Results.Json(new Dictionary<string, object?>
+            {
+                ["id"] = FakeProviderValues.GitHubUserId,
+                ["login"] = FakeProviderValues.GitHubLogin,
+                ["name"] = FakeProviderValues.UserName,
+                ["email"] = null
+            });
+        }
+
+        private static IResult GetGitHubEmails(HttpRequest request)
+        {
+            if (!HasUserAgent(request))
+                return Results.StatusCode(StatusCodes.Status403Forbidden);
+            if (request.Headers.Authorization != "Bearer " + AccessToken)
+                return Results.Unauthorized();
+
+            // The primary address is not the first, and an unverified address comes before it, so a client has to look at both flags.
+            return Results.Json(new[]
+            {
+                new Dictionary<string, object?> { ["email"] = "unverified@example.com", ["primary"] = false, ["verified"] = false, ["visibility"] = null },
+                new Dictionary<string, object?> { ["email"] = "secondary@example.com", ["primary"] = false, ["verified"] = true, ["visibility"] = null },
+                new Dictionary<string, object?> { ["email"] = FakeProviderValues.Email, ["primary"] = true, ["verified"] = true, ["visibility"] = "private" }
+            });
+        }
+
+        private static bool HasUserAgent(HttpRequest request)
+        {
+            return !string.IsNullOrWhiteSpace(request.Headers.UserAgent);
         }
 
         private bool IsKnownClient(string clientId)

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection;
 using Polhem.OAuth2.FakeProvider;
 
@@ -19,6 +20,18 @@ internal static class FakeProvider
         return new Auth0OAuth2Options { Domain = origin.Authority, ClientId = clientId, RedirectUri = redirectUri };
     }
 
+    public static GitHubOAuth2Options CreateGitHubOptions(string clientId, string redirectUri)
+    {
+        return new GitHubOAuth2Options
+        {
+            AuthorizationEndpoint = GetUri("github/login/oauth/authorize").AbsoluteUri,
+            TokenEndpoint = GetUri("github/login/oauth/access_token").AbsoluteUri,
+            UserInfoEndpoint = GetUri("github/user").AbsoluteUri,
+            ClientId = clientId,
+            RedirectUri = redirectUri
+        };
+    }
+
     public static Uri GetUri(string pathAndQuery)
     {
         var origin = Origin ?? throw new InvalidOperationException("The fake provider is not configured.");
@@ -29,6 +42,14 @@ internal static class FakeProvider
     {
         return user is not null
             && user.UserId == FakeProviderValues.UserId
+            && user.UserName == FakeProviderValues.UserName
+            && user.Email == FakeProviderValues.Email;
+    }
+
+    public static bool IsKnownGitHubUser(UserInfo? user)
+    {
+        return user is not null
+            && user.UserId == FakeProviderValues.GitHubUserId.ToString(CultureInfo.InvariantCulture)
             && user.UserName == FakeProviderValues.UserName
             && user.Email == FakeProviderValues.Email;
     }
