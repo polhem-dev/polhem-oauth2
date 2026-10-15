@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`。
+已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤。
 
 ## 背景
 
@@ -17,7 +17,8 @@
 - 協定層級的失敗擲出 `OAuth2Exception`：
   - provider 回傳的錯誤，無論在導回網址或來自 token 端點，錯誤代碼放在 `Error`，說明放在 `ErrorDescription`。
     Facebook 的 token 端點回傳的是 Graph API 的錯誤物件，而不是 RFC 6749 第 5.2 節的字串：它的數字 `code` 放在 `Error`
-    （沒有 code 時改用 `type`），`message` 放在 `ErrorDescription`；
+    （沒有 code 時改用 `type`），`message` 放在 `ErrorDescription`。狀態碼 200、卻帶有錯誤的 token 回應也以同樣方式讀取：
+    GitHub 的 token 端點就是這樣回報失敗，而 RFC 6749 的成功回應本來就沒有錯誤欄位；
   - state 不存在或不相符，以及缺少授權碼或 PKCE code verifier；
   - token 回應裡沒有 access token，以及使用者資訊回應為空。
 - 完成登入時，只把登入預期會發生的失敗轉成失敗結果：
