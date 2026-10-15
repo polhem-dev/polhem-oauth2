@@ -1,4 +1,6 @@
+using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace Polhem.OAuth2
@@ -11,13 +13,16 @@ namespace Polhem.OAuth2
         // https://docs.github.com/en/rest/about-the-rest-api/api-versions lists the supported versions and when each one ends.
         internal const string ApiVersion = "2022-11-28";
 
+        // https://docs.github.com/en/rest/apps/oauth-applications#check-a-token
+        private const string ApplicationsEndpoint = "https://api.github.com/applications";
+
         /// <summary>
         /// Initializes a new instance of the <see cref="GitHubOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The GitHub OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
         public GitHubOAuth2Provider(GitHubOAuth2Options options, Func<HttpClient>? httpClientFactory)
-            : base(options, httpClientFactory)
+            : base(options, httpClientFactory, ApplicationsEndpoint)
         {
         }
 
@@ -55,6 +60,62 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// <para>
+        /// GitHub checks a token only for the application whose client ID and client secret authenticate the request, so the
+        /// check uses <see cref="OAuth2Options.ClientId"/> and <see cref="OAuth2Options.ClientSecret"/>. A token issued to a
+        /// client in <see cref="OAuth2Options.AcceptedClientIds"/> is not found and refused: the front end and the back end
+        /// use the same GitHub application.
+        /// </para>
+        /// <para>The token travels in a JSON body, not in the URL.</para>
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">
+        /// The options have no client secret, or GitHub refused the client ID and client secret.
+        /// </exception>
+        protected override async Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
+        {
+            if (Options.ClientSecret is not { Length: > 0 } clientSecret)
+            {
+                throw new InvalidOperationException(
+                    $"GitHub checks an access token with the client secret of the application, so {nameof(OAuth2Options.ClientSecret)} must be set.");
+            }
+
+            string url = ApplicationsEndpoint + "/" + Uri.EscapeDataString(Options.ClientId) + "/token";
+            using (var request = new HttpRequestMessage(HttpMethod.Post, url))
+            {
+                request.Content = CreateCheckTokenBody(accessToken);
+                string credentials = Options.ClientId + ":" + clientSecret;
+                request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials)));
+                PrepareUserInfoRequest(request);
+
+                using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
+                {
+                    // GitHub answers 404 both for a token of another application and for a token that is not valid.
+                    if (response.StatusCode == HttpStatusCode.NotFound)
+                        throw new OAuth2Exception("GitHub reports that the access token is not valid, or was not issued to this application.");
+                    if (response.StatusCode == HttpStatusCode.Unauthorized)
+                        throw new InvalidOperationException("GitHub refused the client ID and client secret of the application.");
+                    if (!response.IsSuccessStatusCode)
+                        throw new HttpRequestException($"The token verification endpoint returned status code {(int)response.StatusCode}.");
+
+                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    using (var document = OAuth2Json.ParseObject(json))
+                    {
+                        if (!document.RootElement.TryGetProperty("app", out var app) || app.ValueKind != JsonValueKind.Object
+                            || OAuth2Json.GetProtocolString(app, "client_id") is not { } clientId)
+                        {
+                            return Array.Empty<string>();
+                        }
+                        // The request named ClientId, so a response for any other client, even an accepted one, is refused.
+                        if (!string.Equals(clientId, Options.ClientId, StringComparison.Ordinal))
+                            throw new OAuth2Exception("GitHub reported a client other than the one the check was made for.");
+                        return new[] { clientId };
+                    }
+                }
+            }
+        }
+
+        /// <inheritdoc/>
         protected override void PrepareUserInfoRequest(HttpRequestMessage request)
         {
             // https://docs.github.com/en/rest/using-the-rest-api/getting-started-with-the-rest-api
@@ -71,6 +132,22 @@ namespace Polhem.OAuth2
                 OAuth2Json.GetString(user, "name") ?? OAuth2Json.GetString(user, "login"),
                 OAuth2Json.GetString(user, "email"),
                 json);
+        }
+
+        private static ByteArrayContent CreateCheckTokenBody(string accessToken)
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new Utf8JsonWriter(stream))
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("access_token", accessToken);
+                    writer.WriteEndObject();
+                }
+                var content = new ByteArrayContent(stream.ToArray());
+                content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                return content;
+            }
         }
 
         // The address list sits next to the user information endpoint: https://api.github.com/user/emails.

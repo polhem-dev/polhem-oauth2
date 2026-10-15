@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace Polhem.OAuth2.UnitTests
@@ -241,6 +242,86 @@ namespace Polhem.OAuth2.UnitTests
             var exception = Assert.IsType<OAuth2Exception>(result.Exception);
             Assert.Equal(error, exception.Error);
             Assert.Single(handler.Requests);
+        }
+
+        [Fact]
+        [DisplayName("GetUserInfoAsync checks a GitHub token for the application's own client ID, with the client credentials and the token in a JSON body")]
+        public async Task GetUserInfoAsync_GitHubTokenOfApplication_ChecksTokenAndReturnsUser()
+        {
+            var handler = new StubHttpMessageHandler()
+                .Respond(HttpStatusCode.OK, """{"token":"front-end-access-token","app":{"client_id":"client-id","name":"App"},"user":{"id":1}}""")
+                .Respond(HttpStatusCode.OK, """{"id":1,"login":"ada","email":"ada@example.com"}""");
+            var client = new OAuth2Client(CreateOptions("GitHub", clientSecret: "client-secret"), handler.CreateClient());
+
+            var result = await client.GetUserInfoAsync(AccessToken);
+
+            Assert.True(result.IsSuccess);
+            Assert.Equal("1", result.UserInfo.UserId);
+            var check = handler.Requests[0];
+            Assert.Equal(HttpMethod.Post, check.Method);
+            Assert.Equal("https://api.github.com/applications/client-id/token", check.Uri.AbsoluteUri);
+            Assert.Equal("Basic", check.Authorization?.Scheme);
+            Assert.Equal("client-id:client-secret", Encoding.UTF8.GetString(Convert.FromBase64String(check.Authorization!.Parameter!)));
+            using var body = JsonDocument.Parse(check.Body!);
+            Assert.Equal(AccessToken, body.RootElement.GetProperty("access_token").GetString());
+        }
+
+        [Theory]
+        [DisplayName("GetUserInfoAsync refuses a GitHub token that GitHub does not find for the application, or that names another or no client")]
+        [InlineData(HttpStatusCode.NotFound, """{"message":"Not Found","status":"404"}""")]
+        [InlineData(HttpStatusCode.OK, """{"app":{"client_id":"other-client"}}""")]
+        [InlineData(HttpStatusCode.OK, """{"app":null}""")]
+        [InlineData(HttpStatusCode.OK, """{"client_id":"client-id"}""")]
+        public async Task GetUserInfoAsync_GitHubTokenNotAccepted_Fails(HttpStatusCode statusCode, string checkResponse)
+        {
+            var handler = new StubHttpMessageHandler().Respond(statusCode, checkResponse);
+            var options = CreateOptions("GitHub", clientSecret: "client-secret");
+            options.AcceptedClientIds = new[] { "other-client" };
+            var client = new OAuth2Client(options, handler.CreateClient());
+
+            var result = await client.GetUserInfoAsync(AccessToken);
+
+            var exception = Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.DoesNotContain(AccessToken, exception.Message, StringComparison.Ordinal);
+            Assert.Single(handler.Requests);
+        }
+
+        [Theory]
+        [DisplayName("GetUserInfoAsync turns another unsuccessful status of the GitHub check into a failed result")]
+        [InlineData(HttpStatusCode.UnprocessableEntity)]
+        [InlineData(HttpStatusCode.Forbidden)]
+        [InlineData(HttpStatusCode.InternalServerError)]
+        public async Task GetUserInfoAsync_GitHubCheckFails_FailsWithHttpRequestException(HttpStatusCode statusCode)
+        {
+            var handler = new StubHttpMessageHandler().Respond(statusCode, """{"message":"Validation Failed"}""");
+            var client = new OAuth2Client(CreateOptions("GitHub", clientSecret: "client-secret"), handler.CreateClient());
+
+            var result = await client.GetUserInfoAsync(AccessToken);
+
+            Assert.IsType<HttpRequestException>(result.Exception);
+        }
+
+        [Fact]
+        [DisplayName("GetUserInfoAsync throws InvalidOperationException when GitHub refuses the client credentials")]
+        public async Task GetUserInfoAsync_GitHubRefusesCredentials_ThrowsInvalidOperationException()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.Unauthorized, """{"message":"Bad credentials"}""");
+            var client = new OAuth2Client(CreateOptions("GitHub", clientSecret: "wrong-secret"), handler.CreateClient());
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetUserInfoAsync(AccessToken));
+
+            Assert.DoesNotContain("wrong-secret", exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("GetUserInfoAsync throws InvalidOperationException for GitHub options without a client secret, before any request")]
+        public async Task GetUserInfoAsync_GitHubWithoutSecret_ThrowsInvalidOperationException()
+        {
+            var handler = new StubHttpMessageHandler();
+            var client = new OAuth2Client(CreateOptions("GitHub"), handler.CreateClient());
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => client.GetUserInfoAsync(AccessToken));
+            Assert.Empty(handler.Requests);
         }
 
         [Fact]
