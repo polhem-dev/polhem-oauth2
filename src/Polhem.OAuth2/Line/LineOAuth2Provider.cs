@@ -7,12 +7,16 @@ namespace Polhem.OAuth2
     /// </summary>
     internal sealed class LineOAuth2Provider : OAuth2Provider
     {
+        // https://developers.line.biz/en/reference/line-login/#verify-access-token
+        private const string VerifyEndpoint = "https://api.line.me/oauth2/v2.1/verify";
+
         /// <summary>
         /// Initializes a new instance of the <see cref="LineOAuth2Provider"/> class.
         /// </summary>
         /// <param name="options">The LINE OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
-        public LineOAuth2Provider(LineOAuth2Options options, Func<HttpClient>? httpClientFactory) : base(options, httpClientFactory)
+        public LineOAuth2Provider(LineOAuth2Options options, Func<HttpClient>? httpClientFactory)
+            : base(options, httpClientFactory, VerifyEndpoint)
         {
         }
 
@@ -26,6 +30,23 @@ namespace Polhem.OAuth2
         /// client as well; a mobile application sets none.
         /// </remarks>
         protected override bool RequiresClientSecret => true;
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// NOTE: The token travels in the query, where the systems it passes through may log it. LINE documents only GET for
+        /// this endpoint, and a POST to the same path verifies an ID token instead.
+        /// </remarks>
+        protected override async Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
+        {
+            string url = AppendQuery(VerifyEndpoint, "access_token=" + Uri.EscapeDataString(accessToken));
+            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            using (var document = await SendTokenVerificationAsync(request, cancellationToken).ConfigureAwait(false))
+            {
+                return OAuth2Json.GetProtocolString(document.RootElement, "client_id") is { } channelId
+                    ? new[] { channelId }
+                    : Array.Empty<string>();
+            }
+        }
 
         /// <inheritdoc/>
         protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)

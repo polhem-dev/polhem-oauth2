@@ -7,7 +7,7 @@ namespace Polhem.OAuth2
     {
         // Meta retires each Graph API version on a published date, listed at
         // https://developers.facebook.com/docs/graph-api/changelog/versions. All three endpoints use the same version.
-        private const string GraphApiVersion = "v26.0";
+        internal const string GraphApiVersion = "v26.0";
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FacebookOAuth2Options"/> class.

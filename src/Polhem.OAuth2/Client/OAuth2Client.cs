@@ -20,6 +20,10 @@ namespace Polhem.OAuth2
     /// </remarks>
     public sealed class OAuth2Client
     {
+        // Far longer than the access tokens of the supported providers. On .NET Framework, escaping a string longer than
+        // 32766 characters for the verification request throws UriFormatException, which is not an expected failure.
+        private const int MaxAccessTokenLength = 8192;
+
         private readonly OAuth2Provider _provider;
         private readonly bool _isPublicClient;
         private readonly bool _usePkce;
@@ -33,7 +37,7 @@ namespace Polhem.OAuth2
         /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">
-        /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope is empty, or an endpoint is
+        /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope or an accepted client ID is empty, or an endpoint is
         /// not an absolute https URI without a fragment.
         /// </exception>
         public OAuth2Client(OAuth2Options options, HttpClient? httpClient = null) : this(options, httpClient, publicClient: false)
@@ -77,7 +81,7 @@ namespace Polhem.OAuth2
         /// <returns>The client.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> or <paramref name="httpClientFactory"/> is null.</exception>
         /// <exception cref="ArgumentException">
-        /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope is empty, or an endpoint is
+        /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope or an accepted client ID is empty, or an endpoint is
         /// not an absolute https URI without a fragment.
         /// </exception>
         public static OAuth2Client Create(OAuth2Options options, Func<HttpClient> httpClientFactory)
@@ -162,6 +166,78 @@ namespace Polhem.OAuth2
                     .ExchangeCodeAsync(code, pending.RedirectUri, _usePkce ? pending.CodeVerifier : null, _isPublicClient, cancellationToken)
                     .ConfigureAwait(false);
                 UserInfo userInfo = await _provider.GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
+
+                return AuthorizationResult.Success(_provider.ProviderName, token, userInfo);
+            }
+            catch (OAuth2Exception ex)
+            {
+                return AuthorizationResult.Failure(ex);
+            }
+            catch (HttpRequestException ex)
+            {
+                return AuthorizationResult.Failure(ex);
+            }
+            catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                return AuthorizationResult.Failure(ex);
+            }
+            catch (JsonException ex)
+            {
+                return AuthorizationResult.Failure(ex);
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the user information of an access token that a front end obtained and sent to this back end, after
+        /// checking with the provider that the token was issued to <see cref="OAuth2Options.ClientId"/> or one of
+        /// <see cref="OAuth2Options.AcceptedClientIds"/>.
+        /// </summary>
+        /// <param name="accessToken">The access token from the front end.</param>
+        /// <param name="cancellationToken">Cancels the requests to the provider.</param>
+        /// <returns>
+        /// A successful result with the user information, whose <see cref="AuthorizationResult.Token"/> holds only the access
+        /// token, or a failed result that carries the exception.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// The check cannot be skipped. Without it, another application could sign in to this back end with a valid token that
+        /// one of its own users gave it, because the user information endpoint answers for any valid token.
+        /// </para>
+        /// <para>
+        /// Only the failures a token from elsewhere is expected to produce become a failed result: an
+        /// <see cref="OAuth2Exception"/> when the provider refuses the token, for example because it has expired, does not
+        /// name its client, or names a client that is not accepted; an <see cref="HttpRequestException"/>; a
+        /// <see cref="TaskCanceledException"/> when a request times out; and a <see cref="JsonException"/> for a response
+        /// that is not valid JSON. Any other exception propagates.
+        /// </para>
+        /// <para>
+        /// The check is supported for Google, LINE and Facebook. Facebook checks the token with the app secret, so its options
+        /// need <see cref="OAuth2Options.ClientSecret"/>.
+        /// </para>
+        /// <para>
+        /// LINE and Facebook accept the token only in the query of the check, so an HTTP client that logs request URIs, such as
+        /// one from <c>IHttpClientFactory</c> before .NET 9, writes it to the log. Lower the log level of the
+        /// <c>System.Net.Http.HttpClient</c> categories to Warning, or have the URIs redacted. Google receives it in the body.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentNullException"><paramref name="accessToken"/> is null.</exception>
+        /// <exception cref="ArgumentException"><paramref name="accessToken"/> is empty or white space.</exception>
+        /// <exception cref="NotSupportedException">The provider offers no way to check which client an access token was issued to.</exception>
+        /// <exception cref="InvalidOperationException">The options lack a setting that the check needs, such as the Facebook app secret.</exception>
+        /// <exception cref="OperationCanceledException"><paramref name="cancellationToken"/> was canceled.</exception>
+        public async Task<AuthorizationResult> GetUserInfoAsync(string accessToken, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(accessToken);
+            if (string.IsNullOrWhiteSpace(accessToken))
+                throw new ArgumentException("The access token cannot be empty.", nameof(accessToken));
+
+            try
+            {
+                if (accessToken.Length > MaxAccessTokenLength)
+                    throw new OAuth2Exception("The access token is longer than any token the provider issues.");
+
+                var token = new TokenResponse(accessToken);
+                UserInfo userInfo = await _provider.GetVerifiedUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
 
                 return AuthorizationResult.Success(_provider.ProviderName, token, userInfo);
             }
