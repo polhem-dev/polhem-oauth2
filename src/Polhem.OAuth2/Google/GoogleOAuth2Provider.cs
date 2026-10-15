@@ -49,9 +49,12 @@ namespace Polhem.OAuth2
                     // A response without an audience names no client, whatever else it holds.
                     if (OAuth2Json.GetProtocolString(root, "aud") is not { } audience)
                         return Array.Empty<string>();
+                    if (!root.TryGetProperty("azp", out _))
+                        return new[] { audience };
+                    // An authorized party that is not a string cannot be checked, so the response names no client.
                     return OAuth2Json.GetProtocolString(root, "azp") is { } authorizedParty
                         ? new[] { audience, authorizedParty }
-                        : new[] { audience };
+                        : Array.Empty<string>();
                 }
             }
         }

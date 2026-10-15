@@ -20,6 +20,10 @@ namespace Polhem.OAuth2
     /// </remarks>
     public sealed class OAuth2Client
     {
+        // Far longer than the access tokens of the supported providers. On .NET Framework, escaping a string longer than
+        // 32766 characters for the verification request throws UriFormatException, which is not an expected failure.
+        private const int MaxAccessTokenLength = 8192;
+
         private readonly OAuth2Provider _provider;
         private readonly bool _isPublicClient;
         private readonly bool _usePkce;
@@ -210,6 +214,11 @@ namespace Polhem.OAuth2
         /// The check is supported for Google, LINE and Facebook. Facebook checks the token with the app secret, so its options
         /// need <see cref="OAuth2Options.ClientSecret"/>.
         /// </para>
+        /// <para>
+        /// LINE and Facebook accept the token only in the query of the check, so an HTTP client that logs request URIs, such as
+        /// one from <c>IHttpClientFactory</c> before .NET 9, writes it to the log. Lower the log level of the
+        /// <c>System.Net.Http.HttpClient</c> categories to Warning, or have the URIs redacted. Google receives it in the body.
+        /// </para>
         /// </remarks>
         /// <exception cref="ArgumentNullException"><paramref name="accessToken"/> is null.</exception>
         /// <exception cref="ArgumentException"><paramref name="accessToken"/> is empty or white space.</exception>
@@ -224,6 +233,9 @@ namespace Polhem.OAuth2
 
             try
             {
+                if (accessToken.Length > MaxAccessTokenLength)
+                    throw new OAuth2Exception("The access token is longer than any token the provider issues.");
+
                 var token = new TokenResponse(accessToken);
                 UserInfo userInfo = await _provider.GetVerifiedUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
 

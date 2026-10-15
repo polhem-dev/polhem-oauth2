@@ -73,6 +73,8 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("""{"azp":"client-id"}""")]
         [InlineData("""{"aud":["client-id"]}""")]
         [InlineData("""{"aud":""}""")]
+        [InlineData("""{"aud":"client-id","azp":null}""")]
+        [InlineData("""{"aud":"client-id","azp":["client-id"]}""")]
         public async Task GetUserInfoAsync_GoogleClientNotAccepted_Fails(string tokenInfo)
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, tokenInfo);
@@ -123,6 +125,19 @@ namespace Polhem.OAuth2.UnitTests
             var result = await client.GetUserInfoAsync(AccessToken);
 
             Assert.IsType<JsonException>(result.Exception, exactMatch: false);
+        }
+
+        [Fact]
+        [DisplayName("GetUserInfoAsync turns an access token longer than any provider issues into a failed result, before any request")]
+        public async Task GetUserInfoAsync_OverlongAccessToken_FailsWithoutRequest()
+        {
+            var handler = new StubHttpMessageHandler();
+            var client = new OAuth2Client(CreateOptions("LINE"), handler.CreateClient());
+
+            var result = await client.GetUserInfoAsync(new string('a', 40000));
+
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.Empty(handler.Requests);
         }
 
         [Fact]
