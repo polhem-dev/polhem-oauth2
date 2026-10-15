@@ -13,7 +13,7 @@
 Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式透過 `WebAuthenticator` 登入，可以直連，也可以經由自己的後端中轉。
 ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權碼流程，每次登入各自保存在一個加密的 cookie。
 
-支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta。
+支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta、GitHub。
 
 ## 套件
 
@@ -30,12 +30,14 @@ dotnet add package Polhem.OAuth2
 ## Options
 
 每個 provider 各有自己的 options 型別：`GoogleOAuth2Options`、`FacebookOAuth2Options`、`LineOAuth2Options`、
-`AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`。
+`AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`、`GitHubOAuth2Options`。
 
 - `ClientId` 與 `RedirectUri` 為必填。client 建立時會複製並檢查 options，之後再修改原物件不會有影響；options 不合法時當場擲出 `ArgumentException`。
 - Auth0 與 Okta 需要 `Domain`，例如 `your-tenant.auth0.com`。Okta 預設使用 `default` 授權伺服器，
   可用 `AuthorizationServerId` 指定其他伺服器；設為空值時改用 org 授權伺服器。Okta 只在 Integrator Free Plan 的 org，
   或有 API Access Management 的 org 裡建立 `default` 伺服器，其他 org 請設為空值。
+- GitHub 可以用 GitHub App 或 OAuth App，預設 scope 為 `read:user user:email`。GitHub App 不看 scope，權限取自 App 的設定：
+  請給它唯讀的 Email addresses 權限，否則使用者不公開 email 時，使用者資訊裡就沒有 email。
 - Microsoft Entra ID 預設使用 `common` tenant。只註冊在單一 tenant 的應用程式，要把 `Tenant` 設成該 tenant 的 ID 或網域名稱。
 - 所有端點都必須是絕對的 `https` URI，而且不能有 fragment。端點自帶的 query 會被保留，所以可以在端點上加 provider 的參數，
   例如 `https://tenant.auth0.com/authorize?audience=...`。
@@ -69,7 +71,7 @@ else
 
 - 回呼網址必須是 `http`，主機必須是 `localhost` 或 loopback 位址，而且要在 provider 後台登記。
   port 寫 0 時每次登入都會挑一個可用的 port，只適用於接受任意 loopback port 的 provider。
-- client 一律使用 PKCE。隨桌面應用程式散佈的 client secret 可以被取出，所以不會送出，只有 Google 與 LINE 例外，它們沒有 secret 時會拒絕部分請求（實測紀錄見 ADR-004）。
+- client 一律使用 PKCE。隨桌面應用程式散佈的 client secret 可以被取出，所以不會送出，只有 Google、LINE 與 GitHub 例外，它們沒有 secret 時會拒絕部分請求（實測紀錄見 ADR-004）。
 - 逾時（`Timeout`，預設 5 分鐘）、取消、provider 回傳錯誤，都會成為失敗結果。port 無法監聽時擲出 `SocketException`，
   找不到預設瀏覽器時擲出 `Win32Exception`（iOS 無法啟動處理程序，擲出 `PlatformNotSupportedException`）。
 - 要用其他方式開啟網址時設定 `OpenBrowser`，例如搭配 Avalonia 的 `ILauncher` 寫成 `uri => launcher.LaunchUriAsync(uri)`，
@@ -83,7 +85,7 @@ else
 
 ### 登記 loopback 回呼網址
 
-以下登記方式已於 2026-09-14 在各 provider 實測。
+以下登記方式已於 2026-09-14 在各 provider 實測，GitHub 則於 2026-10-15 實測。
 
 | Provider | 應用程式類型 | 回呼網址 | port |
 |----------|--------------|----------|------|
@@ -93,6 +95,7 @@ else
 | Okta | Native，Client authentication 選 None 並要求 PKCE | `http://localhost:53682/callback` | 必須一致 |
 | LINE | LINE Login channel 的 Callback URL | `http://localhost:53682/callback` | 必須一致。channel 必須包含 Mobile app 類型：只有 Web app 類型的 channel 要求 client secret，而公開 client 不會送 |
 | Facebook | Facebook Login 的 Valid OAuth Redirect URIs | `http://localhost:53682/callback` | 登記實際使用的 port。ADR-004 與 ADR-006 的實測中 Facebook 接受不帶 client secret 的 PKCE，但官方文件沒有寫 |
+| GitHub | GitHub App 或 OAuth App 的 callback URL，登記為 `http://127.0.0.1/callback` | `http://127.0.0.1:0/callback` | 任意 port 都被接受。host 必須一致：`localhost` 沒有導回 |
 
 - Google：實測的 client 有登記回呼網址。Google 的文件對 Desktop app 是否需要登記說法不一，並把 client secret 列為已安裝應用程式的選填參數。
 - Okta：授權伺服器需要一個存取政策，並有允許 authorization code 的規則。沒有的話，登入會因政策評估失敗而被拒。
@@ -107,6 +110,7 @@ Android、iOS 或 Mac Catalyst 上的應用程式有兩種登入方式（[ADR-00
   client 再以 PKCE、不帶 client secret 換取授權碼。
 - **經由後端中轉**：給要登入自己 ASP.NET Core 後端的應用程式。後端以 web client 身分登入，交給應用程式一個只能用一次的
   code，應用程式再以它兌換使用者資訊。Google 與 LINE 不接受直接導回 Android 應用程式，所以在 Android 上必須用這個方式。
+  GitHub 每次換 token 都要求 client secret，所以應用程式只能用這個方式登入 GitHub。
 
 `WebAuthenticator` 在 Windows 上無法使用，所以 MAUI 應用程式的 Windows 平台跟桌面應用程式一樣，以 `LoopbackOAuth2Client` 登入。
 
@@ -329,21 +333,25 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
   用 client 的 `RefreshTokenAsync` 取得新的 token。有些 provider 每次都會發新的 refresh token，所以要保留最新一次回應裡的那個。
   provider 發不發 refresh token 取決於請求：Microsoft Entra ID、Auth0 與 Okta 在 `Scopes` 含 `offline_access` 時才發
   （Auth0 與 Okta 還要在應用程式設定裡允許）；Google 對桌面與行動應用程式都會發，對網頁應用程式則只在 `AuthorizationEndpoint`
-  帶著 `?access_type=offline&prompt=consent` 時發；LINE 一律會發；Facebook 從不發。
+  帶著 `?access_type=offline&prompt=consent` 時發；LINE 一律會發；Facebook 從不發；GitHub 在 App 開啟使用者 token 到期時發，
+  新建的 App 預設就是開啟。
 - `Exception` 只收納登入預期會發生的失敗，例如 HTTP 請求失敗、state 不相符、provider 回傳錯誤。
   設定或程式錯誤（例如 client 名稱沒有註冊）會往外拋。見 [ADR-003](docs/adr/adr-003-exception-semantics.zh-TW.md)。
 - provider 回傳的錯誤是 `OAuth2Exception`：`Error` 是錯誤代碼，例如 `access_denied`；`ErrorDescription` 是 provider 提供的說明。
   導回網址裡的錯誤，任何送連結給使用者的人都能設定，所以顯示前要先編碼。Facebook 的 token 端點回傳的是 Graph API 的錯誤：
-  `Error` 是它的數字代碼，例如 `100`；`ErrorDescription` 是它的訊息。
+  `Error` 是它的數字代碼，例如 `100`；`ErrorDescription` 是它的訊息。GitHub 的 token 端點有些錯誤以狀態碼 200 回傳，例如
+  `bad_verification_code`，一樣會成為 `OAuth2Exception`。
 
 ## 識別使用者
 
 - 以 provider 名稱加上 `UserInfo.UserId` 識別使用者，不要用 `Email`：email 可能變更，而且各 provider 是否驗證過 email 並不一致。
-- provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0` 或 `Okta`。
+- provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0`、`Okta` 或 `GitHub`。
   它與 client 註冊時使用的名稱無關。
 - Microsoft Entra ID 的 `UserId` 是 `sub` claim，同一個使用者登入不同的應用程式時，這個值也不同。需要跨應用程式一致的識別時，
   `Token.IdToken` 裡的 `oid` claim 在每個應用程式都相同；使用前要先驗證這個 token。
 - Facebook 的 `UserId` 同樣是每個 app 都不同。LINE 的 `UserId` 則在同一個 provider 底下的每個 channel 都相同。
+- GitHub 的 `UserId` 是數字帳號 ID，使用者改名後仍不變；login 則會變，還可能被其他帳號取走。使用者不公開 email 時，
+  函式庫會從 `/user/emails` 讀取主要且已驗證的 email；這個請求失敗時 `Email` 為 null，登入仍然成功。
 - LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token 讀出 email，
   會檢查這個 token 是發給這個 client 的，但不檢查簽章。
 - 函式庫不驗證 ID token。`Token.IdToken` 是 provider 原樣回傳的內容，要依賴其中的 claim 前請先自行驗證。
@@ -419,7 +427,7 @@ provider 在後台是桌面、Web 與行動 App 的 client 分開登記的，所
   secret：有的話載入會失敗。OAuthMaui 建置時只打包 `ClientId`、`RedirectUri`、`Scopes`、`UsePkce` 與共用欄位；打包內容若會出現
   名稱含 `Secret` 的欄位，建置就會失敗。Google 與 LINE 不接受直接導回
   Android App（[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)），所以沒有 `Android` 區段，sample 在 Android 上
-  改由後端登入它們。
+  改由後端登入它們。GitHub 要求 client secret，所以既沒有 `iOS` 也沒有 `Android` 區段。
 - 最上層的 `AppRelay` 區段設定後端中轉：`BackendUrl` 是 ASP.NET Core sample 的網址，`RedirectUri` 是 App 的中轉回呼網址，
   ASP.NET Core sample 會用它呼叫 `AddOAuth2AppRelay` 登記。中轉走 HTTPS，所以模擬器必須信任 ASP.NET Core 的開發憑證。
   Android 模擬器上先執行 `adb reverse tcp:7032 tcp:7032`，讓 `localhost` 連到主機。
