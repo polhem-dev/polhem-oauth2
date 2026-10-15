@@ -22,15 +22,18 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         /// <remarks>
         /// Without an audience, which these options do not send, Auth0 issues an opaque access token that only its user
-        /// information endpoint accepts, and it offers no introspection endpoint, so the client of a token cannot be checked.
+        /// information endpoint accepts. Auth0 offers no introspection endpoint, so the client of such a token cannot be
+        /// learned from the provider; a token with an audience is a JSON Web Token for that API, which this library does not
+        /// validate.
         /// </remarks>
         protected override Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
         {
             return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
                 "Auth0 is an OpenID Connect provider, so a front end proves who signed in with the ID token of the sign-in, "
                 + "whose audience is its client ID, rather than with an access token. Validate the ID token in the back end, "
-                + "or request an access token for an API of your own and validate it as a JSON Web Token whose audience is "
-                + "that API, for example with JwtBearer authentication, instead of passing it to this method."));
+                + "checking its signature, issuer, expiry and audience, or request an access token for an API of your own and "
+                + "validate it as a JSON Web Token whose audience is that API, for example with JwtBearer authentication, "
+                + "instead of passing it to this method."));
         }
 
         /// <inheritdoc/>
