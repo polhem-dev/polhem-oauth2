@@ -21,18 +21,36 @@ namespace Polhem.OAuth2
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
-        protected OAuth2Provider(OAuth2Options options, Func<HttpClient>? httpClientFactory)
+        protected OAuth2Provider(OAuth2Options options, Func<HttpClient>? httpClientFactory) : this(options, httpClientFactory, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OAuth2Provider"/> class for a provider that can tell which client an
+        /// access token was issued to.
+        /// </summary>
+        /// <param name="options">The OAuth2 options.</param>
+        /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
+        /// <param name="tokenVerificationEndpoint">
+        /// The endpoint that <see cref="GetTokenClientIdsAsync"/> sends access tokens to, or null when the provider has none.
+        /// </param>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
+        /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
+        protected OAuth2Provider(OAuth2Options options, Func<HttpClient>? httpClientFactory, string? tokenVerificationEndpoint)
         {
             ArgumentNullException.ThrowIfNull(options);
             if (options.GetEndpointError() is { } error)
                 throw new ArgumentException(error, nameof(options));
 
             Options = options;
+            TokenVerificationEndpoint = tokenVerificationEndpoint;
             _httpClientFactory = httpClientFactory ?? SharedHttpClientFactory;
             if (httpClientFactory is null)
             {
                 SharedHttpClient.UseEndpoint(options.TokenEndpoint);
                 SharedHttpClient.UseEndpoint(options.UserInfoEndpoint);
+                if (tokenVerificationEndpoint is not null)
+                    SharedHttpClient.UseEndpoint(tokenVerificationEndpoint);
             }
         }
 
@@ -45,6 +63,11 @@ namespace Polhem.OAuth2
         /// Gets the OAuth2 options.
         /// </summary>
         public OAuth2Options Options { get; }
+
+        /// <summary>
+        /// Gets the endpoint that tells which client an access token was issued to, or null when the provider has none.
+        /// </summary>
+        protected string? TokenVerificationEndpoint { get; }
 
         /// <summary>
         /// Gets a value indicating whether the client secret is sent to the token endpoint even from a public client.
@@ -189,6 +212,35 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
+        /// Retrieves the user information of an access token that the application did not obtain itself, after checking that
+        /// the token was issued to <see cref="OAuth2Options.ClientId"/> or one of <see cref="OAuth2Options.AcceptedClientIds"/>.
+        /// </summary>
+        /// <param name="token">The access token, wrapped as a token response.</param>
+        /// <param name="cancellationToken">Cancels the requests.</param>
+        /// <returns>The user information.</returns>
+        /// <exception cref="NotSupportedException">The provider cannot tell which client an access token was issued to.</exception>
+        /// <exception cref="InvalidOperationException">The options lack a setting that the check needs.</exception>
+        /// <exception cref="OAuth2Exception">
+        /// The provider refused the access token, did not name its client, or named a client that is not accepted, or the user
+        /// information response is empty.
+        /// </exception>
+        /// <exception cref="HttpRequestException">A request failed, or an endpoint returned an unsuccessful status code without an error code.</exception>
+        /// <exception cref="JsonException">A response is not a JSON object.</exception>
+        /// <exception cref="OperationCanceledException">A request was canceled or timed out.</exception>
+        public async Task<UserInfo> GetVerifiedUserInfoAsync(TokenResponse token, CancellationToken cancellationToken)
+        {
+            IReadOnlyCollection<string> clientIds = await GetTokenClientIdsAsync(token.AccessToken, cancellationToken).ConfigureAwait(false);
+            // IMPORTANT: The user information endpoint answers for any valid token, whichever application obtained it. Only this
+            // check stops another application from signing in to the back end with a token that one of its users gave it.
+            if (clientIds.Count == 0)
+                throw new OAuth2Exception("The provider did not report which client the access token was issued to.");
+            if (!clientIds.All(IsAcceptedClientId))
+                throw new OAuth2Exception("The access token was issued to a client that is not accepted.");
+
+            return await GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Parses the JSON returned by the user information endpoint.
         /// </summary>
         /// <param name="json">The user information as a JSON string.</param>
@@ -272,7 +324,8 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Reads the error that an unsuccessful token response reports. The default reads the <c>error</c> and
+        /// Reads the error that an unsuccessful response of the token endpoint or the token verification endpoint reports.
+        /// The default reads the <c>error</c> and
         /// <c>error_description</c> strings of RFC 6749, section 5.2.
         /// </summary>
         /// <param name="response">The root object of the token response.</param>
@@ -282,6 +335,54 @@ namespace Polhem.OAuth2
             return OAuth2Json.GetProtocolString(response, "error") is { Length: > 0 } error
                 ? OAuth2Exception.FromProviderError(error, OAuth2Json.GetProtocolString(response, "error_description"))
                 : null;
+        }
+
+        /// <summary>
+        /// Asks the provider which client an access token was issued to. The default throws <see cref="NotSupportedException"/>,
+        /// so a provider without a way to tell cannot return the user information of a token from elsewhere.
+        /// </summary>
+        /// <param name="accessToken">The access token. Keep it out of exception messages and logs.</param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>
+        /// The client IDs that the provider reports for the token, every one of which must be accepted, or an empty collection
+        /// when the response names none.
+        /// </returns>
+        /// <exception cref="NotSupportedException">The provider cannot tell which client an access token was issued to.</exception>
+        /// <exception cref="OAuth2Exception">The provider refused the access token.</exception>
+        /// <exception cref="HttpRequestException">The request failed, or the endpoint returned an unsuccessful status code without an error code.</exception>
+        /// <exception cref="JsonException">The response is not a JSON object.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        protected virtual Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
+        {
+            return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
+                $"{ProviderName} offers no way to check which client an access token was issued to, so the user information of an access token from a front end is not available."));
+        }
+
+        /// <summary>
+        /// Sends a request to the token verification endpoint and parses the response.
+        /// </summary>
+        /// <param name="request">The request, which carries the access token.</param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <returns>The parsed response, which the caller disposes.</returns>
+        /// <exception cref="OAuth2Exception">The endpoint returned an error, which <see cref="ReadError"/> reads.</exception>
+        /// <exception cref="HttpRequestException">The request failed, or the endpoint returned an unsuccessful status code without an error code.</exception>
+        /// <exception cref="JsonException">A successful response is not a JSON object.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        protected async Task<JsonDocument> SendTokenVerificationAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            using (var response = await _httpClientFactory().SendAsync(request, cancellationToken).ConfigureAwait(false))
+            {
+                string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                // The messages name the status code but never the request URI, which can carry the access token in its query.
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw (Exception?)ReadErrorResponse(body)
+                        ?? new HttpRequestException($"The token verification endpoint returned status code {(int)response.StatusCode}.");
+                }
+                return OAuth2Json.ParseObject(body);
+            }
         }
 
         /// <summary>
@@ -353,6 +454,12 @@ namespace Polhem.OAuth2
 
             parameters["client_secret"] = clientSecret;
             return null;
+        }
+
+        private bool IsAcceptedClientId(string clientId)
+        {
+            return string.Equals(clientId, Options.ClientId, StringComparison.Ordinal)
+                || Options.AcceptedClientIds.Contains(clientId, StringComparer.Ordinal);
         }
 
         private static string FormEncode(string value)

@@ -58,6 +58,17 @@ namespace Polhem.OAuth2
         public string[] Scopes { get; set; } = new[] { "openid", "email", "profile" };
 
         /// <summary>
+        /// Gets or sets the client IDs whose access tokens <see cref="OAuth2Client.GetUserInfoAsync(string, CancellationToken)"/>
+        /// accepts, besides <see cref="ClientId"/>. The default is an empty array, which accepts only <see cref="ClientId"/>.
+        /// </summary>
+        /// <remarks>
+        /// List the client IDs of the front ends that sign users in and send their access tokens to this back end, such as
+        /// the iOS and Android clients of a Google project. An access token issued to any other client is refused, because
+        /// another application could otherwise sign in to this back end with a token that one of its users gave it.
+        /// </remarks>
+        public string[] AcceptedClientIds { get; set; } = Array.Empty<string>();
+
+        /// <summary>
         /// Gets or sets the authorization endpoint. It must be an absolute https URI without a fragment.
         /// </summary>
         /// <remarks>
@@ -106,6 +117,8 @@ namespace Polhem.OAuth2
             var copy = (OAuth2Options)MemberwiseClone();
             if (Scopes is not null)
                 copy.Scopes = (string[])Scopes.Clone();
+            if (AcceptedClientIds is not null)
+                copy.AcceptedClientIds = (string[])AcceptedClientIds.Clone();
             return copy;
         }
 
@@ -126,6 +139,8 @@ namespace Polhem.OAuth2
                 return $"{nameof(RedirectUri)} must be an absolute http or https URI.";
             if (Scopes is null || Scopes.Any(string.IsNullOrWhiteSpace))
                 return $"{nameof(Scopes)} cannot be null or contain an empty scope.";
+            if (AcceptedClientIds is null || AcceptedClientIds.Any(string.IsNullOrWhiteSpace))
+                return $"{nameof(AcceptedClientIds)} cannot be null or contain an empty client ID.";
             if (ClientAuthentication is not (ClientAuthenticationMethod.ClientSecretPost or ClientAuthenticationMethod.ClientSecretBasic))
                 return $"{nameof(ClientAuthentication)} is not a supported method.";
             return GetEndpointError();

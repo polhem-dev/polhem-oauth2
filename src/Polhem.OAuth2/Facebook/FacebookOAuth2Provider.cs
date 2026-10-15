@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace Polhem.OAuth2
@@ -7,6 +8,9 @@ namespace Polhem.OAuth2
     /// </summary>
     internal sealed class FacebookOAuth2Provider : OAuth2Provider
     {
+        // https://developers.facebook.com/docs/graph-api/reference/debug_token
+        private const string DebugTokenEndpoint = $"https://graph.facebook.com/{FacebookOAuth2Options.GraphApiVersion}/debug_token";
+
         private static readonly char[] s_pathCharacters = { '/', '?', '#' };
 
         /// <summary>
@@ -14,7 +18,8 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="options">The Facebook OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
-        public FacebookOAuth2Provider(FacebookOAuth2Options options, Func<HttpClient>? httpClientFactory) : base(options, httpClientFactory)
+        public FacebookOAuth2Provider(FacebookOAuth2Options options, Func<HttpClient>? httpClientFactory)
+            : base(options, httpClientFactory, DebugTokenEndpoint)
         {
         }
 
@@ -62,6 +67,46 @@ namespace Polhem.OAuth2
             return code is { Length: > 0 }
                 ? OAuth2Exception.FromProviderError(code, OAuth2Json.GetProtocolString(error, "message"))
                 : null;
+        }
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// <para>
+        /// The endpoint needs an app access token, which is the app ID and the app secret joined with a vertical bar, so the
+        /// options must have a client secret. It travels in the Authorization header rather than in the query.
+        /// </para>
+        /// <para>
+        /// NOTE: The token being checked travels in the query, where the systems it passes through may log it, because the
+        /// Graph API documents only GET for this endpoint. Only a valid user access token names its app: an app access
+        /// token names one too, but signs in no user.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="InvalidOperationException">The options have no client secret.</exception>
+        protected override async Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
+        {
+            if (Options.ClientSecret is not { Length: > 0 } appSecret)
+            {
+                throw new InvalidOperationException(
+                    $"Facebook checks an access token with the app secret, so {nameof(OAuth2Options.ClientSecret)} must be set.");
+            }
+
+            string url = AppendQuery(DebugTokenEndpoint, "input_token=" + Uri.EscapeDataString(accessToken));
+            using (var request = new HttpRequestMessage(HttpMethod.Get, url))
+            {
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Options.ClientId + "|" + appSecret);
+                using (var document = await SendTokenVerificationAsync(request, cancellationToken).ConfigureAwait(false))
+                {
+                    if (!document.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Object)
+                        return Array.Empty<string>();
+                    // An invalid or expired token is reported with status 200 and the error inside data.
+                    if (!data.TryGetProperty("is_valid", out var isValid) || isValid.ValueKind != JsonValueKind.True)
+                        throw ReadError(data) ?? new OAuth2Exception("Facebook reports that the access token is not valid.");
+                    if (!string.Equals(OAuth2Json.GetProtocolString(data, "type"), "USER", StringComparison.Ordinal))
+                        throw new OAuth2Exception("The access token is not a Facebook user access token.");
+
+                    return OAuth2Json.GetProtocolString(data, "app_id") is { } appId ? new[] { appId } : Array.Empty<string>();
+                }
+            }
         }
 
         /// <inheritdoc/>
