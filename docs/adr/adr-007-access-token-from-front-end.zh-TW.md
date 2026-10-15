@@ -52,11 +52,11 @@ token 是發給哪個 client 的，只有 provider 知道。
 - Facebook 與 GitHub 需要 `ClientSecret`，沒有設定時 `GetUserInfoAsync` 擲出 `InvalidOperationException`。
   GitHub 只能查證發給「以其憑證發出查證請求的那個應用程式」的 token，所以 `AcceptedClientIds` 在 GitHub 不會多接受任何 client，
   前端與後端要用同一個 GitHub 應用程式。
-- 失敗依循 ADR-003。失敗結果收納：provider 拒絕 token、沒有說出 client、說出的 client 不被接受，以及 token 超過 8192 個字元時的
+- 失敗依循 ADR-003。失敗結果收納：provider 拒絕 token、沒有說出 client、說出的 client 不被接受，以及 token 長於函式庫接受上限時的
   `OAuth2Exception`；`HttpRequestException`；請求逾時時的 `TaskCanceledException`；以及 `JsonException`。
   以下會擲出：token 為空時的 `ArgumentException`、沒有查證方式的 provider 的 `NotSupportedException`，以及缺少 secret、
   GitHub 拒絕憑證、或 GitHub 使用者資訊端點的路徑不是以 `/user` 結尾時的 `InvalidOperationException`。
-- 例外訊息一律不含 token 與請求 URI。LINE 與 Facebook 的查證只有文件化 GET，所以 token 會放在 query；
+- 函式庫自己產生的例外訊息不含 token 與請求 URI，由測試檢查。LINE 與 Facebook 的查證只有文件化 GET，所以 token 會放在 query；
   `GetUserInfoAsync` 的 remarks 說明如何讓它不出現在 HTTP client 的 log。
 - 加密前後端之間的呼叫（例如 Polhem.JsonRpc 的 payload 套件）取代不了這項查證。加密證明的是呼叫端持有金鑰，
   而前端是 public client：它的金鑰可以從應用程式取出，或由任何人協商取得。token substitution 的攻擊者，正是能執行前端的人。
@@ -64,7 +64,7 @@ token 是發給哪個 client 的，只有 provider 知道。
 ## 不在範圍內
 
 - 驗證 ID token 或 JSON Web Token 格式的 access token。這是 JwtBearer 驗證這類函式庫的工作。
-- token 在有效期間內被重放。後端在第一次呼叫後發出自己的 session，就不再收同一個 token；
+- token 在有效期間內被重放。後端在第一次呼叫後發出自己的 session，就可以不再收同一個 token；
   Polhem.JsonRpc 的 payload 套件也能在方法要求時拒絕重放的呼叫。
 - 快取查證結果。
 

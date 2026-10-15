@@ -32,7 +32,7 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
     is too old, and `CryptographicException` when the cookie cannot be decrypted.
   - `LoopbackOAuth2Client.SignInAsync` also: the failures described in ADR-004.
   - `AppOAuth2Client.SignInAsync` also: the failures described in ADR-006.
-  - `OAuth2Client.GetUserInfoAsync`, which returns the user of an access token from a front end: the same four types as
+  - `OAuth2Client.GetUserInfoAsync`, which returns the user of an access token from a front end: the same exceptions as
     `CompleteAuthorizationAsync`, among them an `OAuth2Exception` when the provider refuses the token or names a client that is
     not accepted. The checks that throw instead are described in ADR-007.
 - Cancellation by the caller propagates from `OAuth2Client` and the web managers as `OperationCanceledException`, and in

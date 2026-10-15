@@ -27,7 +27,7 @@
     以及 cookie 無法解密時的 `CryptographicException`。
   - `LoopbackOAuth2Client.SignInAsync` 另外還有：ADR-004 描述的失敗。
   - `AppOAuth2Client.SignInAsync` 另外還有：ADR-006 描述的失敗。
-  - `OAuth2Client.GetUserInfoAsync`（取得前端送來的 access token 的使用者）：與 `CompleteAuthorizationAsync` 相同的四種型別，
+  - `OAuth2Client.GetUserInfoAsync`（取得前端送來的 access token 的使用者）：與 `CompleteAuthorizationAsync` 相同的例外，
     其中包括 provider 拒絕 token、或說出的 client 不被接受時的 `OAuth2Exception`。改為擲出例外的檢查，見 ADR-007。
 - 呼叫端的取消，會從 `OAuth2Client` 與網頁 manager 以 `OperationCanceledException` 往外拋；ASP.NET Core 在請求中斷時也一樣。
   取消代表沒有人在等這個結果，而不是登入失敗。loopback client 與應用程式 client 則如 ADR-004 與 ADR-006 所述，把取消轉成失敗結果。

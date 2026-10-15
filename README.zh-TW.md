@@ -367,7 +367,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 2. 送出 OpenID Connect 登入取得的 ID token，由後端驗證，例如用 JwtBearer 驗證：以 provider 公開的金鑰驗簽章、
    檢查 issuer 與有效期限，以及 audience 是前端的 client ID。不檢查 audience 的驗證可能接受其他應用程式的 token。
    函式庫本身不驗證 ID token。
-3. 送出 access token，由後端呼叫 `GetUserInfoAsync`，用於沒有標準 ID token 的 provider：
+3. 送出 access token，由後端呼叫 `GetUserInfoAsync`：用於不發標準 ID token 的 Facebook 與 GitHub。
+   Google 與 LINE 也支援，但用它們的 ID token 較好。
 
 ```csharp
 OAuth2Client client = oauth2Manager.GetClient("Facebook")!;
@@ -380,9 +381,9 @@ if (!result.IsSuccess)
 - `GetUserInfoAsync` 取得使用者資訊之前，會先向 provider 確認 token 是發給 `ClientId` 或 `AcceptedClientIds` 之一的，
   例如同一個 Google Cloud 專案的 iOS 與 Android client。這項查證無法關閉。
 - 支援 Google、LINE、Facebook 與 GitHub。Facebook 與 GitHub 以 client secret 查證，所以 options 需要 `ClientSecret`。
-  GitHub 只能查證發給 `ClientId` 的 token，所以前端與後端要用同一個 GitHub 應用程式。
+  GitHub 只能查證發給 `ClientId` 的 token，所以取得 token 的前端（例如桌面應用程式）要和後端用同一個 GitHub 應用程式。
 - Microsoft Entra ID、Auth0 與 Okta 擲出 `NotSupportedException`：它們是 OpenID Connect provider，請改用 ID token。
-- provider 拒絕、已過期、或發給其他 client 的 token 是失敗結果，網路失敗與逾時也是。設定錯誤（例如缺少 client secret）會往外拋。
+- provider 拒絕、已過期、或發給其他 client 的 token 是失敗結果，網路失敗與逾時也是。缺少 client secret，以及 GitHub 拒絕 client 憑證時，會往外拋。
 - LINE 與 Facebook 的查證只接受放在 query 的 token，所以會記錄請求 URI 的 HTTP client 會把它寫進 log。
   每次查證都是一個送往 provider 的請求，而 provider 會限制回應的數量，所以要限制後端這個端點被呼叫的頻率。
 

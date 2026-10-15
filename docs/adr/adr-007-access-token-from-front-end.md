@@ -65,11 +65,11 @@ Connect sign-in for users.
   only tokens issued to the application whose credentials authenticate the check, so `AcceptedClientIds` accepts nothing more
   there, and the front end and the back end use the same GitHub application.
 - Failures follow ADR-003. A failed result holds `OAuth2Exception` when the provider refuses the token, names no client, or names
-  one that is not accepted, and when the token is longer than 8192 characters; `HttpRequestException`; `TaskCanceledException`
+  one that is not accepted, and when the token is longer than the library accepts; `HttpRequestException`; `TaskCanceledException`
   when a request times out; and `JsonException`. These throw: `ArgumentException` for an empty token, `NotSupportedException`
   for a provider without a check, and `InvalidOperationException` for a missing secret, refused GitHub credentials, or a GitHub
   user information endpoint whose path does not end with `/user`.
-- No exception message includes the token or the request URI. LINE and Facebook document only GET for their checks, so the token
+- No exception message that the library creates includes the token or the request URI, which the tests check. LINE and Facebook document only GET for their checks, so the token
   travels in the query, and the remarks of `GetUserInfoAsync` say how to keep it out of the logs of an HTTP client.
 - Encrypting the calls between the front end and the back end, as the payload packages of Polhem.JsonRpc do, does not replace
   the check. Encryption proves that the caller holds the key, and a front end is a public client: its key can be taken from the
@@ -78,7 +78,7 @@ Connect sign-in for users.
 ## Out of scope
 
 - Validating ID tokens or JSON Web Token access tokens. Libraries such as JwtBearer authentication do that.
-- Replay of a token within its lifetime. A back end that issues its own session after the first call stops accepting the same
+- Replay of a token within its lifetime. A back end that issues its own session after the first call can stop accepting the same
   token, and the payload packages of Polhem.JsonRpc can refuse a replayed call when a method asks for it.
 - Caching the result of a check.
 

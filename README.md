@@ -412,7 +412,8 @@ and the user information endpoint answers it with the same user. In order of pre
    authentication: its signature with the provider's published keys, its issuer and expiry, and an audience that is the
    client ID of the front end. A validator that skips the audience can accept the tokens of other applications. The library
    does not validate ID tokens.
-3. Send the access token, and have the back end call `GetUserInfoAsync`, for a provider without a standard ID token:
+3. Send the access token, and have the back end call `GetUserInfoAsync`: for Facebook and GitHub, which issue no standard ID
+   token. Google and LINE are supported as well, but their ID token is the better choice.
 
 ```csharp
 OAuth2Client client = oauth2Manager.GetClient("Facebook")!;
@@ -426,12 +427,12 @@ if (!result.IsSuccess)
   `ClientId` or one of `AcceptedClientIds`, such as the iOS and Android clients of a Google Cloud project. The check cannot be
   turned off.
 - It supports Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client secret, so their options
-  need `ClientSecret`. GitHub checks only tokens issued to `ClientId`, so the front end and the back end use the same GitHub
-  application.
+  need `ClientSecret`. GitHub checks only tokens issued to `ClientId`, so the front end that obtains the token, such as a
+  desktop application, uses the same GitHub application as the back end.
 - Microsoft Entra ID, Auth0 and Okta throw `NotSupportedException`: they are OpenID Connect providers, so use the ID token
   instead.
 - A token that the provider refuses, has expired, or was issued to another client is a failed result, as are network failures
-  and timeouts. Configuration errors, such as a missing client secret, are thrown.
+  and timeouts. A missing client secret, and client credentials that GitHub refuses, are thrown.
 - LINE and Facebook take the token only in the query of the check, so an HTTP client that logs request URIs writes it to the
   log. Every check is a request to the provider, which limits how many it answers, so limit how often the back end's endpoint
   can be called.
