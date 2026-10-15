@@ -213,7 +213,8 @@ namespace Polhem.OAuth2
         /// <para>
         /// The check is supported for Google, LINE and Facebook. Facebook checks the token with the app secret, so its options
         /// need <see cref="OAuth2Options.ClientSecret"/>. Microsoft Entra ID cannot check an access token for Microsoft Graph:
-        /// the front end requests a token for an API of the back end instead, which the back end validates itself.
+        /// the front end requests a token for an API of the back end instead, which the back end validates itself as a JSON Web
+        /// Token whose audience is that API.
         /// </para>
         /// <para>
         /// LINE and Facebook accept the token only in the query of the check, so an HTTP client that logs request URIs, such as

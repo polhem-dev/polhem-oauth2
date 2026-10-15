@@ -27,9 +27,10 @@ namespace Polhem.OAuth2
         protected override Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
         {
             return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
-                "Microsoft Entra ID offers no way to check which client an access token for Microsoft Graph was issued to. "
-                + "Have the front end request an access token for an API of your own, and validate it in the back end as a "
-                + "JSON Web Token, for example with JwtBearer authentication."));
+                "Microsoft Entra ID offers no way to check which client an access token, such as one for Microsoft Graph, "
+                + "was issued to. Have the front end request an access token for an API of your own, and validate it in the "
+                + "back end as a JSON Web Token whose audience is that API, for example with JwtBearer authentication, "
+                + "instead of passing it to this method."));
         }
 
         /// <inheritdoc/>
