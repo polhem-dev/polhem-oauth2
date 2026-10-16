@@ -7,7 +7,7 @@
 已採納（2026-10-15）。2026-10-15 於 pull request
 [#9](https://github.com/polhem-dev/polhem-oauth2/pull/9)、[#10](https://github.com/polhem-dev/polhem-oauth2/pull/10)、
 [#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) 與 [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18) 實作。
-各項查證已用無效的 token 對 provider 的端點實測，記錄在「測試結果」；以真實使用者 token 登入的情境尚未測試。
+各項查證於 2026-10-15 以無效的 token 實測，2026-10-16 以真實帳號與其他 client 的 token 實測，記錄在「測試結果」。
 
 ## 背景
 
@@ -50,8 +50,8 @@ token 是發給哪個 client 的，只有 provider 知道。
   - Okta：introspection（RFC 7662）可以用後端的憑證說出 client，但一個 client 能否 introspect 另一個 client 的 token，
     官方文件寫得模糊；而且 ID token 不必為每個 token 發請求就能回答這個問題。
 - Facebook 與 GitHub 需要 `ClientSecret`，沒有設定時 `GetUserInfoAsync` 擲出 `InvalidOperationException`。
-  GitHub 只能查證發給「以其憑證發出查證請求的那個應用程式」的 token，所以 `AcceptedClientIds` 在 GitHub 不會多接受任何 client，
-  前端與後端要用同一個 GitHub 應用程式。
+  兩者都只能查證發給「以其憑證發出查證請求的那個應用程式」的 token，所以 `AcceptedClientIds` 在這兩家不會多接受任何 client，
+  前端與後端要用同一個 Facebook app 或 GitHub 應用程式。Facebook 對其他 app 的 token 回錯誤 100，GitHub 則找不到它。
 - 失敗依循 ADR-003。失敗結果收納：provider 拒絕 token、沒有說出 client、說出的 client 不被接受，以及 token 長於函式庫接受上限時的
   `OAuth2Exception`；`HttpRequestException`；請求逾時時的 `TaskCanceledException`；以及 `JsonException`。
   以下會擲出：token 為空時的 `ArgumentException`、沒有查證方式的 provider 的 `NotSupportedException`，以及缺少 secret、
@@ -86,5 +86,18 @@ token 是發給哪個 client 的，只有 provider 知道。
 - GitHub：無效的 token 回 404，錯誤的 secret 回 401，body 沒有 `access_token` 回 422。
 - Okta（決定不支援之前）：introspection 接受網頁應用程式的 Basic 憑證，對無效的 token 回 `{"active":false}`。
 
-有效使用者 token 的回應，Google、LINE 與 GitHub 依各自的官方文件，Facebook 則依上面的回應中共通的欄位。
-仍待以真實帳號測試，並且要包含另一個 client 的 token，它必須被拒絕。
+2026-10-16 由桌面前端以 `LoopbackOAuth2Client` 用真實帳號登入各 provider，再把 access token 交給 `GetUserInfoAsync`：
+
+- Google：前端用桌面 client。tokeninfo 回傳 `aud` 與 `azp`，兩者都是桌面 client ID。`ClientId` 為該 client 的後端回傳了使用者。
+  以同一個 Google Cloud 專案的網頁 client 為 `ClientId` 的後端，以「發給不被接受的 client」拒絕這個 token；
+  `AcceptedClientIds` 列入桌面 client 後接受，只列 iOS client 時又拒絕。
+- LINE：verify 回傳 `client_id`，也就是 channel ID，同一個 channel 的後端回傳了使用者。只有一個 channel 可用，所以另一個 client 以模擬進行：
+  `ClientId` 不同的後端拒絕這個 token，`AcceptedClientIds` 列入該 channel 後接受。
+- Facebook：後端設定了 `ClientSecret`。debug_token 回傳 `data.app_id`、`data.type` 為 `USER`、`data.is_valid` 為 `true`，後端回傳了使用者。
+  同一位開發者另一個 app 的 user token（以 Graph API Explorer 產生）被拒絕：debug_token 以狀態碼 400 回錯誤 100，
+  「The App_id in the input_token did not match the Viewing App」。`AcceptedClientIds` 列入那個 app 時後端一樣拒絕，
+  所以 Facebook 和 GitHub 一樣只接受 `ClientId` 的 token。
+- GitHub：前端與後端用同一個 GitHub App。查證回傳 `app.client_id`，也就是該 App 的 client ID，後端回傳了使用者。
+  GitHub CLI（另一個 OAuth 應用程式）的有效 token 回 404 而被拒絕，`AcceptedClientIds` 列入 GitHub CLI 的 client ID 時也一樣。
+
+所有失敗結果的訊息都不含 token。

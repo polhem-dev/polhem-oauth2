@@ -6,9 +6,9 @@
 
 Accepted (2026-10-15). Implemented on 2026-10-15 in pull requests
 [#9](https://github.com/polhem-dev/polhem-oauth2/pull/9), [#10](https://github.com/polhem-dev/polhem-oauth2/pull/10),
-[#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) and [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18). The checks have been tried against
-the providers' endpoints with tokens that are not valid, as "Test results" records; a sign-in with a real user token has not
-been tested yet.
+[#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) and [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18). The checks were tested with
+tokens that are not valid on 2026-10-15, and with real accounts and the tokens of other clients on 2026-10-16, as "Test results"
+records.
 
 ## Context
 
@@ -61,9 +61,10 @@ Connect sign-in for users.
   - Okta: introspection (RFC 7662) could name the client with the back end's credentials, but whether one client may
     introspect the token of another is documented ambiguously, and the ID token answers the question without a request for
     each token.
-- Facebook and GitHub need `ClientSecret`; without one, `GetUserInfoAsync` throws `InvalidOperationException`. GitHub checks
+- Facebook and GitHub need `ClientSecret`; without one, `GetUserInfoAsync` throws `InvalidOperationException`. Both check
   only tokens issued to the application whose credentials authenticate the check, so `AcceptedClientIds` accepts nothing more
-  there, and the front end and the back end use the same GitHub application.
+  there, and the front end and the back end use the same Facebook app or GitHub application. Facebook refuses the token of
+  another app with error 100, and GitHub does not find it.
 - Failures follow ADR-003. A failed result holds `OAuth2Exception` when the provider refuses the token, names no client, or names
   one that is not accepted, and when the token is longer than the library accepts; `HttpRequestException`; `TaskCanceledException`
   when a request times out; and `JsonException`. These throw: `ArgumentException` for an empty token, `NotSupportedException`
@@ -106,6 +107,23 @@ On 2026-10-15 each check was sent tokens that are not valid, with the credential
 - Okta, before it was decided not to support it: introspection accepted the Basic credentials of a web application and returned
   `{"active":false}` for a token that is not valid.
 
-The response to a valid user token is taken from each provider's documentation for Google, LINE and GitHub, and from the
-Facebook response above for the fields it shares. It remains to be tested with real accounts, together with a token of another
-client, which must be refused.
+On 2026-10-16 a desktop front end signed in to each provider with a real account through `LoopbackOAuth2Client`, and
+`GetUserInfoAsync` received its access token:
+
+- Google: the front end used the desktop client. tokeninfo returned `aud` and `azp`, both the desktop client ID. A back end
+  with that `ClientId` returned the user. A back end with the web client of the same Google Cloud project as its `ClientId`
+  refused the token as issued to a client that is not accepted, and accepted it once `AcceptedClientIds` listed the desktop
+  client; listing only the iOS client refused it again.
+- LINE: verify returned `client_id`, the channel ID, and the back end of the same channel returned the user. Only one channel
+  was available, so another client was simulated: a back end with a different `ClientId` refused the token, and accepted it
+  once `AcceptedClientIds` listed the channel.
+- Facebook: the back end had `ClientSecret`. debug_token returned `data.app_id`, `data.type` `USER` and `data.is_valid`
+  `true`, and the back end returned the user. A user token of another app of the same developer, generated with the Graph API
+  Explorer, was refused: debug_token returned status 400 with error 100, "The App_id in the input_token did not match the
+  Viewing App". The back end refused it as well when `AcceptedClientIds` listed that app, which is why Facebook, like GitHub,
+  accepts only tokens of `ClientId`.
+- GitHub: the front end and the back end used the same GitHub App. The check returned `app.client_id`, the App's client ID,
+  and the back end returned the user. A valid token of the GitHub CLI, another OAuth application, returned 404 and was
+  refused, also when `AcceptedClientIds` listed the client ID of the GitHub CLI.
+
+No message of a failed result included the token.
