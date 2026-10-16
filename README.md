@@ -427,8 +427,8 @@ if (!result.IsSuccess)
   `ClientId` or one of `AcceptedClientIds`, such as the iOS and Android clients of a Google Cloud project. The check cannot be
   turned off.
 - It supports Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client secret, so their options
-  need `ClientSecret`. GitHub checks only tokens issued to `ClientId`, so the front end that obtains the token, such as a
-  desktop application, uses the same GitHub application as the back end.
+  need `ClientSecret`. They also check only tokens issued to `ClientId`, so the front end that obtains the token, such as a
+  desktop or mobile application, uses the same Facebook or GitHub application as the back end.
 - Microsoft Entra ID, Auth0 and Okta throw `NotSupportedException`: they are OpenID Connect providers, so use the ID token
   instead.
 - A token that the provider refuses, has expired, or was issued to another client is a failed result, as are network failures

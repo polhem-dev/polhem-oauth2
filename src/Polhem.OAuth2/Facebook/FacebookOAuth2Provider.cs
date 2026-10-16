@@ -76,6 +76,11 @@ namespace Polhem.OAuth2
         /// options must have a client secret. It travels in the Authorization header rather than in the query.
         /// </para>
         /// <para>
+        /// Facebook checks a token only for the app whose access token authenticates the request. A token issued to another
+        /// app, including one in <see cref="OAuth2Options.AcceptedClientIds"/>, is refused with error 100: the front end and
+        /// the back end use the same Facebook app.
+        /// </para>
+        /// <para>
         /// NOTE: The token being checked travels in the query, where the systems it passes through may log it, because the
         /// Graph API documents only GET for this endpoint. Only a valid user access token names its app: an app access
         /// token names one too, but signs in no user.

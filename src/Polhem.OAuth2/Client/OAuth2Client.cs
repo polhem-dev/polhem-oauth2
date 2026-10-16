@@ -212,8 +212,8 @@ namespace Polhem.OAuth2
         /// </para>
         /// <para>
         /// The check is supported for Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client
-        /// secret, so their options need <see cref="OAuth2Options.ClientSecret"/>. GitHub checks only tokens issued to
-        /// <see cref="OAuth2Options.ClientId"/>, so its front end and back end use the same GitHub application.
+        /// secret, so their options need <see cref="OAuth2Options.ClientSecret"/>. They also check only tokens issued to
+        /// <see cref="OAuth2Options.ClientId"/>, so their front end and back end use the same application.
         /// </para>
         /// <para>
         /// Checking a token sends a request to the provider, whether or not the token turns out to be valid, and the provider
