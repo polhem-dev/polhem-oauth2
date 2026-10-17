@@ -31,7 +31,9 @@ Design decisions and their reasons are recorded in `docs/adr/`. Read the relevan
   from committed files.
 - Decisions of lasting value belong in `docs/adr/`; work other maintainers need to see belongs in GitHub issues or pull requests.
 - The language rule above does not apply to `local/`, because its documents are not maintained together.
-- A session in a git worktree cannot see `local/`. Hand off work that depends on it to a session in the main working tree.
+- A session in a git worktree cannot see `local/` in its own checkout. Write to the main working tree's `local/` directly
+  with shell commands and absolute paths: write the content to the scratchpad first, then `cp` it there. Do not hand the
+  work off to another session or open a worktree for it.
 
 ## Workflow
 
