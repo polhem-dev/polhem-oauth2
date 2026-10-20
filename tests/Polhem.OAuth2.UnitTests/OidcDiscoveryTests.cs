@@ -251,7 +251,24 @@ namespace Polhem.OAuth2.UnitTests
         {
             using var http = new HttpClient(new StreamHandler(() => new StalledStream())) { Timeout = TimeSpan.FromMilliseconds(200) };
 
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http)).WithTimeout();
+            var exception = await Assert.ThrowsAsync<TaskCanceledException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http)).WithTimeout();
+
+            Assert.IsType<TimeoutException>(exception.InnerException);
+        }
+
+        [Fact]
+        [DisplayName("A caller that cancels before the headers arrive gets OperationCanceledException with its own token")]
+        public async Task FromDiscoveryAsync_CanceledBeforeHeaders_CarriesCallerToken()
+        {
+            var handler = new StubHttpMessageHandler().Hang();
+            using var cancellation = new CancellationTokenSource();
+
+            var discovery = OidcOAuth2Options.FromDiscoveryAsync(Authority, handler.CreateClient(), cancellation.Token);
+            await handler.Hanging;
+            await cancellation.CancelAsync();
+
+            var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => discovery);
+            Assert.Equal(cancellation.Token, exception.CancellationToken);
         }
 
         [Fact]
