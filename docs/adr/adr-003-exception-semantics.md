@@ -7,7 +7,7 @@
 Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAuth2Client` and the web sign-in cookie, and on
 2026-09-21 for the error object of Facebook and for `AppOAuth2Client`, which ADR-006 added, and on 2026-10-15 for token
 errors that GitHub reports with status 200. Revised again on 2026-10-15 for `OAuth2Client.GetUserInfoAsync`, which
-ADR-007 added, and on 2026-10-20 for the ID token checks and the discovery of ADR-008.
+ADR-007 added, and on 2026-10-20 for the ID token checks and the discovery of ADR-008, and for Sign in with Apple (ADR-009).
 
 ## Context
 
@@ -27,12 +27,14 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
   - a token response without an access token, and an empty user information response;
   - an ID token of the sign-in that `OidcOAuth2Options` cannot read, that was issued to another client or by another issuer,
     or whose subject differs from the user information, and a discovery document that does not describe a usable provider
-    (ADR-008).
+    (ADR-008);
+  - for `AppleOAuth2Options`, a token response without an ID token, and a client secret that the platform cannot sign
+    with a private key that was accepted when the client was created (ADR-009).
 - Completing a sign-in turns only the failures a sign-in is expected to produce into a failed result:
   - `OAuth2Client.CompleteAuthorizationAsync`: `OAuth2Exception`, `HttpRequestException`, `TaskCanceledException` when a
     request times out, and `JsonException`.
   - The ASP.NET and ASP.NET Core managers also: `OAuth2Exception` when no sign-in cookie matches the state or the sign-in
-    is too old, and `CryptographicException` when the cookie cannot be decrypted.
+    is too old, or, in ASP.NET Core, when the form of a POST callback exceeds the form limits, and `CryptographicException` when the cookie cannot be decrypted.
   - `LoopbackOAuth2Client.SignInAsync` also: the failures described in ADR-004.
   - `AppOAuth2Client.SignInAsync` also: the failures described in ADR-006.
   - `OAuth2Client.GetUserInfoAsync`, which returns the user of an access token from a front end: the same exceptions as

@@ -21,6 +21,17 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
   `OidcOAuth2Options.FromDiscoveryAsync(authority)` 讀取，其文件的 issuer 必須是傳入的 authority。`ProviderName` 必填，
   因為使用者以它識別。`UserInfoEndpoint` 可以留空，這時使用者改從登入取得的 ID token 讀取。它讀取的每個 ID token 都必須
   發給這個 client，設定了 `Issuer` 時也必須由它簽發；使用者資訊的 subject 必須與 ID token 相同。見 ADR-008。
+- `AppleOAuth2Options` 讓網頁應用程式以 Apple 登入。套件以 `PrivateKey`（Sign in with Apple key 的 `.p8` 檔）、`KeyId` 與 `TeamId`
+  簽署 client secret（ES256 的 JSON Web Token），並在到期前重簽；也接受放在 `ClientSecret` 的預先簽好的 secret。`UserId` 與 `Email`
+  來自 ID token，姓名來自 Apple 只在使用者第一次登入時送出的 `user` 參數。`LoopbackOAuth2Client` 與 `AppOAuth2Client` 會拒絕這組
+  options，行動應用程式要經由後端中轉登入。見 ADR-009。
+- `AuthorizationCallback.User` 與接受它的建構式，讓兩個網頁套件以外的伺服器端框架能把 Apple 的 `user` 參數交給
+  `CompleteAuthorizationAsync`。
+- `OAuth2Client.UsesFormPostResponse` 回報 provider 是否從它自己的網站以 form POST 回到回呼網址；Apple 在要求 `name` 或 `email`
+  scope 時就是如此。
+- Polhem.OAuth2.AspNetCore 與 Polhem.OAuth2.AspNet 的 `OAuth2Manager` 會從 POST 回呼的 form 讀參數，並把以 form POST 回來的 client
+  的進行中登入放在 `SameSite=None` 的 cookie，瀏覽器才會在那個請求帶上它。其他 client 維持 `SameSite=Lax`。這類 client 的回呼必須接受
+  POST，並排除在 antiforgery 驗證之外。見 ADR-005。
 
 ### 變更
 

@@ -8,7 +8,8 @@ Accepted (2026-09-19). Implemented on 2026-09-19; the results of signing in with
 Revised on 2026-09-21: the redirect URI rule became public, and the back-end relay calls it instead of repeating it; the relay
 protects its cache entries, checks the application redirect URI again when it returns the sign-in, can start a sign-in
 from the values of a request without throwing, and bounds the lifetime of a code. Revised on 2026-10-15 for GitHub, which
-an application signs in to only through the back end.
+an application signs in to only through the back end, and on 2026-10-20 for Sign in with Apple, which an application also
+signs in to only through the back end (ADR-009).
 
 ## Context
 

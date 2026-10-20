@@ -13,7 +13,7 @@
 Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式透過 `WebAuthenticator` 登入，可以直連，也可以經由自己的後端中轉。
 ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權碼流程，每次登入各自保存在一個加密的 cookie。
 
-支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta、GitHub，以及其他任何 OpenID Connect provider，
+支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta、GitHub、Apple，以及其他任何 OpenID Connect provider，
 例如 Keycloak 或 GitLab。
 
 ## 套件
@@ -31,7 +31,8 @@ dotnet add package Polhem.OAuth2
 ## Options
 
 每個 provider 各有自己的 options 型別：`GoogleOAuth2Options`、`FacebookOAuth2Options`、`LineOAuth2Options`、
-`AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`、`GitHubOAuth2Options`。
+`AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`、`GitHubOAuth2Options`、
+`AppleOAuth2Options`（Sign in with Apple，見「Sign in with Apple」）。
 其他 OpenID Connect provider 使用 `OidcOAuth2Options`，見「其他 OpenID Connect provider」。
 
 - `ClientId` 與 `RedirectUri` 為必填。client 建立時會複製並檢查 options，之後再修改原物件不會有影響；options 不合法時當場擲出 `ArgumentException`。
@@ -48,6 +49,31 @@ dotnet add package Polhem.OAuth2
 - `ClientAuthentication` 決定 client secret 怎麼送到 token 端點：放在請求本文（`ClientSecretPost`，預設值），或放在 HTTP Basic
   標頭（`ClientSecretBasic`）。provider 把應用程式登記為 `client_secret_basic`、且不接受本文裡的 secret 時，請設為
   `ClientSecretBasic`。Okta 的網頁應用程式預設就是這樣登記；2026-09-26 實測的 Okta org 網頁應用程式兩種方式都接受。
+
+### Sign in with Apple
+
+`AppleOAuth2Options` 讓網頁應用程式以 Apple 登入。行動應用程式依「經由後端中轉登入」一節由後端登入；loopback 與應用程式 client
+會拒絕這組 options，因為 Apple 只接受有網域名稱的 https 回呼網址，而且每個 token 請求都要 client secret。
+
+```csharp
+builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
+{
+    ClientId = "com.example.web",          // Services ID
+    TeamId = "your-team-id",
+    KeyId = "your-key-id",
+    PrivateKey = File.ReadAllText(keyPath), // Sign in with Apple key 的 .p8 檔
+    RedirectUri = "https://www.example.com/auth/callback"
+});
+```
+
+- 套件以 `PrivateKey` 簽署 client secret，並在到期前重簽。也可以改把預先簽好的 client secret 放在 `ClientSecret`，這時由你自己更換。
+  `.p8` 檔要像 secret 一樣，不放進版本控制。
+- 預設的 scope `name email` 會讓 Apple 從它自己的網站以 form POST 回到回呼網址：回呼要同時接受 GET 與 POST，並排除在 antiforgery
+  驗證之外。見「網頁應用程式：登入狀態怎麼保存」。
+- `UserId` 與 `Email` 來自 ID token。姓名只在使用者第一次登入時送來，要在那時保存；之後 `UserName` 為 null。`Email` 可能是
+  Apple 私密轉寄服務的地址。
+- Apple 拒絕 localhost 與 IP 的回呼網址，所以開發時回呼需要一個公開的 https 主機，例如 tunnel。
+- 見 [ADR-009](docs/adr/adr-009-sign-in-with-apple.zh-TW.md)。
 
 ### 其他 OpenID Connect provider
 
@@ -483,9 +509,12 @@ provider 在後台是桌面、Web 與行動 App 的 client 分開登記的，所
 - OAuthMaui sample 在 iOS 與 Mac Catalyst 讀 `iOS`，在 Android 讀 `Android`，在 Windows 讀 `Desktop`。它也會讀每個 `Web`
   區段的 `ClientId`，用來決定哪些 provider 提供經由後端的登入。`iOS` 與 `Android` 區段不能有 `ClientSecret`，因為 App 無法保密
   secret：有的話載入會失敗。OAuthMaui 建置時只打包 `ClientId`、`RedirectUri`、`Scopes`、`UsePkce` 與共用欄位；打包內容若會出現
-  名稱含 `Secret` 的欄位，建置就會失敗。Google 與 LINE 不接受直接導回
+  名稱含 `Secret` 或 `PrivateKey` 的欄位，建置就會失敗。Google 與 LINE 不接受直接導回
   Android App（[ADR-006](docs/adr/adr-006-app-sign-in.zh-TW.md)），所以沒有 `Android` 區段，sample 在 Android 上
-  改由後端登入它們。GitHub 要求 client secret，所以既沒有 `iOS` 也沒有 `Android` 區段。
+  改由後端登入它們。GitHub 與 Apple 要求 client secret，所以既沒有 `iOS` 也沒有 `Android` 區段。
+- Apple 的 `Web` 區段以 `PrivateKeyPath` 指向 repo 外的 `.p8` 檔，例如 `~/.config/polhem-oauth2/AuthKey_<key id>.p8`，sample 從它讀取金鑰。
+  直接把 `PrivateKey` 寫進設定檔會報錯。Apple 拒絕 localhost 的回呼網址，所以 `RedirectUri`（以及中轉用的 `AppRelay.BackendUrl`）
+  要指向轉送到 ASP.NET Core sample 的公開 https 主機，例如 tunnel。
 - 最上層的 `AppRelay` 區段設定後端中轉：`BackendUrl` 是 ASP.NET Core sample 的網址，`RedirectUri` 是 App 的中轉回呼網址，
   ASP.NET Core sample 會用它呼叫 `AddOAuth2AppRelay` 登記。中轉走 HTTPS，所以模擬器必須信任 ASP.NET Core 的開發憑證。
   Android 模擬器上先執行 `adb reverse tcp:7032 tcp:7032`，讓 `localhost` 連到主機。

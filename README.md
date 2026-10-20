@@ -14,8 +14,8 @@ redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Androi
 `WebAuthenticator`, directly or through their own back end. ASP.NET Core and ASP.NET (System.Web) applications use the
 authorization code flow with PKCE, and keep each sign-in in a protected cookie.
 
-Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta, GitHub, and any other OpenID Connect provider,
-such as Keycloak or GitLab.
+Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta, GitHub, Apple, and any other OpenID Connect
+provider, such as Keycloak or GitLab.
 
 ## Packages
 
@@ -32,7 +32,8 @@ dotnet add package Polhem.OAuth2
 ## Options
 
 Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Options`, `LineOAuth2Options`,
-`AzureOAuth2Options` (Microsoft Entra ID), `Auth0OAuth2Options`, `OktaOAuth2Options` and `GitHubOAuth2Options`. Any other
+`AzureOAuth2Options` (Microsoft Entra ID), `Auth0OAuth2Options`, `OktaOAuth2Options`, `GitHubOAuth2Options` and
+`AppleOAuth2Options` (Sign in with Apple; see "Sign in with Apple"). Any other
 OpenID Connect provider uses `OidcOAuth2Options`; see "Other OpenID Connect providers".
 
 - `ClientId` and `RedirectUri` are required. A client copies and checks the options when it is created, so later changes
@@ -54,6 +55,32 @@ OpenID Connect provider uses `OidcOAuth2Options`; see "Other OpenID Connect prov
   default) or in an HTTP Basic header (`ClientSecretBasic`). Set `ClientSecretBasic` for an application that the provider
   registered for `client_secret_basic` and that refuses the secret in the body. Okta registers a web application that way
   unless told otherwise; the web application of an Okta org tested on 2026-09-26 accepted both methods.
+
+### Sign in with Apple
+
+`AppleOAuth2Options` signs in a web application with Apple. Mobile applications sign in through the back end, as
+"Signing in through the back end" describes; the loopback and application clients refuse these options, because Apple
+accepts only an https return URL on a domain name and requires the client secret for every token request.
+
+```csharp
+builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
+{
+    ClientId = "com.example.web",          // the Services ID
+    TeamId = "your-team-id",
+    KeyId = "your-key-id",
+    PrivateKey = File.ReadAllText(keyPath), // the .p8 file of the Sign in with Apple key
+    RedirectUri = "https://www.example.com/auth/callback"
+});
+```
+
+- The library signs the client secret with `PrivateKey` and replaces it before it expires. A client secret signed in advance
+  can be set in `ClientSecret` instead, and is then yours to replace. Keep the `.p8` file out of source control, as a secret.
+- The default scopes `name email` make Apple return to the callback with a form POST from its own site: map the callback for
+  GET and POST and leave it out of antiforgery validation. See "Web applications: how a sign-in is kept".
+- `UserId` and `Email` come from the ID token. The name comes only with the first sign-in of a user, so store it then;
+  `UserName` is null afterwards. `Email` can be an address of Apple's private email relay.
+- Apple refuses localhost and IP return URLs, so development needs a public https host for the callback, such as a tunnel.
+- See [ADR-009](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-009-sign-in-with-apple.md).
 
 ### Other OpenID Connect providers
 
@@ -546,11 +573,15 @@ separately:
   `ClientId` of each `Web` section, to offer a sign-in through the back end for the providers that have one. An `iOS` or
   `Android` section cannot hold a `ClientSecret`, because an application cannot keep one: loading such a file fails. The
   build of OAuthMaui packages only `ClientId`, `RedirectUri`, `Scopes`, `UsePkce` and the shared fields, and fails if the
-  packaged settings would hold a field whose name contains `Secret`.
+  packaged settings would hold a field whose name contains `Secret` or `PrivateKey`.
   Google and LINE refuse a direct redirect to an Android application
   ([ADR-006](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-006-app-sign-in.md)), so they have no
-  `Android` section, and the sample signs in to them through the back end there. GitHub requires the client secret, so it
-  has neither an `iOS` nor an `Android` section.
+  `Android` section, and the sample signs in to them through the back end there. GitHub and Apple require the client secret,
+  so they have neither an `iOS` nor an `Android` section.
+- Apple's `Web` section names the `.p8` file in `PrivateKeyPath`, a path outside the repository such as
+  `~/.config/polhem-oauth2/AuthKey_<key id>.p8`, and the sample reads the key from it. A `PrivateKey` written into the settings
+  file is an error. Apple refuses a localhost return URL, so point `RedirectUri`, and `AppRelay.BackendUrl` for the relay, at a
+  public https host that forwards to the ASP.NET Core sample, such as a tunnel.
 - The top-level `AppRelay` section configures the back-end relay: `BackendUrl` is where the ASP.NET Core sample runs, and
   `RedirectUri` is the relay callback of the application, which the ASP.NET Core sample registers with
   `AddOAuth2AppRelay`. The relay runs over HTTPS, so the simulator or emulator must trust the ASP.NET Core development

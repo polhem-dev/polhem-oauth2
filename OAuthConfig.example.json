@@ -120,6 +120,15 @@
         "ClientSecret": "",
         "RedirectUri": "https://localhost:7032/auth/callback"
       }
+    },
+    "Apple": {
+      "Web": {
+        "ClientId": "",
+        "TeamId": "",
+        "KeyId": "",
+        "PrivateKeyPath": "",
+        "RedirectUri": "https://your-public-host.example.com/auth/callback"
+      }
     }
   },
   "AppRelay": {

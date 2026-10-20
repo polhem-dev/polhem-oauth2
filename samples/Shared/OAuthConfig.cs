@@ -27,6 +27,8 @@ namespace OAuthSamples
         private const string AppRelayName = "AppRelay";
         private const string ClientIdName = "ClientId";
         private const string ClientSecretName = "ClientSecret";
+        private const string PrivateKeyName = "PrivateKey";
+        private const string PrivateKeyPathName = "PrivateKeyPath";
 
         private static readonly Provider[] s_providers =
         {
@@ -36,7 +38,8 @@ namespace OAuthSamples
             new Provider("Azure", typeof(AzureOAuth2Options), "Tenant"),
             new Provider("Auth0", typeof(Auth0OAuth2Options), "Domain"),
             new Provider("Okta", typeof(OktaOAuth2Options), "Domain", "AuthorizationServerId"),
-            new Provider("GitHub", typeof(GitHubOAuth2Options))
+            new Provider("GitHub", typeof(GitHubOAuth2Options)),
+            new Provider("Apple", typeof(AppleOAuth2Options)) { ReadsPrivateKeyFile = true }
         };
 
         // Enumerations such as ClientAuthentication are written by name in the file.
@@ -259,11 +262,46 @@ namespace OAuthSamples
                     $"'{_filePath}' has no {ClientIdName} in '{ProvidersName}.{provider.Name}.{clientType}'.");
             }
 
+            if (provider.ReadsPrivateKeyFile)
+                ReadPrivateKeyFile(merged, $"{ProvidersName}.{provider.Name}.{clientType}");
+
             var options = (OAuth2Options?)JsonSerializer.Deserialize(merged.ToJsonString(), provider.OptionsType, s_readOptions);
             if (options is null)
                 throw new InvalidDataException($"'{_filePath}' could not read '{ProvidersName}.{provider.Name}.{clientType}'.");
 
             return new OAuthClientEntry(provider.Name, options);
+        }
+
+        // The Sign in with Apple key stays in a file outside the repository, and the settings name only its path, so the key
+        // cannot end up in a copy of the settings file or in a log of it. The key is read into PrivateKey and never printed.
+        private void ReadPrivateKeyFile(JsonObject merged, string sectionPath)
+        {
+            string? keyField = merged.Select(field => field.Key).FirstOrDefault(key => string.Equals(key, PrivateKeyName, StringComparison.OrdinalIgnoreCase));
+            if (keyField is not null)
+            {
+                throw new InvalidDataException(
+                    $"'{_filePath}' has a {PrivateKeyName} in '{sectionPath}'. Keep the .p8 file outside the repository and set {PrivateKeyPathName} to its path.");
+            }
+
+            string? pathField = merged.Select(field => field.Key).FirstOrDefault(key => string.Equals(key, PrivateKeyPathName, StringComparison.OrdinalIgnoreCase));
+            if (pathField is null)
+                return;
+
+            string? path = merged[pathField]?.GetValue<string>();
+            merged.Remove(pathField);
+            // A section left unfilled, as in OAuthConfig.example.json, is skipped later and needs no key.
+            string? clientId = merged.FirstOrDefault(field => string.Equals(field.Key, ClientIdName, StringComparison.OrdinalIgnoreCase)).Value?.GetValue<string>();
+            if (path is null || string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(clientId))
+                return;
+
+            if (path.StartsWith("~/", StringComparison.Ordinal))
+                path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), path.Substring(2));
+            // Path.Combine keeps an absolute path as it is, and .NET Framework has no GetFullPath with a base path.
+            string fullPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_filePath)) ?? Environment.CurrentDirectory, path));
+            if (!File.Exists(fullPath))
+                throw new InvalidDataException($"'{_filePath}' names the private key file '{fullPath}' in '{sectionPath}.{PrivateKeyPathName}', which does not exist.");
+
+            merged[PrivateKeyName] = File.ReadAllText(fullPath);
         }
 
         private OAuthAppRelay ReadAppRelay(JsonNode? node)
@@ -308,6 +346,9 @@ namespace OAuthSamples
             public string Name { get; }
 
             public Type OptionsType { get; }
+
+            /// <summary>Gets a value indicating whether a client reads its private key from the file that <c>PrivateKeyPath</c> names.</summary>
+            public bool ReadsPrivateKeyFile { get; set; }
 
             public bool HasSharedField(string name)
             {
