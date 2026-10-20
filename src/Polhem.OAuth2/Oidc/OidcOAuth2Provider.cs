@@ -5,10 +5,8 @@ namespace Polhem.OAuth2
     /// <summary>
     /// The provider for any OpenID Connect provider, configured by <see cref="OidcOAuth2Options"/>.
     /// </summary>
-    internal sealed class OidcOAuth2Provider : OAuth2Provider
+    internal sealed class OidcOAuth2Provider : OpenIdConnectProvider
     {
-        private const string SubjectClaim = "sub";
-
         private readonly OidcOAuth2Options _options;
 
         /// <summary>
@@ -22,10 +20,15 @@ namespace Polhem.OAuth2
             if (options.GetProviderNameError() is { } error)
                 throw new ArgumentException(error, nameof(options));
             _options = options;
+            IdTokenIssuers = options.Issuer.Length == 0 ? Array.Empty<string>() : new[] { options.Issuer };
         }
 
         /// <inheritdoc/>
         public override string ProviderName => _options.ProviderName;
+
+        /// <inheritdoc/>
+        /// <remarks><see cref="OidcOAuth2Options.Issuer"/>, or none when it is empty.</remarks>
+        protected override IReadOnlyCollection<string> IdTokenIssuers { get; }
 
         /// <inheritdoc/>
         /// <remarks>
@@ -46,41 +49,19 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(token);
 
-            if (string.IsNullOrEmpty(Options.UserInfoEndpoint))
+            if (!string.IsNullOrEmpty(Options.UserInfoEndpoint))
+                return await base.GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
+
+            if (token.IdToken is not { Length: > 0 } idToken)
             {
-                if (token.IdToken is not { Length: > 0 } idToken)
-                {
-                    throw new OAuth2Exception(
-                        $"The token response of {ProviderName} has no ID token, from which the user is read because no user information endpoint is set.");
-                }
-                using (var claims = IdToken.ReadClaims(idToken, Options.ClientId, _options.Issuer))
-                {
-                    ReadSubject(claims.RootElement);
-                    return CreateUserInfo(claims.RootElement, claims.RootElement.GetRawText(), token);
-                }
+                throw new OAuth2Exception(
+                    $"The token response of {ProviderName} has no ID token, from which the user is read because no user information endpoint is set.");
             }
-
-            string? idTokenSubject = null;
-            if (token.IdToken is { Length: > 0 } signInIdToken)
+            using (var claims = ReadIdTokenClaims(idToken))
             {
-                using (var claims = IdToken.ReadClaims(signInIdToken, Options.ClientId, _options.Issuer))
-                {
-                    idTokenSubject = ReadSubject(claims.RootElement);
-                }
+                ReadSubject(claims.RootElement);
+                return CreateUserInfo(claims.RootElement, claims.RootElement.GetRawText(), token);
             }
-
-            var user = await base.GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
-            if (idTokenSubject is not null && !string.Equals(user.UserId, idTokenSubject, StringComparison.Ordinal))
-                throw new OAuth2Exception("The user information names another subject than the ID token.");
-            return user;
-        }
-
-        // OpenID Connect Core 1.0, section 2, makes sub a required string claim of every ID token.
-        private static string ReadSubject(JsonElement claims)
-        {
-            return OAuth2Json.GetProtocolString(claims, SubjectClaim) is { Length: > 0 } subject
-                ? subject
-                : throw new OAuth2Exception("The ID token has no subject.");
         }
 
         /// <inheritdoc/>
@@ -94,13 +75,9 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
-        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
+        protected override string? GetFallbackUserName(JsonElement user)
         {
-            return new UserInfo(
-                OAuth2Json.GetString(user, SubjectClaim),
-                GetOidcDisplayName(user) ?? OAuth2Json.GetString(user, "preferred_username") ?? OAuth2Json.GetString(user, "nickname"),
-                OAuth2Json.GetString(user, "email"),
-                json);
+            return OAuth2Json.GetString(user, "preferred_username") ?? OAuth2Json.GetString(user, "nickname");
         }
     }
 }

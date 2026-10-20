@@ -6,7 +6,8 @@
 
 已採納（2026-10-20）。2026-10-20 於 pull request [#23](https://github.com/polhem-dev/polhem-oauth2/pull/23) 與
 [#24](https://github.com/polhem-dev/polhem-oauth2/pull/24) 實作，並於 2026-10-20 以 Keycloak、GitLab.com、Google 與 Okta 實測，
-記錄在「測試結果」。
+記錄在「測試結果」。專用的 OpenID Connect provider 於 2026-10-20 在
+[#26](https://github.com/polhem-dev/polhem-oauth2/pull/26) 加上 ID token 檢查，並以 Google、Auth0、Okta 與 Microsoft Entra ID 實測。
 
 ## 背景
 
@@ -47,6 +48,15 @@ OpenID Connect 也允許 provider 不提供使用者資訊端點（OpenID Connec
   取代簽章檢查。不支援加密的 ID token。
 - 這些檢查是共用的程式碼：LINE 用它從 ID token 讀 email，Apple 也可以使用。LINE 的行為不變：不檢查 issuer，讀不了的 ID token
   只是少了 email，不會讓登入失敗。
+- 專用的 OpenID Connect provider，也就是 Google、Auth0、Okta 與 Microsoft Entra ID，對登入取得的 ID token 做相同的檢查，並比對它
+  與使用者資訊的 `sub`。token 回應沒有 ID token 時（例如沒有要求 `openid`）照舊，不檢查。只有單憑 options 就能得知 issuer 時才檢查 issuer：
+  - Google：`https://accounts.google.com` 或 `accounts.google.com`，即 Google 文件列出的兩個值。
+  - Auth0：授權端點或 token 端點的 scheme 與主機加上結尾斜線，端點由 `Domain` 組成時就是 `https://<Domain>/`。Auth0 以請求所用的
+    網域作為 issuer，所以 custom domain 與手動設定的端點也適用。
+  - Okta：不檢查。授權伺服器的 issuer mode 決定 token 帶的是 Okta 網域還是 custom domain，因此 issuer 可能與 `Domain` 不同。
+  - Microsoft Entra ID：不檢查。issuer 帶的是使用者所屬的 tenant，`common`、`organizations` 與 `consumers` 都無法事先確定。
+
+  四家都檢查 audience。通用與專用的 provider 共用一個基底類別處理這項檢查與標準 claim 的對應；各家只提供名稱沒有值時改用的欄位。
 - 對這個 options，`OAuth2Client.GetUserInfoAsync(accessToken)` 擲出 `NotSupportedException`，與 Okta 相同：OpenID Connect 的前端
   以 ID token 證明是誰登入（ADR-007）。
 
@@ -64,7 +74,10 @@ OpenID Connect 也允許 provider 不提供使用者資訊端點（OpenID Connec
 - Google 的桌面 client 沒有 client secret 時，Google 會拒絕換 token，而這個 options 的 public client 不送 secret。請改用會送出
   secret 的 `GoogleOAuth2Options`。
 - discovery 文件的 issuer 是範本的 provider，例如 Microsoft Entra ID 的 `common` tenant，無法以 discovery 讀取。
-- `tests/Polhem.OAuth2.UnitTests/IdTokenTests.cs`、`OidcOAuth2ProviderTests.cs` 與 `OidcDiscoveryTests.cs` 涵蓋各項檢查。
+- 以 Google、Auth0、Okta 或 Microsoft Entra ID 登入時，使用者資訊的 subject 與 ID token 不同、ID token 無法讀取或發給其他 client，
+  原本能成功的登入現在會失敗。「測試結果」裡的登入都通過了這項檢查。
+- `tests/Polhem.OAuth2.UnitTests/IdTokenTests.cs`、`OidcOAuth2ProviderTests.cs`、`OpenIdConnectProviderTests.cs` 與
+  `OidcDiscoveryTests.cs` 涵蓋各項檢查。
   fake provider 在 `/oidc` 下提供一個有 discovery 文件、沒有使用者資訊端點的 OpenID Connect provider，供 device tests 登入。
 
 ## 測試結果
@@ -91,3 +104,13 @@ OpenID Connect 也允許 provider 不提供使用者資訊端點（OpenID Connec
 
 [run 39354330719](https://github.com/polhem-dev/polhem-oauth2/actions/runs/39354330719) 的 device tests 登入 fake provider 的
 OpenID Connect 模式：iOS、Mac Catalyst 與 Android 直連登入，Windows 經由 loopback client 登入。
+
+2026-10-20 在加上 ID token 檢查後，以 loopback client 與真實帳號登入各專用 provider。每次登入都成功，ID token 都以單一 audience
+發給這個 client，使用者資訊的 `sub` 都等於 ID token 的 `sub`：
+
+- Google：issuer 是 `https://accounts.google.com`，ID token 帶有等於 client ID 的 `azp`，`sub` 是數字。
+- Auth0：issuer 是網域加上結尾斜線，`sub` 的形式是 `<provider>|<id>`。
+- Okta，`default` 授權伺服器：issuer 是 `https://<domain>/oauth2/default`。
+- Microsoft Entra ID，`common` tenant，個人帳號與工作帳號各一次：issuer 帶的是各帳號所屬的 tenant，個人帳號是 consumers tenant。
+  兩次 Microsoft Graph 的使用者資訊都回傳與 ID token 相同的 pairwise `sub`；個人帳號的名與姓是 `givenname` 與 `familyname`，
+  工作帳號則是 `given_name`、`family_name` 加上 `name`。

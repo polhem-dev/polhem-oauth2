@@ -5,7 +5,7 @@ namespace Polhem.OAuth2
     /// <summary>
     /// The Okta OAuth2 provider.
     /// </summary>
-    internal sealed class OktaOAuth2Provider : OAuth2Provider
+    internal sealed class OktaOAuth2Provider : OpenIdConnectProvider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="OktaOAuth2Provider"/> class.
@@ -18,6 +18,13 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         public override string ProviderName => "Okta";
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// The issuer is not checked. The issuer mode of an authorization server decides whether a token names the Okta domain
+        /// or a custom domain, so it can differ from <see cref="OktaOAuth2Options.Domain"/>; the audience is still checked.
+        /// </remarks>
+        protected override IReadOnlyCollection<string> IdTokenIssuers => Array.Empty<string>();
 
         /// <inheritdoc/>
         /// <remarks>
@@ -35,13 +42,9 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
-        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
+        protected override string? GetFallbackUserName(JsonElement user)
         {
-            return new UserInfo(
-                OAuth2Json.GetString(user, "sub"),
-                GetOidcDisplayName(user) ?? OAuth2Json.GetString(user, "preferred_username"),
-                OAuth2Json.GetString(user, "email"),
-                json);
+            return OAuth2Json.GetString(user, "preferred_username");
         }
     }
 }

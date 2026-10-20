@@ -39,8 +39,28 @@ namespace Polhem.OAuth2
         /// </exception>
         public static JsonDocument ReadClaims(string idToken, string clientId, string? issuer)
         {
+            return ReadClaims(idToken, clientId, issuer is { Length: > 0 } ? new[] { issuer } : Array.Empty<string>());
+        }
+
+        /// <summary>
+        /// Reads the payload of an ID token issued to a client by one of several issuers.
+        /// </summary>
+        /// <param name="idToken">The ID token, a JSON Web Token with three segments.</param>
+        /// <param name="clientId">The client ID that the <c>aud</c> claim must contain.</param>
+        /// <param name="issuers">
+        /// The values, one of which the <c>iss</c> claim must equal, compared ordinally, or an empty collection to leave the
+        /// issuer unchecked.
+        /// </param>
+        /// <returns>The payload, a parsed JSON object, which the caller disposes.</returns>
+        /// <exception cref="OAuth2Exception">
+        /// The token is not a JSON Web Token with a JSON object as its payload, is issued to another client, or names another
+        /// issuer.
+        /// </exception>
+        public static JsonDocument ReadClaims(string idToken, string clientId, IReadOnlyCollection<string> issuers)
+        {
             ArgumentNullException.ThrowIfNull(idToken);
             ArgumentNullException.ThrowIfNull(clientId);
+            ArgumentNullException.ThrowIfNull(issuers);
 
             // An encrypted token (JSON Web Encryption) has five segments and is not supported.
             string[] segments = idToken.Split(s_segmentSeparator);
@@ -74,8 +94,8 @@ namespace Polhem.OAuth2
                 {
                     throw new OAuth2Exception("The ID token was issued to another client.");
                 }
-                if (!string.IsNullOrEmpty(issuer)
-                    && !string.Equals(OAuth2Json.GetProtocolString(claims, "iss"), issuer, StringComparison.Ordinal))
+                if (issuers.Count != 0
+                    && !(OAuth2Json.GetProtocolString(claims, "iss") is { } tokenIssuer && issuers.Contains(tokenIssuer, StringComparer.Ordinal)))
                 {
                     throw new OAuth2Exception("The ID token was issued by another issuer.");
                 }

@@ -5,10 +5,12 @@ namespace Polhem.OAuth2
     /// <summary>
     /// The Google OAuth2 provider.
     /// </summary>
-    internal sealed class GoogleOAuth2Provider : OAuth2Provider
+    internal sealed class GoogleOAuth2Provider : OpenIdConnectProvider
     {
         // https://docs.cloud.google.com/docs/authentication/token-types describes the response for an access token.
         private const string TokenInfoEndpoint = "https://oauth2.googleapis.com/tokeninfo";
+
+        private static readonly string[] s_issuers = { "https://accounts.google.com", "accounts.google.com" };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GoogleOAuth2Provider"/> class.
@@ -60,13 +62,16 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
-        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
+        /// <remarks>
+        /// https://developers.google.com/identity/openid-connect/openid-connect#validatinganidtoken names both values, with and
+        /// without the scheme.
+        /// </remarks>
+        protected override IReadOnlyCollection<string> IdTokenIssuers => s_issuers;
+
+        /// <inheritdoc/>
+        protected override string? GetFallbackUserName(JsonElement user)
         {
-            return new UserInfo(
-                OAuth2Json.GetString(user, "sub"),
-                GetOidcDisplayName(user),
-                OAuth2Json.GetString(user, "email"),
-                json);
+            return null;
         }
     }
 }
