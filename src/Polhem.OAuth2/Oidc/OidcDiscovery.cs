@@ -100,7 +100,7 @@ namespace Polhem.OAuth2
                 {
                     if (body.Length + read > MaxDocumentBytes)
                         throw new HttpRequestException(TooLargeMessage);
-                    body.Write(buffer, 0, read);
+                    await body.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                 }
                 return new UTF8Encoding(false).GetString(body.GetBuffer(), 0, (int)body.Length).TrimStart('\uFEFF');
             }
@@ -166,7 +166,7 @@ namespace Polhem.OAuth2
 
         private static string TrimTrailingSlash(string value)
         {
-            return value.EndsWith("/", StringComparison.Ordinal) ? value.Substring(0, value.Length - 1) : value;
+            return value.Length > 0 && value[value.Length - 1] == '/' ? value.Substring(0, value.Length - 1) : value;
         }
     }
 }

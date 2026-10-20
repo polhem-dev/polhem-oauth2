@@ -50,6 +50,21 @@ public class FakeProviderSignInTests
     }
 
     [AppSignInFact]
+    [DisplayName("A direct sign-in to an OpenID Connect provider read from its discovery document returns the user of the ID token")]
+    public async Task AppSignIn_FakeOidcDiscovery_ReturnsUserOfIdToken()
+    {
+        var options = await FakeProvider.CreateOidcOptionsAsync(FakeProviderValues.ClientId, FakeProviderValues.AppRedirectUri).WithTimeout();
+        var client = new AppOAuth2Client(options, AuthenticateAsync);
+
+        var result = await client.SignInAsync().WithTimeout();
+
+        Assert.True(result.IsSuccess, result.Exception?.ToString());
+        Assert.Equal("Fake OpenID Connect", result.ProviderName);
+        Assert.Empty(options.UserInfoEndpoint);
+        Assert.True(FakeProvider.IsKnownUser(result.UserInfo));
+    }
+
+    [AppSignInFact]
     [DisplayName("A sign-in through the back-end relay returns the user after the application redeems its code")]
     public async Task RelaySignIn_FakeProvider_RedeemsUser()
     {
@@ -84,6 +99,18 @@ public class FakeProviderSignInTests
         var client = new LoopbackOAuth2Client(FakeProvider.CreateOptions(FakeProviderValues.ClientId, "http://127.0.0.1:0/callback"));
 
         var result = await client.SignInAsync().WithTimeout();
+
+        Assert.True(result.IsSuccess, result.Exception?.ToString());
+        Assert.True(FakeProvider.IsKnownUser(result.UserInfo));
+    }
+
+    [LoopbackSignInFact]
+    [DisplayName("A loopback sign-in to an OpenID Connect provider read from its discovery document returns the user of the ID token")]
+    public async Task LoopbackSignIn_FakeOidcDiscovery_ReturnsUserOfIdToken()
+    {
+        var options = await FakeProvider.CreateOidcOptionsAsync(FakeProviderValues.ClientId, "http://127.0.0.1:0/callback").WithTimeout();
+
+        var result = await new LoopbackOAuth2Client(options).SignInAsync().WithTimeout();
 
         Assert.True(result.IsSuccess, result.Exception?.ToString());
         Assert.True(FakeProvider.IsKnownUser(result.UserInfo));

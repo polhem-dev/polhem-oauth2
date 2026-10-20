@@ -35,6 +35,12 @@ namespace Polhem.OAuth2.FakeProvider
         /// </summary>
         public const string RelayRedirectUri = AppScheme + ":/relay";
 
+        /// <summary>
+        /// The path under which the fake provider is an OpenID Connect provider with a discovery document. The issuer is
+        /// the origin followed by this path.
+        /// </summary>
+        public const string OidcPath = "/oidc";
+
         public const string UserId = "fake-user-1";
         public const string UserName = "Fake User";
         public const string Email = "fake.user@example.com";

@@ -38,7 +38,7 @@ app.Use(async (context, next) =>
         app.Logger.LogInformation("{Method} {Path} -> {StatusCode}", context.Request.Method, context.Request.Path, context.Response.StatusCode);
 });
 
-new FakeAuthorizationServer(WebClientId, WebClientSecret).Map(app);
+new FakeAuthorizationServer(origin, WebClientId, WebClientSecret).Map(app);
 
 app.MapGet("/auth/app/{clientName}", (HttpContext context, OAuth2Manager manager, string clientName) =>
 {

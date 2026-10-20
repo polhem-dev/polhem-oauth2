@@ -23,6 +23,21 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
+        /// Writes a range of memory to a stream.
+        /// </summary>
+        /// <param name="stream">The stream to write to.</param>
+        /// <param name="buffer">The bytes to write, which must be backed by an array, as <c>AsMemory</c> of an array is.</param>
+        /// <param name="cancellationToken">Cancels the write.</param>
+        /// <returns>A task that completes when the bytes are written.</returns>
+        /// <exception cref="ArgumentException"><paramref name="buffer"/> is not backed by an array.</exception>
+        public static Task WriteAsync(this Stream stream, ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (!System.Runtime.InteropServices.MemoryMarshal.TryGetArray(buffer, out var segment))
+                throw new ArgumentException("The memory is not backed by an array.", nameof(buffer));
+            return stream.WriteAsync(segment.Array!, segment.Offset, segment.Count, cancellationToken);
+        }
+
+        /// <summary>
         /// Reads from a stream into a whole buffer.
         /// </summary>
         /// <param name="stream">The stream to read from.</param>

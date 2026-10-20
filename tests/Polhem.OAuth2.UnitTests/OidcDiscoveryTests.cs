@@ -6,6 +6,8 @@ namespace Polhem.OAuth2.UnitTests
 {
     public class OidcDiscoveryTests
     {
+        private static readonly string[] s_defaultScopes = ["openid", "profile", "email"];
+
         private const string Authority = "https://idp.example.com/realms/demo";
 
         [Fact]
@@ -27,7 +29,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal(Authority + "/protocol/openid-connect/userinfo", options.UserInfoEndpoint);
             Assert.Equal(ClientAuthenticationMethod.ClientSecretPost, options.ClientAuthentication);
             Assert.Empty(options.ProviderName);
-            Assert.Equal(new[] { "openid", "profile", "email" }, options.Scopes);
+            Assert.Equal(s_defaultScopes, options.Scopes);
             Assert.Empty(options.ClientId);
         }
 
