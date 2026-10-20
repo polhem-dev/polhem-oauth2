@@ -17,9 +17,15 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
   支援 Google、LINE、Facebook 與 GitHub；Facebook 與 GitHub 需要 `ClientSecret`，而且只接受發給 `ClientId` 的 token。
   Microsoft Entra ID、Auth0 與 Okta 擲出 `NotSupportedException`，訊息指向 ID token。被拒絕、已過期或發給其他 client 的 token
   是失敗結果。見 ADR-007。
+- `OidcOAuth2Options` 可以登入其他任何 OpenID Connect provider，例如 Keycloak 或 GitLab。端點可以手動設定，也可以由
+  `OidcOAuth2Options.FromDiscoveryAsync(authority)` 讀取，其文件的 issuer 必須是傳入的 authority。`ProviderName` 必填，
+  因為使用者以它識別。`UserInfoEndpoint` 可以留空，這時使用者改從登入取得的 ID token 讀取。它讀取的每個 ID token 都必須
+  發給這個 client，設定了 `Issuer` 時也必須由它簽發；使用者資訊的 subject 必須與 ID token 相同。見 ADR-008。
 
 ### 變更
 
+- LINE 的 ID token 的 authorized party（`azp`）不是 channel ID，或除了 channel ID 之外還有其他 audience 卻沒有 authorized party
+  時，email 會留空。LINE 不會發出這兩種 token，預期登入結果不受影響。
 - token 端點以狀態碼 200 回傳、卻帶有 `error` 的回應，現在會成為帶著 provider 錯誤代碼的 `OAuth2Exception`，不再是「沒有
   access token」的泛用錯誤。GitHub 的 token 端點就是這樣回報失敗。
 - 每個送往 provider 的請求都在 `User-Agent` 標頭以 `Polhem.OAuth2/<版本>` 標明函式庫，排在應用程式傳入之 `HttpClient` 預設

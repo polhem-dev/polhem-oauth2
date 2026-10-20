@@ -13,3 +13,4 @@
 | [ADR-005](adr-005-web-sign-in-cookie.zh-TW.md) | 每次網頁登入各自保存在一個加密的 cookie |
 | [ADR-006](adr-006-app-sign-in.zh-TW.md) | 行動應用程式直連 provider 登入，或透過自家後端中轉 |
 | [ADR-007](adr-007-access-token-from-front-end.zh-TW.md) | 前端送來的 access token，要等 provider 說出它的 client 才回傳使用者 |
+| [ADR-008](adr-008-generic-openid-connect-provider.zh-TW.md) | 以一個 options 型別登入任何 OpenID Connect provider |

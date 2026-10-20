@@ -8,7 +8,7 @@ Accepted (2026-10-15). Implemented on 2026-10-15 in pull requests
 [#9](https://github.com/polhem-dev/polhem-oauth2/pull/9), [#10](https://github.com/polhem-dev/polhem-oauth2/pull/10),
 [#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) and [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18). The checks were tested with
 tokens that are not valid on 2026-10-15, and with real accounts and the tokens of other clients on 2026-10-16, as "Test results"
-records.
+records. ADR-008 added `OidcOAuth2Options` to the providers that are not supported on 2026-10-20.
 
 ## Context
 
@@ -61,6 +61,8 @@ Connect sign-in for users.
   - Okta: introspection (RFC 7662) could name the client with the back end's credentials, but whether one client may
     introspect the token of another is documented ambiguously, and the ID token answers the question without a request for
     each token.
+- `OidcOAuth2Options`, which ADR-008 added for any other OpenID Connect provider, is not supported either, for the reason of
+  Okta.
 - Facebook and GitHub need `ClientSecret`; without one, `GetUserInfoAsync` throws `InvalidOperationException`. Both check
   only tokens issued to the application whose credentials authenticate the check, so `AcceptedClientIds` accepts nothing more
   there, and the front end and the back end use the same Facebook app or GitHub application. Facebook refuses the token of

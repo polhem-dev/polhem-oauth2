@@ -14,7 +14,8 @@ redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Androi
 `WebAuthenticator`, directly or through their own back end. ASP.NET Core and ASP.NET (System.Web) applications use the
 authorization code flow with PKCE, and keep each sign-in in a protected cookie.
 
-Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta and GitHub.
+Supported providers: Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta, GitHub, and any other OpenID Connect provider,
+such as Keycloak or GitLab.
 
 ## Packages
 
@@ -31,7 +32,8 @@ dotnet add package Polhem.OAuth2
 ## Options
 
 Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Options`, `LineOAuth2Options`,
-`AzureOAuth2Options` (Microsoft Entra ID), `Auth0OAuth2Options`, `OktaOAuth2Options` and `GitHubOAuth2Options`.
+`AzureOAuth2Options` (Microsoft Entra ID), `Auth0OAuth2Options`, `OktaOAuth2Options` and `GitHubOAuth2Options`. Any other
+OpenID Connect provider uses `OidcOAuth2Options`; see "Other OpenID Connect providers".
 
 - `ClientId` and `RedirectUri` are required. A client copies and checks the options when it is created, so later changes
   to them have no effect, and invalid options throw `ArgumentException` right away.
@@ -52,6 +54,34 @@ Each provider has its own options type: `GoogleOAuth2Options`, `FacebookOAuth2Op
   default) or in an HTTP Basic header (`ClientSecretBasic`). Set `ClientSecretBasic` for an application that the provider
   registered for `client_secret_basic` and that refuses the secret in the body. Okta registers a web application that way
   unless told otherwise; the web application of an Okta org tested on 2026-09-26 accepted both methods.
+
+### Other OpenID Connect providers
+
+`OidcOAuth2Options` signs in with any provider that follows OpenID Connect, such as Keycloak, GitLab, AWS Cognito or
+Authentik. Read its endpoints from the provider's discovery document once, when the application starts, and use the options
+like any other:
+
+```csharp
+var gitlab = await OidcOAuth2Options.FromDiscoveryAsync("https://gitlab.com");
+gitlab.ProviderName = "GitLab";
+gitlab.ClientId = "your-client-id";
+gitlab.ClientSecret = "your-client-secret";
+gitlab.RedirectUri = "https://localhost:7032/auth/callback";
+builder.Services.AddOAuth2Client("GitLab", gitlab);
+```
+
+- `ProviderName` is required. Users are identified by it together with `UserId`, and two providers can give the same user ID
+  to different people, so give each provider a name of its own and keep it.
+- The `issuer` of the discovery document must equal the authority you pass, apart from a trailing slash. The request is not
+  cached, so do not call it for each sign-in, and pass only an authority the application trusts.
+- The endpoints and `Issuer` can also be set by hand. A provider without a user information endpoint leaves
+  `UserInfoEndpoint` empty: the user then comes from the ID token of the sign-in, which needs `Issuer` and the `openid` scope.
+- The default scopes are `openid profile email`, and the user name is the `name` claim, the given and family names, then
+  `preferred_username` and then `nickname`.
+- Google refuses a desktop client that sends no client secret, which a public client of these options does not send; use
+  `GoogleOAuth2Options` for Google.
+
+[ADR-008](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-008-generic-openid-connect-provider.md) records the checks and the providers it was tested with.
 
 ## Desktop and console applications
 
@@ -385,7 +415,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - Identify a user by the provider name together with `UserInfo.UserId`, not by `Email`: an address can change, and
   providers differ in whether they verify it.
 - The provider name is `AuthorizationResult.ProviderName`: `Google`, `Facebook`, `LINE`, `Azure` (Microsoft Entra ID),
-  `Auth0`, `Okta` or `GitHub`. It does not depend on the name a client is registered under.
+  `Auth0`, `Okta`, `GitHub`, or the `ProviderName` of `OidcOAuth2Options`. It does not depend on the name a client is
+  registered under.
 - For Microsoft Entra ID, `UserId` is the `sub` claim, which is different for each application the user signs in to. The `oid`
   claim of `Token.IdToken` is the same in every application, for an application that needs that; validate the token first.
 - For Facebook, `UserId` is also different for each app. For LINE it is the same in every channel of one provider.
@@ -395,8 +426,10 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 - LINE returns the email address only in the ID token, and only when the channel may read it and the user agreed. The
   library reads it from the ID token that the token endpoint returned, and checks that the token was issued to the client,
   but does not check its signature.
-- The library does not validate ID tokens. `Token.IdToken` is returned as the provider sent it; validate it before relying
-  on its claims.
+- The library reads the ID token of its own sign-in, which comes straight from the token endpoint: for the email address of
+  LINE, and for the user of `OidcOAuth2Options`. It checks the audience, and the issuer for `OidcOAuth2Options`, but not the
+  signature, which a token from the token endpoint over TLS does not need. `Token.IdToken` is otherwise returned as the
+  provider sent it; validate it before relying on its claims anywhere else, such as in another back end.
 
 ## Apps with a separate back end
 
@@ -411,7 +444,7 @@ and the user information endpoint answers it with the same user. In order of pre
 2. Send the ID token of an OpenID Connect sign-in, and validate it in the back end, for example with JwtBearer
    authentication: its signature with the provider's published keys, its issuer and expiry, and an audience that is the
    client ID of the front end. A validator that skips the audience can accept the tokens of other applications. The library
-   does not validate ID tokens.
+   does not validate an ID token that a front end sends.
 3. Send the access token, and have the back end call `GetUserInfoAsync`: for Facebook and GitHub, which issue no standard ID
    token. Google and LINE are supported as well, but their ID token is the better choice.
 
@@ -429,8 +462,8 @@ if (!result.IsSuccess)
 - It supports Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client secret, so their options
   need `ClientSecret`. They also check only tokens issued to `ClientId`, so the front end that obtains the token, such as a
   desktop or mobile application, uses the same Facebook or GitHub application as the back end.
-- Microsoft Entra ID, Auth0 and Okta throw `NotSupportedException`: they are OpenID Connect providers, so use the ID token
-  instead.
+- Microsoft Entra ID, Auth0, Okta and `OidcOAuth2Options` throw `NotSupportedException`: they are OpenID Connect providers,
+  so use the ID token instead.
 - A token that the provider refuses, has expired, or was issued to another client is a failed result, as are network failures
   and timeouts. A missing client secret, and client credentials that GitHub refuses, are thrown.
 - LINE and Facebook take the token only in the query of the check, so an HTTP client that logs request URIs writes it to the

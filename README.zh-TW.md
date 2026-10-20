@@ -13,7 +13,8 @@
 Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式透過 `WebAuthenticator` 登入，可以直連，也可以經由自己的後端中轉。
 ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權碼流程，每次登入各自保存在一個加密的 cookie。
 
-支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta、GitHub。
+支援的 provider：Google、Facebook、LINE、Microsoft Entra ID、Auth0、Okta、GitHub，以及其他任何 OpenID Connect provider，
+例如 Keycloak 或 GitLab。
 
 ## 套件
 
@@ -31,6 +32,7 @@ dotnet add package Polhem.OAuth2
 
 每個 provider 各有自己的 options 型別：`GoogleOAuth2Options`、`FacebookOAuth2Options`、`LineOAuth2Options`、
 `AzureOAuth2Options`（Microsoft Entra ID）、`Auth0OAuth2Options`、`OktaOAuth2Options`、`GitHubOAuth2Options`。
+其他 OpenID Connect provider 使用 `OidcOAuth2Options`，見「其他 OpenID Connect provider」。
 
 - `ClientId` 與 `RedirectUri` 為必填。client 建立時會複製並檢查 options，之後再修改原物件不會有影響；options 不合法時當場擲出 `ArgumentException`。
 - Auth0 與 Okta 需要 `Domain`，例如 `your-tenant.auth0.com`。Okta 預設使用 `default` 授權伺服器，
@@ -46,6 +48,31 @@ dotnet add package Polhem.OAuth2
 - `ClientAuthentication` 決定 client secret 怎麼送到 token 端點：放在請求本文（`ClientSecretPost`，預設值），或放在 HTTP Basic
   標頭（`ClientSecretBasic`）。provider 把應用程式登記為 `client_secret_basic`、且不接受本文裡的 secret 時，請設為
   `ClientSecretBasic`。Okta 的網頁應用程式預設就是這樣登記；2026-09-26 實測的 Okta org 網頁應用程式兩種方式都接受。
+
+### 其他 OpenID Connect provider
+
+`OidcOAuth2Options` 可以登入任何遵循 OpenID Connect 的 provider，例如 Keycloak、GitLab、AWS Cognito 或 Authentik。
+在應用程式啟動時從 provider 的 discovery 文件讀一次端點，之後就和其他 options 一樣使用：
+
+```csharp
+var gitlab = await OidcOAuth2Options.FromDiscoveryAsync("https://gitlab.com");
+gitlab.ProviderName = "GitLab";
+gitlab.ClientId = "your-client-id";
+gitlab.ClientSecret = "your-client-secret";
+gitlab.RedirectUri = "https://localhost:7032/auth/callback";
+builder.Services.AddOAuth2Client("GitLab", gitlab);
+```
+
+- `ProviderName` 必填。使用者以它加上 `UserId` 識別，而兩家 provider 可能把同一個使用者 ID 給不同的人，
+  所以每家 provider 都要有自己的名稱，而且命名後不要再改。
+- discovery 文件的 `issuer` 必須等於傳入的 authority，結尾斜線除外。結果不會快取，所以不要每次登入都呼叫，
+  而且只傳入應用程式信任的 authority。
+- 端點與 `Issuer` 也可以手動設定。沒有使用者資訊端點的 provider 讓 `UserInfoEndpoint` 保持空白：使用者改從登入取得的
+  ID token 讀取，這需要設定 `Issuer` 與 `openid` scope。
+- 預設 scope 為 `openid profile email`，使用者名稱依序取 `name` claim、名與姓、`preferred_username`、`nickname`。
+- Google 拒絕不送 client secret 的桌面 client，而這個 options 的 public client 不會送；登入 Google 請用 `GoogleOAuth2Options`。
+
+各項檢查與實測過的 provider 記錄在 [ADR-008](docs/adr/adr-008-generic-openid-connect-provider.zh-TW.md)。
 
 ## 桌面與主控台應用程式
 
@@ -346,7 +373,8 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 ## 識別使用者
 
 - 以 provider 名稱加上 `UserInfo.UserId` 識別使用者，不要用 `Email`：email 可能變更，而且各 provider 是否驗證過 email 並不一致。
-- provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0`、`Okta` 或 `GitHub`。
+- provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0`、`Okta`、`GitHub`，
+  或 `OidcOAuth2Options` 的 `ProviderName`。
   它與 client 註冊時使用的名稱無關。
 - Microsoft Entra ID 的 `UserId` 是 `sub` claim，同一個使用者登入不同的應用程式時，這個值也不同。需要跨應用程式一致的識別時，
   `Token.IdToken` 裡的 `oid` claim 在每個應用程式都相同；使用前要先驗證這個 token。
@@ -355,7 +383,9 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
   函式庫會從 `/user/emails` 讀取主要且已驗證的 email；這個請求失敗時 `Email` 為 null，登入仍然成功。
 - LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token 讀出 email，
   會檢查這個 token 是發給這個 client 的，但不檢查簽章。
-- 函式庫不驗證 ID token。`Token.IdToken` 是 provider 原樣回傳的內容，要依賴其中的 claim 前請先自行驗證。
+- 函式庫會讀取自己這次登入、直接從 token 端點取得的 ID token：用於 LINE 的 email，以及 `OidcOAuth2Options` 的使用者。
+  它檢查 audience，對 `OidcOAuth2Options` 也檢查 issuer，但不檢查簽章，因為經 TLS 直接從 token 端點取得的 token 不需要。
+  除此之外，`Token.IdToken` 是 provider 原樣回傳的內容，要在其他地方（例如另一個後端）依賴其中的 claim 前，請先自行驗證。
 
 ## 前後端分離的應用程式
 
@@ -366,7 +396,7 @@ AuthorizationResult result = await client.CompleteAuthorizationAsync(callback, p
 1. 讓後端自己跑登入流程，token 就不會離開後端：網頁前端見 ASP.NET Core 一節，.NET MAUI 應用程式見「經由後端中轉登入」。
 2. 送出 OpenID Connect 登入取得的 ID token，由後端驗證，例如用 JwtBearer 驗證：以 provider 公開的金鑰驗簽章、
    檢查 issuer 與有效期限，以及 audience 是前端的 client ID。不檢查 audience 的驗證可能接受其他應用程式的 token。
-   函式庫本身不驗證 ID token。
+   函式庫不驗證前端送來的 ID token。
 3. 送出 access token，由後端呼叫 `GetUserInfoAsync`：用於不發標準 ID token 的 Facebook 與 GitHub。
    Google 與 LINE 也支援，但用它們的 ID token 較好。
 
@@ -382,7 +412,7 @@ if (!result.IsSuccess)
   例如同一個 Google Cloud 專案的 iOS 與 Android client。這項查證無法關閉。
 - 支援 Google、LINE、Facebook 與 GitHub。Facebook 與 GitHub 以 client secret 查證，所以 options 需要 `ClientSecret`。
   它們也只能查證發給 `ClientId` 的 token，所以取得 token 的前端（例如桌面或行動應用程式）要和後端用同一個 Facebook 或 GitHub 應用程式。
-- Microsoft Entra ID、Auth0 與 Okta 擲出 `NotSupportedException`：它們是 OpenID Connect provider，請改用 ID token。
+- Microsoft Entra ID、Auth0、Okta 與 `OidcOAuth2Options` 擲出 `NotSupportedException`：它們是 OpenID Connect provider，請改用 ID token。
 - provider 拒絕、已過期、或發給其他 client 的 token 是失敗結果，網路失敗與逾時也是。缺少 client secret，以及 GitHub 拒絕 client 憑證時，會往外拋。
 - LINE 與 Facebook 的查證只接受放在 query 的 token，所以會記錄請求 URI 的 HTTP client 會把它寫進 log。
   每次查證都是一個送往 provider 的請求，而 provider 會限制回應的數量，所以要限制後端這個端點被呼叫的頻率。

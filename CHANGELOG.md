@@ -19,8 +19,16 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
   GitHub; Facebook and GitHub need `ClientSecret` and accept only tokens issued to `ClientId`. Microsoft Entra ID,
   Auth0 and Okta throw `NotSupportedException`, whose message points to the ID token. A refused, expired or foreign token is a
   failed result. See ADR-007.
+- `OidcOAuth2Options` signs in with any other OpenID Connect provider, such as Keycloak or GitLab, with endpoints set by hand or
+  read by `OidcOAuth2Options.FromDiscoveryAsync(authority)`, whose document must name the authority as its issuer. Its
+  `ProviderName` is required, because users are identified by it. `UserInfoEndpoint` may be empty, and the user then comes
+  from the ID token of the sign-in. Every ID token it reads must be issued to the client, and by `Issuer` when that is set, and
+  the user information must have the subject of the ID token. See ADR-008.
 
 ### Changed
+
+- LINE leaves the email address out when its ID token has an authorized party (`azp`) other than the channel ID, or has
+  audiences besides the channel ID and no authorized party. LINE issues neither, so a sign-in is not expected to change.
 
 - A token response with status 200 that names an `error` fails with an `OAuth2Exception` that carries the provider's error
   code, instead of the generic error about a missing access token. GitHub reports failures of its token endpoint this way.
