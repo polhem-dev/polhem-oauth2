@@ -49,10 +49,10 @@ OpenID Connect 也允許 provider 不提供使用者資訊端點（OpenID Connec
 - 這些檢查是共用的程式碼：LINE 用它從 ID token 讀 email，Apple 也可以使用。LINE 的行為不變：不檢查 issuer，讀不了的 ID token
   只是少了 email，不會讓登入失敗。
 - 專用的 OpenID Connect provider，也就是 Google、Auth0、Okta 與 Microsoft Entra ID，對登入取得的 ID token 做相同的檢查，並比對它
-  與使用者資訊的 `sub`。沒有要求 `openid`、token 回應沒有 ID token 時照舊，不檢查。只有單憑 options 就能得知 issuer 時才檢查 issuer：
+  與使用者資訊的 `sub`。token 回應沒有 ID token 時（例如沒有要求 `openid`）照舊，不檢查。只有單憑 options 就能得知 issuer 時才檢查 issuer：
   - Google：`https://accounts.google.com` 或 `accounts.google.com`，即 Google 文件列出的兩個值。
-  - Auth0：`https://<Domain>/`。Auth0 以請求所用的網域加上結尾斜線作為 issuer，而所有端點都由 `Domain` 組成，所以 custom domain
-    也適用。
+  - Auth0：授權端點或 token 端點的 scheme 與主機加上結尾斜線，端點由 `Domain` 組成時就是 `https://<Domain>/`。Auth0 以請求所用的
+    網域作為 issuer，所以 custom domain 與手動設定的端點也適用。
   - Okta：不檢查。授權伺服器的 issuer mode 決定 token 帶的是 Okta 網域還是 custom domain，因此 issuer 可能與 `Domain` 不同。
   - Microsoft Entra ID：不檢查。issuer 帶的是使用者所屬的 tenant，`common`、`organizations` 與 `consumers` 都無法事先確定。
 

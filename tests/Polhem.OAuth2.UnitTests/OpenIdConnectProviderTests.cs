@@ -153,6 +153,31 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
+        [DisplayName("Auth0 with endpoints set by hand, without Domain, expects the host of the authorization or the token endpoint")]
+        [InlineData("https://login.example.com/", true)]
+        [InlineData("https://tenant.auth0.com/", true)]
+        [InlineData("https://other.auth0.com/", false)]
+        public async Task GetUserInfoAsync_Auth0EndpointsWithoutDomain_ExpectsEndpointHost(string issuer, bool accepted)
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"sub":"u1"}""");
+            var options = new Auth0OAuth2Options
+            {
+                AuthorizationEndpoint = "https://login.example.com/authorize",
+                TokenEndpoint = "https://tenant.auth0.com/oauth/token",
+                UserInfoEndpoint = "https://tenant.auth0.com/userinfo",
+                ClientId = ClientId,
+                RedirectUri = RedirectUri
+            };
+            var provider = OAuth2Provider.Create(options, handler.CreateClient());
+            var call = provider.GetUserInfoAsync(Token(IdToken(issuer, ClientId, "u1")), CancellationToken.None);
+
+            if (accepted)
+                Assert.Equal("u1", (await call).UserId);
+            else
+                await Assert.ThrowsAsync<OAuth2Exception>(() => call);
+        }
+
+        [Theory]
         [DisplayName("Okta and Microsoft Entra ID accept any issuer, because it is not fixed by the options")]
         [InlineData("Okta", "https://login.example.com/oauth2/default")]
         [InlineData("Okta", "https://dev-123456.okta.com")]

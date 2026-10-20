@@ -26,9 +26,9 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 
 - Google、Auth0、Okta 與 Microsoft Entra ID 會比照 `OidcOAuth2Options` 檢查登入取得的 ID token：它必須發給這個 client，
   使用者資訊的 `sub` 也必須與它相同。Google 另外檢查 issuer 是 `https://accounts.google.com` 或 `accounts.google.com`，
-  Auth0 檢查 issuer 是 `https://<Domain>/`；Okta 與 Microsoft Entra ID 的 issuer 不由設定決定，不檢查。使用者資訊的 subject
-  與 ID token 不同、ID token 無法讀取或發給其他 client 時，登入改為以 `OAuth2Exception` 失敗。沒有要求 `openid`、token 回應
-  沒有 ID token 時不檢查。見 ADR-008。
+  Auth0 檢查 issuer 是授權或 token 端點的主機加上結尾斜線，例如 `https://<Domain>/`；Okta 與 Microsoft Entra ID 的 issuer 不由設定決定，不檢查。使用者資訊的 subject
+  與 ID token 不同、ID token 無法讀取或發給其他 client 時，登入改為以 `OAuth2Exception` 失敗。token 回應沒有 ID token 時（例如沒有要求
+  `openid`）不檢查。見 ADR-008。
 - LINE 的 ID token 的 authorized party（`azp`）不是 channel ID，或除了 channel ID 之外還有其他 audience 卻沒有 authorized party
   時，email 會留空。LINE 不會發出這兩種 token，預期登入結果不受影響。
 - token 端點以狀態碼 200 回傳、卻帶有 `error` 的回應，現在會成為帶著 provider 錯誤代碼的 `OAuth2Exception`，不再是「沒有

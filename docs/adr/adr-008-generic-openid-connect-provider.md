@@ -58,11 +58,12 @@ has none. The user is then only in the ID token of the token response.
   behavior: it does not check the issuer, and an ID token that cannot be read leaves the email address out instead of failing
   the sign-in.
 - The dedicated OpenID Connect providers, Google, Auth0, Okta and Microsoft Entra ID, run the same checks on the ID token of a
-  sign-in and compare its `sub` with that of the user information. A token response without an ID token, when `openid` is not
-  requested, is not checked, as before. The issuer is checked where it is known from the options alone:
+  sign-in and compare its `sub` with that of the user information. A token response without an ID token, for example when `openid`
+  is not requested, is not checked, as before. The issuer is checked where it is known from the options alone:
   - Google: `https://accounts.google.com` or `accounts.google.com`, the two values that Google documents.
-  - Auth0: `https://<Domain>/`. Auth0 names the domain the request went to, with a trailing slash, and every endpoint is built
-    from `Domain`, so a custom domain is named too.
+  - Auth0: the scheme and host of the authorization or the token endpoint with a trailing slash, `https://<Domain>/` when the
+    endpoints come from `Domain`. Auth0 names the domain the request went to, so this also covers a custom domain and endpoints
+    set by hand.
   - Okta: not checked. The issuer mode of an authorization server decides whether a token names the Okta domain or a custom
     domain, so the issuer can differ from `Domain`.
   - Microsoft Entra ID: not checked. The issuer names the tenant of the user, which `common`, `organizations` and `consumers`

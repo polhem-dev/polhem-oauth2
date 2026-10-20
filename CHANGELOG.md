@@ -29,10 +29,10 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 - Google, Auth0, Okta and Microsoft Entra ID check the ID token of the sign-in, as `OidcOAuth2Options` does: it must be
   issued to the client, and the user information must have its `sub`. Google also checks that the issuer is
-  `https://accounts.google.com` or `accounts.google.com`, and Auth0 that it is `https://<Domain>/`; Okta and Microsoft Entra ID
+  `https://accounts.google.com` or `accounts.google.com`, and Auth0 that it is the host of the authorization or token endpoint with a trailing slash, such as `https://<Domain>/`; Okta and Microsoft Entra ID
   do not check the issuer, which their settings do not fix. A sign-in now fails with `OAuth2Exception` when the user
   information names another subject than the ID token, or when the ID token cannot be read or is for another client. A token
-  response without an ID token, when `openid` is not requested, is not checked. See ADR-008.
+  response without an ID token, for example when `openid` is not requested, is not checked. See ADR-008.
 - LINE leaves the email address out when its ID token has an authorized party (`azp`) other than the channel ID, or has
   audiences besides the channel ID and no authorized party. LINE issues neither, so a sign-in is not expected to change.
 
