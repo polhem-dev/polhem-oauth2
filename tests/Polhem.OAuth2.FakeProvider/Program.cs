@@ -26,6 +26,15 @@ builder.Services.AddOAuth2Client(FakeProviderValues.RelayClientName, new Auth0OA
     ClientSecret = WebClientSecret,
     RedirectUri = origin + "/auth/callback"
 }, httpClient);
+// The Sign in with Apple mode keeps the issuer of Apple's ID tokens and only moves the endpoints to this process.
+builder.Services.AddOAuth2Client(FakeProviderValues.AppleRelayClientName, new AppleOAuth2Options
+{
+    ClientId = WebClientId,
+    ClientSecret = WebClientSecret,
+    RedirectUri = origin + "/auth/callback",
+    AuthorizationEndpoint = origin + FakeProviderValues.ApplePath + "/auth/authorize",
+    TokenEndpoint = origin + FakeProviderValues.ApplePath + "/auth/token"
+}, httpClient);
 builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(FakeProviderValues.RelayRedirectUri));
 
 var app = builder.Build();
@@ -47,7 +56,8 @@ app.MapGet("/auth/app/{clientName}", (HttpContext context, OAuth2Manager manager
         : Results.BadRequest("The client, the redirect URI or the code challenge is not valid.");
 });
 
-app.MapGet("/auth/callback", async (HttpContext context, OAuth2Manager manager) =>
+// GET for the providers that redirect back, and POST for the Sign in with Apple mode, which returns with a form POST.
+app.MapMethods("/auth/callback", [HttpMethods.Get, HttpMethods.Post], async (HttpContext context, OAuth2Manager manager) =>
 {
     var result = await manager.CompleteAuthorizationAsync(context, context.RequestAborted);
     return await manager.RedirectToAppAsync(context, result, context.RequestAborted)

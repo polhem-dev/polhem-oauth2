@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -16,6 +17,10 @@ namespace Polhem.OAuth2.FakeProvider
     /// without a <c>User-Agent</c> header; and <c>/user</c> has no email address, which <c>/user/emails</c> lists instead.
     /// Under <c>/oidc</c> it is an OpenID Connect provider with a discovery document and no user information endpoint, whose
     /// token endpoint returns the user in an ID token.
+    /// Under <c>/apple</c> it answers the way Sign in with Apple does: the authorization endpoint requires
+    /// <c>response_mode=form_post</c> for the <c>name</c> and <c>email</c> scopes and returns with a page that posts the code,
+    /// the state and the <c>user</c> parameter to the redirect URI, and the token endpoint requires the client secret and
+    /// returns the user in an ID token from the issuer of Apple.
     /// </remarks>
     internal sealed class FakeAuthorizationServer
     {
@@ -56,6 +61,53 @@ namespace Polhem.OAuth2.FakeProvider
 
             endpoints.MapGet(FakeProviderValues.OidcPath + "/.well-known/openid-configuration", GetDiscoveryDocument);
             endpoints.MapPost(FakeProviderValues.OidcPath + "/token", ExchangeOidcAsync);
+
+            endpoints.MapGet(FakeProviderValues.ApplePath + "/auth/authorize", AuthorizeApple);
+            endpoints.MapPost(FakeProviderValues.ApplePath + "/auth/token", ExchangeAppleAsync);
+        }
+
+        // Apple posts the result from its own page. The page here submits itself, so a browser completes the sign-in on its own.
+        private IResult AuthorizeApple(HttpRequest request)
+        {
+            string clientId = request.Query["client_id"].ToString();
+            string redirectUri = request.Query["redirect_uri"].ToString();
+            string[] scopes = request.Query["scope"].ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            bool formPost = request.Query["response_mode"] == "form_post";
+
+            if (request.Query["response_type"] != "code" || redirectUri.Length == 0 || clientId != _webClientId)
+                return Results.BadRequest("The authorization request is not valid.");
+            if (!formPost && scopes.Any(scope => scope is "name" or EmailField))
+                return Results.BadRequest("response_mode must be form_post when name or email scope is requested.");
+
+            string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(24));
+            _codes[code] = new FakeAuthorizationCode(clientId, redirectUri, request.Query["code_challenge"].FirstOrDefault());
+            string user = JsonSerializer.Serialize(new { name = new { firstName = "Fake", lastName = "User" }, email = FakeProviderValues.Email });
+            var fields = new Dictionary<string, string> { ["code"] = code, ["state"] = request.Query["state"].ToString(), ["user"] = user };
+
+            var html = new StringBuilder("<!doctype html><html><body onload=\"document.forms[0].submit()\">");
+            html.Append("<form method=\"post\" action=\"").Append(WebUtility.HtmlEncode(redirectUri)).Append("\">");
+            foreach (var field in fields)
+            {
+                html.Append("<input type=\"hidden\" name=\"").Append(field.Key).Append("\" value=\"")
+                    .Append(WebUtility.HtmlEncode(field.Value)).Append("\">");
+            }
+            html.Append("</form></body></html>");
+            return Results.Content(html.ToString(), "text/html");
+        }
+
+        // Apple requires the client secret for every token request, and checks PKCE only when the code has a challenge.
+        private async Task<IResult> ExchangeAppleAsync(HttpRequest request)
+        {
+            var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
+            if (form["client_secret"] != _webClientSecret)
+                return TokenError("invalid_client");
+            string clientId = form["client_id"].ToString();
+            if (Redeem(form, refreshable: true) is { } error)
+                return TokenError(error);
+
+            var token = CreateToken();
+            token["id_token"] = CreateIdToken(clientId, "https://appleid.apple.com", includeName: false);
+            return Results.Json(token);
         }
 
         // The authorization endpoint is shared with the other modes. The document lists no user information endpoint.
@@ -83,24 +135,27 @@ namespace Polhem.OAuth2.FakeProvider
                 return TokenError(error);
 
             var token = CreateToken();
-            token["id_token"] = CreateIdToken(clientId);
+            token["id_token"] = CreateIdToken(clientId, OidcIssuer, includeName: true);
             return Results.Json(token);
         }
 
         // The library reads an ID token from the token endpoint without verifying its signature, so the signature is a placeholder.
-        private string CreateIdToken(string clientId)
+        // Apple's ID tokens carry no name.
+        private static string CreateIdToken(string clientId, string issuer, bool includeName)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            byte[] payload = JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object>
+            var claims = new Dictionary<string, object>
             {
-                ["iss"] = OidcIssuer,
+                ["iss"] = issuer,
                 ["aud"] = clientId,
                 ["sub"] = FakeProviderValues.UserId,
-                ["name"] = FakeProviderValues.UserName,
                 [EmailField] = FakeProviderValues.Email,
                 ["iat"] = now,
                 ["exp"] = now + 300
-            });
+            };
+            if (includeName)
+                claims["name"] = FakeProviderValues.UserName;
+            byte[] payload = JsonSerializer.SerializeToUtf8Bytes(claims);
             return WebEncoders.Base64UrlEncode("""{"alg":"RS256","typ":"JWT"}"""u8.ToArray()) + "." + WebEncoders.Base64UrlEncode(payload) + ".fake-signature";
         }
 

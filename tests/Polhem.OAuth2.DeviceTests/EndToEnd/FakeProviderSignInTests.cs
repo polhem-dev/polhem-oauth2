@@ -68,9 +68,28 @@ public class FakeProviderSignInTests
     [DisplayName("A sign-in through the back-end relay returns the user after the application redeems its code")]
     public async Task RelaySignIn_FakeProvider_RedeemsUser()
     {
+        using var user = await RelaySignInAsync(FakeProviderValues.RelayClientName);
+
+        Assert.Equal(FakeProviderValues.UserId, user.RootElement.GetProperty("userId").GetString());
+        Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
+    }
+
+    [AppSignInFact]
+    [DisplayName("A relayed sign-in to the Sign in with Apple mode, which returns to the back end with a form POST, returns the user with the name of the user parameter")]
+    public async Task RelaySignIn_FakeAppleFormPost_RedeemsUserWithName()
+    {
+        using var user = await RelaySignInAsync(FakeProviderValues.AppleRelayClientName);
+
+        Assert.Equal(FakeProviderValues.UserId, user.RootElement.GetProperty("userId").GetString());
+        Assert.Equal(FakeProviderValues.UserName, user.RootElement.GetProperty("userName").GetString());
+        Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
+    }
+
+    private static async Task<JsonDocument> RelaySignInAsync(string clientName)
+    {
         string verifier = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
         string challenge = Base64Url.Encode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
-        var start = FakeProvider.GetUri($"auth/app/{FakeProviderValues.RelayClientName}"
+        var start = FakeProvider.GetUri($"auth/app/{clientName}"
             + $"?redirect_uri={Uri.EscapeDataString(FakeProviderValues.RelayRedirectUri)}&code_challenge={challenge}");
 
         var callback = await AuthenticateAsync(start, new Uri(FakeProviderValues.RelayRedirectUri), CancellationToken.None).WithTimeout();
@@ -80,16 +99,13 @@ public class FakeProviderSignInTests
         using var http = new HttpClient();
         using var response = await http.PostAsync(FakeProvider.GetUri("auth/app/redeem"), new FormUrlEncodedContent(new Dictionary<string, string>
         {
-            ["client"] = FakeProviderValues.RelayClientName,
+            ["client"] = clientName,
             ["code"] = code!,
             ["code_verifier"] = verifier
         })).WithTimeout();
         string body = await response.Content.ReadAsStringAsync();
         Assert.True(response.IsSuccessStatusCode, body);
-
-        using var user = JsonDocument.Parse(body);
-        Assert.Equal(FakeProviderValues.UserId, user.RootElement.GetProperty("userId").GetString());
-        Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
+        return JsonDocument.Parse(body);
     }
 
     [LoopbackSignInFact]

@@ -97,9 +97,10 @@ namespace Polhem.OAuth2
         // refuse every token request instead of failing when the client is created.
         private static string? GetIdentifierError(string? value, string name)
         {
-            if (string.IsNullOrWhiteSpace(value))
+            // The null check comes first because netstandard2.0 does not annotate IsNullOrWhiteSpace.
+            if (value is null || string.IsNullOrWhiteSpace(value))
                 return $"{name} is required when {nameof(PrivateKey)} is set.";
-            return value!.Trim().Length != value.Length ? $"{name} cannot start or end with white space." : null;
+            return value.Trim().Length != value.Length ? $"{name} cannot start or end with white space." : null;
         }
     }
 }

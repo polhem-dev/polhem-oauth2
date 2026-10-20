@@ -21,6 +21,17 @@ namespace Polhem.OAuth2.FakeProvider
         public const string RelayClientName = "Fake";
 
         /// <summary>
+        /// The name under which the relay registers its web client for the Sign in with Apple mode under <c>/apple</c>,
+        /// which returns to the callback with a form POST.
+        /// </summary>
+        public const string AppleRelayClientName = "FakeApple";
+
+        /// <summary>
+        /// The path under which the fake provider answers the way Sign in with Apple does.
+        /// </summary>
+        public const string ApplePath = "/apple";
+
+        /// <summary>
         /// The callback scheme that the device test application registers.
         /// </summary>
         public const string AppScheme = "dev.polhem.oauth2.devicetests";
