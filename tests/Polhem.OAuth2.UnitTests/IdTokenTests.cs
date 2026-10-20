@@ -129,7 +129,8 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("[]")]
         public void Line_UnreadableIdToken_MapsUserWithoutEmail(string tokenOrPayload)
         {
-            string idToken = tokenOrPayload.Contains('.', StringComparison.Ordinal) && !tokenOrPayload.StartsWith('{') ? tokenOrPayload : TestIdToken.Create(tokenOrPayload);
+            bool isPayload = tokenOrPayload.StartsWith("{", StringComparison.Ordinal) || tokenOrPayload.StartsWith("[", StringComparison.Ordinal);
+            string idToken = isPayload ? TestIdToken.Create(tokenOrPayload) : tokenOrPayload;
 
             var user = CreateLineProvider().ParseUserJson("""{"userId":"U1","displayName":"Ada"}""", new TokenResponse("access", idToken: idToken));
 

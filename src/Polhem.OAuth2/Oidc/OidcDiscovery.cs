@@ -55,7 +55,7 @@ namespace Polhem.OAuth2
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException($"The discovery document request returned status code {(int)response.StatusCode}.");
 
-                    string json = await ReadBodyAsync(response, timeout.Token).ConfigureAwait(false);
+                    string json = await ReadBodyAsync(response, timeout.Token, cancellationToken).ConfigureAwait(false);
                     using (var document = OAuth2Json.ParseObject(json))
                     {
                         return Read(document.RootElement, authority);
@@ -65,38 +65,42 @@ namespace Polhem.OAuth2
         }
 
         // Reads the body as UTF-8, the encoding of JSON (RFC 8259, section 8.1), up to the limit, whether or not the response
-        // states its length.
-        private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+        // states its length. The read token is canceled by the caller or the timeout, and the caller's token is the one an
+        // OperationCanceledException carries when the caller canceled.
+        private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken readToken, CancellationToken callerToken)
         {
             if (response.Content.Headers.ContentLength > MaxDocumentBytes)
                 throw new HttpRequestException(TooLargeMessage);
 
-            // A stream on .NET Framework may ignore the token of a read, and disposing the response ends the read there.
-            using (cancellationToken.Register(response.Dispose))
-            using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
-            using (var body = new MemoryStream())
-            {
-                byte[] buffer = new byte[16 * 1024];
-                int read;
-                while ((read = await ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false)) > 0)
-                {
-                    if (body.Length + read > MaxDocumentBytes)
-                        throw new HttpRequestException(TooLargeMessage);
-                    body.Write(buffer, 0, read);
-                }
-                return new UTF8Encoding(false).GetString(body.GetBuffer(), 0, (int)body.Length).TrimStart('\uFEFF');
-            }
-        }
-
-        private static async Task<int> ReadAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken)
-        {
             try
             {
-                return await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+                readToken.ThrowIfCancellationRequested();
+                // The registration also disposes the response, for a stream whose reads do not observe the token.
+                using (readToken.Register(response.Dispose))
+                using (var stream = await response.Content.ReadAsStreamAsync(readToken).ConfigureAwait(false))
+                using (var body = new MemoryStream())
+                {
+                    byte[] buffer = new byte[16 * 1024];
+                    int read;
+                    while ((read = await stream.ReadAsync(buffer, readToken).ConfigureAwait(false)) > 0)
+                    {
+                        if (body.Length + read > MaxDocumentBytes)
+                            throw new HttpRequestException(TooLargeMessage);
+                        body.Write(buffer, 0, read);
+                    }
+                    return new UTF8Encoding(false).GetString(body.GetBuffer(), 0, (int)body.Length).TrimStart('\uFEFF');
+                }
             }
-            catch (Exception exception) when ((exception is ObjectDisposedException or IOException) && cancellationToken.IsCancellationRequested)
+            catch (Exception exception) when (exception is OperationCanceledException or ObjectDisposedException or IOException
+                && readToken.IsCancellationRequested)
             {
-                throw new OperationCanceledException(cancellationToken);
+                callerToken.ThrowIfCancellationRequested();
+                throw new TaskCanceledException("The discovery document request timed out.", exception);
+            }
+            catch (IOException exception)
+            {
+                // The connection failed while the body was read, which the request reports as HttpRequestException elsewhere.
+                throw new HttpRequestException("The discovery document could not be read.", exception);
             }
         }
 

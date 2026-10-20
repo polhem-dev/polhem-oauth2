@@ -254,6 +254,29 @@ namespace Polhem.OAuth2.UnitTests
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http)).WithTimeout();
         }
 
+        [Fact]
+        [DisplayName("A connection that fails while the body is read throws HttpRequestException")]
+        public async Task FromDiscoveryAsync_BrokenBody_ThrowsHttpRequestException()
+        {
+            using var http = new HttpClient(new StreamHandler(() => new BrokenStream()));
+
+            var exception = await Assert.ThrowsAsync<HttpRequestException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http));
+
+            Assert.IsType<IOException>(exception.InnerException);
+        }
+
+        [Fact]
+        [DisplayName("A caller that cancels while the body is read gets OperationCanceledException with its own token")]
+        public async Task FromDiscoveryAsync_CanceledDuringBody_CarriesCallerToken()
+        {
+            using var http = new HttpClient(new StreamHandler(() => new StalledStream()));
+            using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
+
+            var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http, cancellation.Token)).WithTimeout();
+
+            Assert.Equal(cancellation.Token, exception.CancellationToken);
+        }
+
         [Theory]
         [DisplayName("A response that is not a JSON object throws JsonException")]
         [InlineData("<html></html>")]
@@ -312,7 +335,8 @@ namespace Polhem.OAuth2.UnitTests
 
             public override int Read(byte[] buffer, int offset, int count)
             {
-                Array.Fill(buffer, (byte)' ', offset, count);
+                for (int i = offset; i < offset + count; i++)
+                    buffer[i] = (byte)' ';
                 return count;
             }
 
@@ -321,11 +345,32 @@ namespace Polhem.OAuth2.UnitTests
                 return Task.FromResult(Read(buffer, offset, count));
             }
 
+#if NET
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
                 buffer.Span.Fill((byte)' ');
                 return ValueTask.FromResult(buffer.Length);
             }
+#endif
+        }
+
+        private sealed class BrokenStream : UnseekableStream
+        {
+            public BrokenStream() : base([])
+            {
+            }
+
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                return Task.FromException<int>(new IOException("The connection was reset."));
+            }
+#if NET
+
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                return ValueTask.FromException<int>(new IOException("The connection was reset."));
+            }
+#endif
         }
 
         private sealed class StalledStream : UnseekableStream
@@ -340,11 +385,13 @@ namespace Polhem.OAuth2.UnitTests
                 return 0;
             }
 
+#if NET
             public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
             {
                 await Task.Delay(Timeout.Infinite, cancellationToken);
                 return 0;
             }
+#endif
         }
 
         private static void SetOrRemove(Dictionary<string, object?> fields, string name, string? json)
