@@ -48,7 +48,8 @@ namespace Polhem.OAuth2
             if (httpClientFactory is null)
             {
                 SharedHttpClient.UseEndpoint(options.TokenEndpoint);
-                SharedHttpClient.UseEndpoint(options.UserInfoEndpoint);
+                if (!string.IsNullOrEmpty(options.UserInfoEndpoint))
+                    SharedHttpClient.UseEndpoint(options.UserInfoEndpoint);
                 if (tokenVerificationEndpoint is not null)
                     SharedHttpClient.UseEndpoint(tokenVerificationEndpoint);
             }
@@ -372,14 +373,7 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            // The header is set on the request rather than on the client, so that it also reaches a provider through an
-            // HttpClient that the application passes in. The GitHub API refuses a request without it. A request header
-            // replaces the default header of the client, so the products of the application's own User-Agent come first.
-            var httpClient = _httpClientFactory();
-            foreach (var product in httpClient.DefaultRequestHeaders.UserAgent)
-                request.Headers.UserAgent.Add(product);
-            request.Headers.UserAgent.Add(LibraryUserAgent.Create());
-            return httpClient.SendAsync(request, cancellationToken);
+            return LibraryUserAgent.SendAsync(_httpClientFactory(), request, cancellationToken);
         }
 
         /// <summary>

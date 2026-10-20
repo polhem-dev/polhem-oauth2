@@ -33,7 +33,8 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Gets the user's display name, or null if the response does not include one: the name the provider returns, or
         /// the given and family names joined when it returns those but no name. Auth0 falls back to the nickname and Okta
-        /// to the preferred user name after that.
+        /// to the preferred user name after that, and <see cref="OidcOAuth2Options"/> to the preferred user name and then
+        /// the nickname.
         /// </summary>
         public string? UserName { get; }
 
@@ -43,7 +44,8 @@ namespace Polhem.OAuth2
         public string? Email { get; }
 
         /// <summary>
-        /// Gets the raw JSON returned by the user information endpoint.
+        /// Gets the raw JSON returned by the user information endpoint, or the payload of the ID token when
+        /// <see cref="OidcOAuth2Options"/> reads the user from the ID token.
         /// </summary>
         public string RawJson { get; }
     }

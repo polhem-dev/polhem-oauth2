@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net8.0;net10.0</TargetFrameworks>
-    <Description>Lightweight OAuth2 sign-in for .NET with Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta and GitHub. Desktop and console applications sign in through the system browser with a loopback redirect and PKCE.</Description>
-    <PackageTags>oauth2 pkce loopback desktop google facebook line entra-id azure-ad auth0 okta github</PackageTags>
+    <Description>Lightweight OAuth2 sign-in for .NET with Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta, GitHub and any OpenID Connect provider. Desktop and console applications sign in through the system browser with a loopback redirect and PKCE.</Description>
+    <PackageTags>oauth2 pkce loopback desktop google facebook line entra-id azure-ad auth0 okta github openid-connect oidc</PackageTags>
   </PropertyGroup>
 
   <!-- net8.0 is there so that an application on .NET 8 or 9 gets the handler of SharedHttpClient.Net.cs, which replaces pooled
