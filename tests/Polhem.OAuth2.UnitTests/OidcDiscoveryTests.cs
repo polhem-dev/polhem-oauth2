@@ -225,6 +225,35 @@ namespace Polhem.OAuth2.UnitTests
             await Assert.ThrowsAsync<HttpRequestException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, handler.CreateClient()));
         }
 
+        [Fact]
+        [DisplayName("A document larger than 1 MiB without a stated length throws HttpRequestException")]
+        public async Task FromDiscoveryAsync_HugeChunkedDocument_ThrowsHttpRequestException()
+        {
+            using var http = new HttpClient(new StreamHandler(() => new EndlessStream()));
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http));
+        }
+
+        [Fact]
+        [DisplayName("A document without a stated length within 1 MiB is read")]
+        public async Task FromDiscoveryAsync_ChunkedDocument_ReturnsOptions()
+        {
+            using var http = new HttpClient(new StreamHandler(() => new UnseekableStream(System.Text.Encoding.UTF8.GetBytes(Document()))));
+
+            var options = await OidcOAuth2Options.FromDiscoveryAsync(Authority, http);
+
+            Assert.Equal(Authority, options.Issuer);
+        }
+
+        [Fact]
+        [DisplayName("The timeout of the HTTP client also ends a body that stops arriving after the headers")]
+        public async Task FromDiscoveryAsync_StalledBody_TimesOut()
+        {
+            using var http = new HttpClient(new StreamHandler(() => new StalledStream())) { Timeout = TimeSpan.FromMilliseconds(200) };
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, http)).WithTimeout();
+        }
+
         [Theory]
         [DisplayName("A response that is not a JSON object throws JsonException")]
         [InlineData("<html></html>")]
@@ -248,6 +277,74 @@ namespace Polhem.OAuth2.UnitTests
             await cancellation.CancelAsync();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => discovery);
+        }
+
+        // Answers every request with status 200 and a body without a stated length.
+        private sealed class StreamHandler : HttpMessageHandler
+        {
+            private readonly Func<Stream> _body;
+
+            public StreamHandler(Func<Stream> body)
+            {
+                _body = body;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(_body()) });
+            }
+        }
+
+        private class UnseekableStream : MemoryStream
+        {
+            public UnseekableStream(byte[] buffer) : base(buffer)
+            {
+            }
+
+            public override bool CanSeek => false;
+        }
+
+        private sealed class EndlessStream : UnseekableStream
+        {
+            public EndlessStream() : base([])
+            {
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                Array.Fill(buffer, (byte)' ', offset, count);
+                return count;
+            }
+
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(Read(buffer, offset, count));
+            }
+
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                buffer.Span.Fill((byte)' ');
+                return ValueTask.FromResult(buffer.Length);
+            }
+        }
+
+        private sealed class StalledStream : UnseekableStream
+        {
+            public StalledStream() : base([])
+            {
+            }
+
+            public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return 0;
+            }
+
+            public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return 0;
+            }
         }
 
         private static void SetOrRemove(Dictionary<string, object?> fields, string name, string? json)

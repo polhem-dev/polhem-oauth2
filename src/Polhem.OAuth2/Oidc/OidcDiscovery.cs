@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 namespace Polhem.OAuth2
@@ -13,6 +14,8 @@ namespace Polhem.OAuth2
         // Discovery documents of real providers are a few kilobytes. The limit keeps a provider that answers with a huge
         // body from exhausting the memory of the application.
         private const int MaxDocumentBytes = 1024 * 1024;
+
+        private const string TooLargeMessage = "The discovery document is larger than 1 MiB.";
 
         /// <summary>
         /// Requests the discovery document of an authority and creates the options it describes.
@@ -38,28 +41,62 @@ namespace Polhem.OAuth2
             if (httpClient is null)
                 SharedHttpClient.UseEndpoint(documentUrl);
 
+            var client = httpClient ?? SharedHttpClient.Instance;
+            // The response is read after its headers, so that its size can be limited, and HttpClient.Timeout covers only the
+            // headers then. A token that the timeout cancels covers the body as well.
+            using (var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
             using (var request = new HttpRequestMessage(HttpMethod.Get, documentUrl))
             {
+                if (client.Timeout != Timeout.InfiniteTimeSpan)
+                    timeout.CancelAfter(client.Timeout);
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                using (var response = await LibraryUserAgent.SendAsync(
-                    httpClient ?? SharedHttpClient.Instance, request, cancellationToken, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
+                using (var response = await LibraryUserAgent.SendAsync(client, request, timeout.Token, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                 {
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException($"The discovery document request returned status code {(int)response.StatusCode}.");
 
-                    // Throws HttpRequestException when the body is larger than the limit. Before .NET 9 the method takes no
-                    // cancellation token, so there a cancellation does not stop the reading of a body that has started.
-#if NET9_0_OR_GREATER
-                    await response.Content.LoadIntoBufferAsync(MaxDocumentBytes, cancellationToken).ConfigureAwait(false);
-#else
-                    await response.Content.LoadIntoBufferAsync(MaxDocumentBytes).ConfigureAwait(false);
-#endif
-                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    string json = await ReadBodyAsync(response, timeout.Token).ConfigureAwait(false);
                     using (var document = OAuth2Json.ParseObject(json))
                     {
                         return Read(document.RootElement, authority);
                     }
                 }
+            }
+        }
+
+        // Reads the body as UTF-8, the encoding of JSON (RFC 8259, section 8.1), up to the limit, whether or not the response
+        // states its length.
+        private static async Task<string> ReadBodyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+        {
+            if (response.Content.Headers.ContentLength > MaxDocumentBytes)
+                throw new HttpRequestException(TooLargeMessage);
+
+            // A stream on .NET Framework may ignore the token of a read, and disposing the response ends the read there.
+            using (cancellationToken.Register(response.Dispose))
+            using (var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
+            using (var body = new MemoryStream())
+            {
+                byte[] buffer = new byte[16 * 1024];
+                int read;
+                while ((read = await ReadAsync(stream, buffer, cancellationToken).ConfigureAwait(false)) > 0)
+                {
+                    if (body.Length + read > MaxDocumentBytes)
+                        throw new HttpRequestException(TooLargeMessage);
+                    body.Write(buffer, 0, read);
+                }
+                return new UTF8Encoding(false).GetString(body.GetBuffer(), 0, (int)body.Length).TrimStart('\uFEFF');
+            }
+        }
+
+        private static async Task<int> ReadAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken)
+        {
+            try
+            {
+                return await stream.ReadAsync(buffer, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when ((exception is ObjectDisposedException or IOException) && cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
             }
         }
 

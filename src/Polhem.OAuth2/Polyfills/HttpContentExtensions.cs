@@ -21,5 +21,17 @@ namespace Polhem.OAuth2
             cancellationToken.ThrowIfCancellationRequested();
             return content.ReadAsStringAsync();
         }
+
+        /// <summary>
+        /// Opens the content as a stream.
+        /// </summary>
+        /// <param name="content">The content to read.</param>
+        /// <param name="cancellationToken">Checked before the stream is opened.</param>
+        /// <returns>The stream, which the caller disposes.</returns>
+        public static Task<Stream> ReadAsStreamAsync(this HttpContent content, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return content.ReadAsStreamAsync();
+        }
     }
 }

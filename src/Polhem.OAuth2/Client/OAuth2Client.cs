@@ -38,7 +38,8 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">
         /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope or an accepted client ID is empty, or an endpoint is
-        /// not an absolute https URI without a fragment.
+        /// not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
+        /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint.
         /// </exception>
         public OAuth2Client(OAuth2Options options, HttpClient? httpClient = null) : this(options, httpClient, publicClient: false)
         {
@@ -82,7 +83,8 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="options"/> or <paramref name="httpClientFactory"/> is null.</exception>
         /// <exception cref="ArgumentException">
         /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope or an accepted client ID is empty, or an endpoint is
-        /// not an absolute https URI without a fragment.
+        /// not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
+        /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint.
         /// </exception>
         public static OAuth2Client Create(OAuth2Options options, Func<HttpClient> httpClientFactory)
         {
