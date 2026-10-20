@@ -35,6 +35,16 @@ namespace Polhem.OAuth2.UnitTests
         public string Pem => ToPem(Pkcs8Prefix + Hex(_parameters.D!) + PublicKeyPrefix + Hex(_parameters.Q.X!) + Hex(_parameters.Q.Y!));
 
         /// <summary>
+        /// Gets the private key of this key with the public key of another, as in a file whose private key was altered.
+        /// </summary>
+        /// <param name="other">The key whose public key the text holds.</param>
+        /// <returns>The text.</returns>
+        public string PemWithPublicKeyOf(TestAppleKey other)
+        {
+            return ToPem(Pkcs8Prefix + Hex(_parameters.D!) + PublicKeyPrefix + Hex(other._parameters.Q.X!) + Hex(other._parameters.Q.Y!));
+        }
+
+        /// <summary>
         /// Gets the key without its public key, which a <c>.p8</c> file from Apple always includes.
         /// </summary>
         public string PemWithoutPublicKey => ToPem(Pkcs8PrefixWithoutPublicKey + Hex(_parameters.D!));

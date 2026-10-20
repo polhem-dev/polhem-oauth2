@@ -60,9 +60,9 @@ namespace Polhem.OAuth2
         {
             try
             {
-                using (Create(pem))
+                using (var key = Create(pem))
                 {
-                    return null;
+                    return HasMatchingPublicKey(key) ? null : "The private key does not match the public key in the file. Use the .p8 file as Apple issued it.";
                 }
             }
             catch (FormatException ex)
@@ -72,6 +72,18 @@ namespace Polhem.OAuth2
             catch (CryptographicException)
             {
                 return "The platform refused the private key.";
+            }
+        }
+
+        // Some platforms import a private key without checking that it matches the public key, so a file whose private key
+        // was altered would only fail at Apple. A signature that the public key alone verifies shows that the two match.
+        private static bool HasMatchingPublicKey(ECDsa key)
+        {
+            byte[] data = { 0x50, 0x6F, 0x6C, 0x68, 0x65, 0x6D };
+            byte[] signature = key.SignData(data, HashAlgorithmName.SHA256);
+            using (var publicKey = ECDsa.Create(key.ExportParameters(includePrivateParameters: false)))
+            {
+                return publicKey.VerifyData(data, signature, HashAlgorithmName.SHA256);
             }
         }
 

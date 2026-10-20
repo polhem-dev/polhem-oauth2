@@ -112,7 +112,7 @@ namespace Polhem.OAuth2
         /// <remarks>
         /// The callback endpoint must then accept POST and read the parameters from the form. A cookie that keeps the pending
         /// sign-in reaches the callback only with <c>SameSite=None</c>, because a browser leaves a <c>SameSite=Lax</c> cookie
-        /// out of a POST from another site. The managers of Polhem.OAuth2.AspNetCore and Polhem.OAuth2.AspNet do both.
+        /// out of a POST from another site.
         /// </remarks>
         public bool UsesFormPostResponse => _provider.UsesFormPost;
 

@@ -61,6 +61,47 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Contains(expectedProperty, exception.Message, StringComparison.Ordinal);
         }
 
+        [Theory]
+        [DisplayName("The client rejects a key ID or team ID with leading or trailing white space, as read from a secret store")]
+        [InlineData(KeyId + "\n", TeamId, nameof(AppleOAuth2Options.KeyId))]
+        [InlineData(KeyId, " " + TeamId, nameof(AppleOAuth2Options.TeamId))]
+        public void Client_IdentifierWithWhiteSpace_ThrowsArgumentException(string keyId, string teamId, string expectedProperty)
+        {
+            using var key = new TestAppleKey();
+            var options = CreateOptions(key);
+            options.KeyId = keyId;
+            options.TeamId = teamId;
+
+            var exception = Assert.Throws<ArgumentException>(() => new OAuth2Client(options));
+
+            Assert.StartsWith(expectedProperty, exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("The client accepts a null private key when a client secret is set")]
+        public void Client_NullPrivateKeyWithClientSecret_IsCreated()
+        {
+            var options = CreateOptions(privateKey: null, clientSecret: "signed");
+            options.PrivateKey = null!;
+
+            Assert.Equal("Apple", new OAuth2Client(options).ProviderName);
+        }
+
+        [Fact]
+        [DisplayName("The client rejects a key file whose private key does not match its public key")]
+        public void Client_MismatchedKeyPair_ThrowsArgumentException()
+        {
+            using var key = new TestAppleKey();
+            using var other = new TestAppleKey();
+            var options = CreateOptions(key);
+            options.PrivateKey = key.PemWithPublicKeyOf(other);
+
+            var exception = Assert.Throws<ArgumentException>(() => new OAuth2Client(options));
+
+            // Some platforms refuse the pair when it is imported, and the others when the signature check fails.
+            Assert.StartsWith(nameof(AppleOAuth2Options.PrivateKey), exception.Message, StringComparison.Ordinal);
+        }
+
         [Fact]
         [DisplayName("The client rejects client_secret_basic, which Apple does not accept")]
         public void Client_ClientSecretBasic_ThrowsArgumentException()

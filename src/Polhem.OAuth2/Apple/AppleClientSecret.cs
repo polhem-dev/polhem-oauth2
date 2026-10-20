@@ -56,6 +56,7 @@ namespace Polhem.OAuth2
         /// about to expire.
         /// </summary>
         /// <returns>The secret.</returns>
+        /// <exception cref="OAuth2Exception">The platform refused the private key, which was accepted when the client was created.</exception>
         /// <remarks>
         /// Concurrent calls may each create a secret when the current one runs out. Every one of them is valid, so the
         /// last one written is kept and nothing is locked.
@@ -87,12 +88,21 @@ namespace Polhem.OAuth2
                 writer.WriteString("sub", _clientId);
             });
 
-            using (ECDsa key = AppleSigningKey.Create(_privateKey))
+            try
             {
-                // IMPORTANT: A JSON Web Signature carries the ES256 signature as r and s of 32 bytes each (RFC 7518, section
-                // 3.4). SignData produces that IEEE P1363 form on every target, not the DER form that X.509 uses.
-                byte[] signature = key.SignData(Encoding.ASCII.GetBytes(signingInput), HashAlgorithmName.SHA256);
-                return signingInput + "." + Base64Url.Encode(signature);
+                using (ECDsa key = AppleSigningKey.Create(_privateKey))
+                {
+                    // IMPORTANT: A JSON Web Signature carries the ES256 signature as r and s of 32 bytes each (RFC 7518,
+                    // section 3.4). SignData produces that IEEE P1363 form on every target, not the DER form that X.509 uses.
+                    byte[] signature = key.SignData(Encoding.ASCII.GetBytes(signingInput), HashAlgorithmName.SHA256);
+                    return signingInput + "." + Base64Url.Encode(signature);
+                }
+            }
+            catch (CryptographicException ex)
+            {
+                // A failure of the platform's cryptography becomes an expected sign-in failure (ADR-003). The message of the
+                // inner exception comes from the platform and does not include the key.
+                throw new OAuth2Exception("The client secret for Apple cannot be signed with the private key.", ex);
             }
         }
 

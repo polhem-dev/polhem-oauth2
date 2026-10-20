@@ -33,7 +33,7 @@ namespace Polhem.OAuth2
             UsesFormPost = options.Scopes
                 .SelectMany(scope => scope.Split(' '))
                 .Any(scope => s_formPostScopes.Contains(scope, StringComparer.Ordinal));
-            if (options.PrivateKey.Length > 0)
+            if (!string.IsNullOrEmpty(options.PrivateKey))
                 _clientSecret = new AppleClientSecret(options.TeamId, options.KeyId, options.ClientId, options.PrivateKey, clock ?? UtcNow);
         }
 

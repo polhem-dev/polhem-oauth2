@@ -86,11 +86,20 @@ namespace Polhem.OAuth2
                     ? $"Set {nameof(PrivateKey)}, {nameof(KeyId)} and {nameof(TeamId)} to have the client secret signed, or set {nameof(ClientSecret)} to a client secret signed in advance."
                     : null;
             }
-            if (string.IsNullOrWhiteSpace(KeyId))
-                return $"{nameof(KeyId)} is required when {nameof(PrivateKey)} is set.";
-            if (string.IsNullOrWhiteSpace(TeamId))
-                return $"{nameof(TeamId)} is required when {nameof(PrivateKey)} is set.";
+            if (GetIdentifierError(KeyId, nameof(KeyId)) is { } keyIdError)
+                return keyIdError;
+            if (GetIdentifierError(TeamId, nameof(TeamId)) is { } teamIdError)
+                return teamIdError;
             return AppleSigningKey.GetError(PrivateKey) is { } keyError ? $"{nameof(PrivateKey)} is not valid. {keyError}" : null;
+        }
+
+        // A value read from a secret store often ends with a line break, which would reach the client secret and make Apple
+        // refuse every token request instead of failing when the client is created.
+        private static string? GetIdentifierError(string? value, string name)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return $"{name} is required when {nameof(PrivateKey)} is set.";
+            return value!.Trim().Length != value.Length ? $"{name} cannot start or end with white space." : null;
         }
     }
 }
