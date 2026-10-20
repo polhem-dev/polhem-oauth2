@@ -4,3 +4,10 @@ Polhem.OAuth2.OAuth2Options.AcceptedClientIds.get -> string![]!
 Polhem.OAuth2.OAuth2Options.AcceptedClientIds.set -> void
 Polhem.OAuth2.GitHubOAuth2Options
 Polhem.OAuth2.GitHubOAuth2Options.GitHubOAuth2Options() -> void
+Polhem.OAuth2.OidcOAuth2Options
+Polhem.OAuth2.OidcOAuth2Options.Issuer.get -> string!
+Polhem.OAuth2.OidcOAuth2Options.Issuer.set -> void
+Polhem.OAuth2.OidcOAuth2Options.OidcOAuth2Options() -> void
+Polhem.OAuth2.OidcOAuth2Options.ProviderName.get -> string!
+Polhem.OAuth2.OidcOAuth2Options.ProviderName.set -> void
+static Polhem.OAuth2.OidcOAuth2Options.FromDiscoveryAsync(string! authority, System.Net.Http.HttpClient? httpClient = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.OidcOAuth2Options!>!

@@ -89,6 +89,9 @@ namespace Polhem.OAuth2
         /// Gets or sets the user information endpoint, which returns details such as the user's name and email address.
         /// It must be an absolute https URI without a fragment. A query is kept.
         /// </summary>
+        /// <remarks>
+        /// <see cref="OidcOAuth2Options"/> accepts an empty value and then reads the user from the ID token.
+        /// </remarks>
         public string UserInfoEndpoint { get; set; } = string.Empty;
 
         /// <summary>
@@ -100,6 +103,12 @@ namespace Polhem.OAuth2
         /// <c>nonce</c> in its place. Turn it off only for a provider that refuses the parameters.
         /// </remarks>
         public bool UsePkce { get; set; } = true;
+
+        /// <summary>
+        /// Gets a value indicating whether <see cref="UserInfoEndpoint"/> must be set. A provider that can read the user from
+        /// the ID token instead returns false.
+        /// </summary>
+        internal virtual bool RequiresUserInfoEndpoint => true;
 
         /// <summary>
         /// Creates the provider for these options. Each options type creates its own provider, so adding a provider needs no
@@ -148,29 +157,45 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Checks that every endpoint is an absolute https URI without a fragment. The client secret, authorization codes and
-        /// tokens travel to these endpoints, so none of them may be sent unencrypted, and RFC 6749, section 3.1, allows an
-        /// endpoint a query but no fragment, which would swallow the parameters added after it.
+        /// Checks that every endpoint is an absolute https URI without a fragment, and then the settings that the provider
+        /// adds. The client secret, authorization codes and tokens travel to these endpoints, so none of them may be sent
+        /// unencrypted, and RFC 6749, section 3.1, allows an endpoint a query but no fragment, which would swallow the
+        /// parameters added after it. An empty <see cref="UserInfoEndpoint"/> passes when <see cref="RequiresUserInfoEndpoint"/>
+        /// is false.
         /// </summary>
-        /// <returns>A message that names the first endpoint property that is not valid, or null if every endpoint is valid.</returns>
+        /// <returns>A message that names the first property that is not valid, or null if every one is valid.</returns>
         internal string? GetEndpointError()
         {
             if (!IsEndpointUri(AuthorizationEndpoint))
                 return GetEndpointError(nameof(AuthorizationEndpoint));
             if (!IsEndpointUri(TokenEndpoint))
                 return GetEndpointError(nameof(TokenEndpoint));
-            if (!IsEndpointUri(UserInfoEndpoint))
+            if (!(string.IsNullOrEmpty(UserInfoEndpoint) && !RequiresUserInfoEndpoint) && !IsEndpointUri(UserInfoEndpoint))
                 return GetEndpointError(nameof(UserInfoEndpoint));
-            return null;
+            return GetProviderSettingsError();
 
             static string GetEndpointError(string endpoint) => $"{endpoint} must be an absolute https URI without a fragment.";
         }
 
-        private static bool IsEndpointUri(string endpoint)
+        /// <summary>
+        /// Checks the settings that a derived type adds. The default checks nothing.
+        /// </summary>
+        /// <returns>A message that describes the first invalid setting, or null if the settings are valid.</returns>
+        private protected virtual string? GetProviderSettingsError()
+        {
+            return null;
+        }
+
+        /// <summary>
+        /// Checks whether a value is an absolute https URI without a fragment, the rule for every endpoint.
+        /// </summary>
+        /// <param name="endpoint">The value to check, or null.</param>
+        /// <returns>True if the value is an absolute https URI without a fragment; otherwise, false.</returns>
+        private protected static bool IsEndpointUri(string? endpoint)
         {
             return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
                 && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
-                && endpoint.IndexOf('#') < 0;
+                && endpoint!.IndexOf('#') < 0;
         }
 
         /// <summary>

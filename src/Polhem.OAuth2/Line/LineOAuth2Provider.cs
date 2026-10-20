@@ -53,9 +53,26 @@ namespace Polhem.OAuth2
         {
             // The profile response has no email field. LINE puts the address in the ID token, and only when the channel
             // has permission to read it, the email scope was requested, and the user agreed to share it.
-            string? email = token?.IdToken is { } idToken ? LineIdToken.ReadEmail(idToken, Options.ClientId) : null;
+            string? email = token?.IdToken is { } idToken ? ReadEmail(idToken) : null;
 
             return new UserInfo(OAuth2Json.GetString(user, "userId"), OAuth2Json.GetString(user, "displayName"), email, json);
+        }
+
+        // The user comes from the profile response, and the ID token only adds the email address, so a token that cannot
+        // be read leaves the address out instead of failing the sign-in. The issuer is not checked, for the same reason.
+        private string? ReadEmail(string idToken)
+        {
+            try
+            {
+                using (var claims = IdToken.ReadClaims(idToken, Options.ClientId, issuer: null))
+                {
+                    return OAuth2Json.GetProtocolString(claims.RootElement, "email");
+                }
+            }
+            catch (OAuth2Exception)
+            {
+                return null;
+            }
         }
     }
 }

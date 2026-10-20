@@ -22,6 +22,33 @@ namespace Polhem.OAuth2
             return new ProductInfoHeaderValue(ProductName, s_version);
         }
 
+        /// <summary>
+        /// Sends a request with an HTTP client after adding this library to its <c>User-Agent</c> header, after the products
+        /// of the client's own <c>User-Agent</c>.
+        /// </summary>
+        /// <param name="httpClient">The HTTP client.</param>
+        /// <param name="request">The request.</param>
+        /// <param name="cancellationToken">Cancels the request.</param>
+        /// <param name="completionOption">
+        /// When the task completes: after the whole response is read, the default, or after its headers, so that the caller
+        /// can limit how much of the body it reads.
+        /// </param>
+        /// <returns>The response, which the caller disposes.</returns>
+        /// <exception cref="HttpRequestException">The request failed.</exception>
+        /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
+        public static Task<HttpResponseMessage> SendAsync(
+            HttpClient httpClient, HttpRequestMessage request, CancellationToken cancellationToken,
+            HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead)
+        {
+            // The header is set on the request rather than on the client, so that it also reaches a provider through an
+            // HttpClient that the application passes in. The GitHub API refuses a request without it. A request header
+            // replaces the default header of the client, so the products of the application's own User-Agent come first.
+            foreach (var product in httpClient.DefaultRequestHeaders.UserAgent)
+                request.Headers.UserAgent.Add(product);
+            request.Headers.UserAgent.Add(Create());
+            return httpClient.SendAsync(request, completionOption, cancellationToken);
+        }
+
         // The informational version is the package version, followed by `+` and the commit when SourceLink adds it. The commit
         // is left out. A version that is not a valid HTTP token is dropped, because a malformed header would fail every request.
         private static string? ReadVersion()

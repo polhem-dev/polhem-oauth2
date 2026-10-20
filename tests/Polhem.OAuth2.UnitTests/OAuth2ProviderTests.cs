@@ -17,6 +17,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("OpenID Connect")]
         [InlineData("GitHub")]
         public void Create_OptionsType_ReturnsMatchingProvider(string providerName)
         {
@@ -217,6 +218,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Facebook", false)]
         [InlineData("Auth0", false)]
         [InlineData("Okta", false)]
+        [InlineData("OpenID Connect", false)]
         public async Task ExchangeCodeAsync_PublicClientWithSecret_SendsSecretOnlyWhereRequired(string providerName, bool sendsSecret)
         {
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
@@ -430,6 +432,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("OpenID Connect")]
         [InlineData("GitHub")]
         public async Task ExchangeCodeAsync_SuccessStatusWithError_ThrowsOAuth2ExceptionWithErrorCode(string providerName)
         {
@@ -508,6 +511,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure", true)]
         [InlineData("Auth0", false)]
         [InlineData("Okta", true)]
+        [InlineData("OpenID Connect", true)]
         [InlineData("GitHub", true)]
         public async Task TokenRequest_EachProvider_SendsAcceptJson(string providerName, bool refresh)
         {
@@ -529,6 +533,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("OpenID Connect")]
         [InlineData("GitHub")]
         public async Task Requests_EachProvider_SendUserAgentWithVersion(string providerName)
         {

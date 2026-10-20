@@ -370,6 +370,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("OpenID Connect")]
         public async Task GetUserInfoAsync_UnsupportedProvider_ThrowsNotSupportedException(string providerName)
         {
             var handler = new StubHttpMessageHandler();
@@ -384,6 +385,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("OpenID Connect")]
         public async Task GetUserInfoAsync_OidcProvider_NotSupportedExceptionNamesAlternative(string providerName)
         {
             var client = new OAuth2Client(CreateOptions(providerName, clientSecret: "secret"), new StubHttpMessageHandler().CreateClient());

@@ -312,6 +312,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Azure")]
         [InlineData("Auth0")]
         [InlineData("Okta")]
+        [InlineData("OpenID Connect")]
         [InlineData("GitHub")]
         public async Task SignInAsync_EachProvider_BuildsAuthorizationUrl(string providerName)
         {
