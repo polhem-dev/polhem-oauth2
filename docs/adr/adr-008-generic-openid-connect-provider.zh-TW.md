@@ -6,7 +6,8 @@
 
 已採納（2026-10-20）。2026-10-20 於 pull request [#23](https://github.com/polhem-dev/polhem-oauth2/pull/23) 與
 [#24](https://github.com/polhem-dev/polhem-oauth2/pull/24) 實作，並於 2026-10-20 以 Keycloak、GitLab.com、Google 與 Okta 實測，
-記錄在「測試結果」。
+記錄在「測試結果」。專用的 OpenID Connect provider 於 2026-10-20 在
+[#26](https://github.com/polhem-dev/polhem-oauth2/pull/26) 加上 ID token 檢查，並以 Google、Auth0、Okta 與 Microsoft Entra ID 實測。
 
 ## 背景
 

@@ -6,7 +6,8 @@
 
 Accepted (2026-10-20). Implemented on 2026-10-20 in pull requests [#23](https://github.com/polhem-dev/polhem-oauth2/pull/23)
 and [#24](https://github.com/polhem-dev/polhem-oauth2/pull/24), and tested with Keycloak, GitLab.com, Google and Okta on
-2026-10-20, as "Test results" records.
+2026-10-20, as "Test results" records. The dedicated OpenID Connect providers took up the ID token check on 2026-10-20 in
+[#26](https://github.com/polhem-dev/polhem-oauth2/pull/26), tested with Google, Auth0, Okta and Microsoft Entra ID.
 
 ## Context
 
