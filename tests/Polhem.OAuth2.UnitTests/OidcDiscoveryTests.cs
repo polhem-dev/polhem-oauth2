@@ -26,7 +26,7 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal(Authority + "/protocol/openid-connect/token", options.TokenEndpoint);
             Assert.Equal(Authority + "/protocol/openid-connect/userinfo", options.UserInfoEndpoint);
             Assert.Equal(ClientAuthenticationMethod.ClientSecretPost, options.ClientAuthentication);
-            Assert.Equal("OpenID Connect", options.ProviderName);
+            Assert.Empty(options.ProviderName);
             Assert.Equal(new[] { "openid", "profile", "email" }, options.Scopes);
             Assert.Empty(options.ClientId);
         }
@@ -103,11 +103,12 @@ namespace Polhem.OAuth2.UnitTests
             var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, Document(fields => fields.Remove("userinfo_endpoint")));
 
             var options = await OidcOAuth2Options.FromDiscoveryAsync(Authority, handler.CreateClient());
+            options.ProviderName = "Keycloak";
             options.ClientId = "client-id";
             options.RedirectUri = "https://app.example.com/auth/callback";
 
             Assert.Empty(options.UserInfoEndpoint);
-            Assert.Equal("OpenID Connect", new OAuth2Client(options).ProviderName);
+            Assert.Equal("Keycloak", new OAuth2Client(options).ProviderName);
         }
 
         [Theory]
@@ -184,6 +185,7 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("idp.example.com")]
         [InlineData("https://idp.example.com?x=1")]
         [InlineData("https://idp.example.com#x")]
+        [InlineData("https://user:secret@idp.example.com")]
         [InlineData("")]
         public async Task FromDiscoveryAsync_InvalidAuthority_ThrowsArgumentException(string authority)
         {
@@ -212,6 +214,15 @@ namespace Polhem.OAuth2.UnitTests
             var exception = await Assert.ThrowsAsync<HttpRequestException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, handler.CreateClient()));
 
             Assert.Contains(((int)status).ToString(System.Globalization.CultureInfo.InvariantCulture), exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("A document larger than 1 MiB throws HttpRequestException")]
+        public async Task FromDiscoveryAsync_HugeDocument_ThrowsHttpRequestException()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, Document(fields => fields["padding"] = new string('x', 1024 * 1024)));
+
+            await Assert.ThrowsAsync<HttpRequestException>(() => OidcOAuth2Options.FromDiscoveryAsync(Authority, handler.CreateClient()));
         }
 
         [Theory]

@@ -16,8 +16,11 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="options">The OpenID Connect options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
+        /// <exception cref="ArgumentException">An endpoint or the issuer of <paramref name="options"/> is not valid, or the provider name is empty.</exception>
         public OidcOAuth2Provider(OidcOAuth2Options options, Func<HttpClient>? httpClientFactory) : base(options, httpClientFactory)
         {
+            if (options.GetProviderNameError() is { } error)
+                throw new ArgumentException(error, nameof(options));
             _options = options;
         }
 

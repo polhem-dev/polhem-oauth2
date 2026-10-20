@@ -11,13 +11,13 @@ namespace Polhem.OAuth2.UnitTests
         private const string RedirectUri = "https://app.example.com/auth/callback";
 
         [Fact]
-        [DisplayName("The options ask for the openid, profile and email scopes and name the provider OpenID Connect by default")]
+        [DisplayName("The options ask for the openid, profile and email scopes and have no provider name by default")]
         public void Options_Defaults_RequestOidcScopes()
         {
             var options = new OidcOAuth2Options();
 
             Assert.Equal(new[] { "openid", "profile", "email" }, options.Scopes);
-            Assert.Equal("OpenID Connect", options.ProviderName);
+            Assert.Empty(options.ProviderName);
             Assert.Empty(options.Issuer);
             Assert.Empty(options.UserInfoEndpoint);
         }
@@ -42,19 +42,21 @@ namespace Polhem.OAuth2.UnitTests
         {
             var client = new OAuth2Client(CreateOptions(withUserInfo: false));
 
-            Assert.Equal("OpenID Connect", client.ProviderName);
+            Assert.Equal("Keycloak", client.ProviderName);
         }
 
         [Theory]
         [DisplayName("The client rejects a missing issuer or openid scope without a user information endpoint, an invalid issuer, or an empty provider name")]
-        [InlineData("", "openid", "OpenID Connect", nameof(OidcOAuth2Options.Issuer))]
-        [InlineData(Issuer, "profile", "OpenID Connect", nameof(OAuth2Options.Scopes))]
-        [InlineData(Issuer, "OpenID", "OpenID Connect", nameof(OAuth2Options.Scopes))]
-        [InlineData("http://idp.example.com", "openid", "OpenID Connect", nameof(OidcOAuth2Options.Issuer))]
-        [InlineData("https://idp.example.com?tenant=1", "openid", "OpenID Connect", nameof(OidcOAuth2Options.Issuer))]
-        [InlineData("https://idp.example.com#x", "openid", "OpenID Connect", nameof(OidcOAuth2Options.Issuer))]
-        [InlineData("idp.example.com", "openid", "OpenID Connect", nameof(OidcOAuth2Options.Issuer))]
+        [InlineData("", "openid", "Keycloak", nameof(OidcOAuth2Options.Issuer))]
+        [InlineData(Issuer, "profile", "Keycloak", nameof(OAuth2Options.Scopes))]
+        [InlineData(Issuer, "OpenID", "Keycloak", nameof(OAuth2Options.Scopes))]
+        [InlineData("http://idp.example.com", "openid", "Keycloak", nameof(OidcOAuth2Options.Issuer))]
+        [InlineData("https://idp.example.com?tenant=1", "openid", "Keycloak", nameof(OidcOAuth2Options.Issuer))]
+        [InlineData("https://idp.example.com#x", "openid", "Keycloak", nameof(OidcOAuth2Options.Issuer))]
+        [InlineData("idp.example.com", "openid", "Keycloak", nameof(OidcOAuth2Options.Issuer))]
+        [InlineData("https://user:secret@idp.example.com", "openid", "Keycloak", nameof(OidcOAuth2Options.Issuer))]
         [InlineData(Issuer, "openid", " ", nameof(OidcOAuth2Options.ProviderName))]
+        [InlineData(Issuer, "openid", "", nameof(OidcOAuth2Options.ProviderName))]
         public void Client_InvalidOidcSettings_ThrowsArgumentException(string issuer, string scope, string providerName, string property)
         {
             var options = CreateOptions(withUserInfo: false);
@@ -65,6 +67,16 @@ namespace Polhem.OAuth2.UnitTests
             var exception = Assert.Throws<ArgumentException>(() => new OAuth2Client(options));
 
             Assert.StartsWith(property, exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("The openid scope may share an element of Scopes with other scopes, separated by spaces")]
+        public void Client_OpenIdInSpaceSeparatedScope_IsCreated()
+        {
+            var options = CreateOptions(withUserInfo: false);
+            options.Scopes = new[] { "profile openid", "email" };
+
+            Assert.Equal("Keycloak", new OAuth2Client(options).ProviderName);
         }
 
         [Fact]
@@ -228,14 +240,14 @@ namespace Polhem.OAuth2.UnitTests
             var handler = new StubHttpMessageHandler()
                 .Respond(HttpStatusCode.OK, JsonSerializer.Serialize(new Dictionary<string, string> { ["access_token"] = "access", ["id_token"] = IdTokenFor("u1") }));
             var options = CreateOptions(withUserInfo: false);
-            options.ProviderName = "Keycloak";
+            options.ProviderName = "Corporate SSO";
             var client = new OAuth2Client(options, handler.CreateClient());
             var kept = client.CreateAuthorizationRequest().Pending;
 
             var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("code", kept.State, null, null), kept);
 
             Assert.True(result.IsSuccess, result.Exception?.ToString());
-            Assert.Equal("Keycloak", result.ProviderName);
+            Assert.Equal("Corporate SSO", result.ProviderName);
             Assert.Equal("u1", result.UserInfo.UserId);
             Assert.Single(handler.Requests);
         }
@@ -244,6 +256,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             return new OidcOAuth2Options
             {
+                ProviderName = "Keycloak",
                 Issuer = Issuer,
                 AuthorizationEndpoint = "https://idp.example.com/authorize",
                 TokenEndpoint = "https://idp.example.com/token",

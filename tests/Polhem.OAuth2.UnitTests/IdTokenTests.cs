@@ -19,8 +19,8 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Theory]
-        [DisplayName("ReadClaims accepts an audience array that contains the client ID, and an authorized party that is the client")]
-        [InlineData("""{"aud":["other","1234567890"]}""")]
+        [DisplayName("ReadClaims accepts an audience that contains the client ID, with an authorized party that is the client when there are other audiences")]
+        [InlineData("""{"aud":["1234567890"]}""")]
         [InlineData("""{"aud":["other","1234567890"],"azp":"1234567890"}""")]
         [InlineData("""{"aud":"1234567890","azp":"1234567890"}""")]
         public void ReadClaims_AudienceContainsClient_ReturnsPayload(string payload)
@@ -37,6 +37,8 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("""{"aud":1234567890}""")]
         [InlineData("""{"sub":"u1"}""")]
         [InlineData("""{"aud":["other","1234567890"],"azp":"other"}""")]
+        [InlineData("""{"aud":["other","1234567890"]}""")]
+        [InlineData("""{"aud":["1234567890",1]}""")]
         [InlineData("""{"aud":"1234567890","azp":null}""")]
         public void ReadClaims_AudienceDoesNotMatch_ThrowsOAuth2Exception(string payload)
         {

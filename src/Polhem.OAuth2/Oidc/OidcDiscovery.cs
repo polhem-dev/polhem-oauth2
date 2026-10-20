@@ -10,6 +10,10 @@ namespace Polhem.OAuth2
     {
         private const string DocumentPath = "/.well-known/openid-configuration";
 
+        // Discovery documents of real providers are a few kilobytes. The limit keeps a provider that answers with a huge
+        // body from exhausting the memory of the application.
+        private const int MaxDocumentBytes = 1024 * 1024;
+
         /// <summary>
         /// Requests the discovery document of an authority and creates the options it describes.
         /// </summary>
@@ -18,8 +22,8 @@ namespace Polhem.OAuth2
         /// <param name="cancellationToken">Cancels the request.</param>
         /// <returns>The options, with the endpoints and the issuer of the document.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="authority"/> is null.</exception>
-        /// <exception cref="ArgumentException"><paramref name="authority"/> is not an absolute https URI without a query or a fragment.</exception>
-        /// <exception cref="HttpRequestException">The request failed, or the provider returned an unsuccessful status code.</exception>
+        /// <exception cref="ArgumentException"><paramref name="authority"/> is not an absolute https URI without user information, a query or a fragment.</exception>
+        /// <exception cref="HttpRequestException">The request failed, the provider returned an unsuccessful status code, or the document is too large.</exception>
         /// <exception cref="JsonException">The response is not a JSON object.</exception>
         /// <exception cref="OAuth2Exception">The document does not describe a provider that the options can use.</exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
@@ -27,7 +31,7 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(authority);
             if (!OidcOAuth2Options.IsIssuerUri(authority))
-                throw new ArgumentException("The authority must be an absolute https URI without a query or a fragment.", nameof(authority));
+                throw new ArgumentException("The authority must be an absolute https URI without user information, a query or a fragment.", nameof(authority));
 
             // Section 4: the path is appended to the issuer after a trailing slash is removed.
             string documentUrl = TrimTrailingSlash(authority) + DocumentPath;
@@ -37,11 +41,19 @@ namespace Polhem.OAuth2
             using (var request = new HttpRequestMessage(HttpMethod.Get, documentUrl))
             {
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                using (var response = await LibraryUserAgent.SendAsync(httpClient ?? SharedHttpClient.Instance, request, cancellationToken).ConfigureAwait(false))
+                using (var response = await LibraryUserAgent.SendAsync(
+                    httpClient ?? SharedHttpClient.Instance, request, cancellationToken, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false))
                 {
                     if (!response.IsSuccessStatusCode)
                         throw new HttpRequestException($"The discovery document request returned status code {(int)response.StatusCode}.");
 
+                    // Throws HttpRequestException when the body is larger than the limit. Before .NET 9 the method takes no
+                    // cancellation token, so there a cancellation does not stop the reading of a body that has started.
+#if NET9_0_OR_GREATER
+                    await response.Content.LoadIntoBufferAsync(MaxDocumentBytes, cancellationToken).ConfigureAwait(false);
+#else
+                    await response.Content.LoadIntoBufferAsync(MaxDocumentBytes).ConfigureAwait(false);
+#endif
                     string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
                     using (var document = OAuth2Json.ParseObject(json))
                     {

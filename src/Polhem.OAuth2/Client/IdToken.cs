@@ -15,8 +15,8 @@ namespace Polhem.OAuth2
     /// or from a front end; a back end validates such a token itself, for example with JwtBearer authentication.
     /// </para>
     /// <para>
-    /// The audience and the issuer are still checked, so a token endpoint that answers with the token of another client or
-    /// another issuer cannot sign a user in.
+    /// The audience and the authorized party are checked, and the issuer when the caller passes one, so the token of another
+    /// client, or of another issuer when the issuer is known, is refused. An encrypted ID token is not supported.
     /// </para>
     /// </remarks>
     internal static class IdToken
@@ -64,10 +64,13 @@ namespace Polhem.OAuth2
             try
             {
                 var claims = document.RootElement;
-                // Items 3 and 5 of section 3.1.3.7: the audience must contain the client, and an authorized party, which a
-                // token with several audiences names, must be the client.
-                if (clientId.Length == 0 || !HasAudience(claims, clientId)
-                    || (claims.TryGetProperty("azp", out _) && !string.Equals(OAuth2Json.GetProtocolString(claims, "azp"), clientId, StringComparison.Ordinal)))
+                // Items 3 to 5 of section 3.1.3.7: the audience must contain the client, a token with other audiences as well
+                // must name the client as its authorized party, and an authorized party that is present must be the client.
+                bool hasAuthorizedParty = claims.TryGetProperty("azp", out _);
+                if (clientId.Length == 0
+                    || !HasAudience(claims, clientId, out bool hasOtherAudiences)
+                    || ((hasAuthorizedParty || hasOtherAudiences)
+                        && !string.Equals(OAuth2Json.GetProtocolString(claims, "azp"), clientId, StringComparison.Ordinal)))
                 {
                     throw new OAuth2Exception("The ID token was issued to another client.");
                 }
@@ -86,8 +89,9 @@ namespace Polhem.OAuth2
         }
 
         // The aud claim is either one string or an array of strings (RFC 7519, section 4.1.3).
-        private static bool HasAudience(JsonElement claims, string clientId)
+        private static bool HasAudience(JsonElement claims, string clientId, out bool hasOtherAudiences)
         {
+            hasOtherAudiences = false;
             if (!claims.TryGetProperty("aud", out var audience))
                 return false;
 
@@ -96,8 +100,15 @@ namespace Polhem.OAuth2
                 case JsonValueKind.String:
                     return string.Equals(audience.GetString(), clientId, StringComparison.Ordinal);
                 case JsonValueKind.Array:
-                    return audience.EnumerateArray().Any(item =>
-                        item.ValueKind == JsonValueKind.String && string.Equals(item.GetString(), clientId, StringComparison.Ordinal));
+                    bool found = false;
+                    foreach (var item in audience.EnumerateArray())
+                    {
+                        if (item.ValueKind == JsonValueKind.String && string.Equals(item.GetString(), clientId, StringComparison.Ordinal))
+                            found = true;
+                        else
+                            hasOtherAudiences = true;
+                    }
+                    return found;
                 default:
                     return false;
             }

@@ -29,10 +29,16 @@ namespace Polhem.OAuth2
         /// <param name="httpClient">The HTTP client.</param>
         /// <param name="request">The request.</param>
         /// <param name="cancellationToken">Cancels the request.</param>
+        /// <param name="completionOption">
+        /// When the task completes: after the whole response is read, the default, or after its headers, so that the caller
+        /// can limit how much of the body it reads.
+        /// </param>
         /// <returns>The response, which the caller disposes.</returns>
         /// <exception cref="HttpRequestException">The request failed.</exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
-        public static Task<HttpResponseMessage> SendAsync(HttpClient httpClient, HttpRequestMessage request, CancellationToken cancellationToken)
+        public static Task<HttpResponseMessage> SendAsync(
+            HttpClient httpClient, HttpRequestMessage request, CancellationToken cancellationToken,
+            HttpCompletionOption completionOption = HttpCompletionOption.ResponseContentRead)
         {
             // The header is set on the request rather than on the client, so that it also reaches a provider through an
             // HttpClient that the application passes in. The GitHub API refuses a request without it. A request header
@@ -40,7 +46,7 @@ namespace Polhem.OAuth2
             foreach (var product in httpClient.DefaultRequestHeaders.UserAgent)
                 request.Headers.UserAgent.Add(product);
             request.Headers.UserAgent.Add(Create());
-            return httpClient.SendAsync(request, cancellationToken);
+            return httpClient.SendAsync(request, completionOption, cancellationToken);
         }
 
         // The informational version is the package version, followed by `+` and the commit when SourceLink adds it. The commit

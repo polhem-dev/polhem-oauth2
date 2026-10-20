@@ -25,6 +25,7 @@ namespace Polhem.OAuth2.UnitTests
                 "GitHub" => new GitHubOAuth2Options(),
                 "OpenID Connect" => new OidcOAuth2Options
                 {
+                    ProviderName = "OpenID Connect",
                     Issuer = "https://idp.example.com",
                     AuthorizationEndpoint = "https://idp.example.com/authorize",
                     TokenEndpoint = "https://idp.example.com/token",
