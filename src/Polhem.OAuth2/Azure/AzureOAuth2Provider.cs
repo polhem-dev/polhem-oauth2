@@ -5,7 +5,7 @@ namespace Polhem.OAuth2
     /// <summary>
     /// The Microsoft Entra ID OAuth2 provider.
     /// </summary>
-    internal sealed class AzureOAuth2Provider : OAuth2Provider
+    internal sealed class AzureOAuth2Provider : OpenIdConnectProvider
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AzureOAuth2Provider"/> class.
@@ -18,6 +18,14 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         public override string ProviderName => "Azure";
+
+        /// <inheritdoc/>
+        /// <remarks>
+        /// The issuer is not checked. It names the tenant of the user, which the <c>common</c>, <c>organizations</c> and
+        /// <c>consumers</c> tenants do not fix in advance; the audience is still checked. The user information endpoint
+        /// returns no object ID, so the user is identified by <c>sub</c>, which it shares with the ID token.
+        /// </remarks>
+        protected override IReadOnlyCollection<string> IdTokenIssuers => Array.Empty<string>();
 
         /// <inheritdoc/>
         /// <remarks>
@@ -34,16 +42,11 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
-        protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
+        protected override string? GetFallbackUserName(JsonElement user)
         {
-            // The user information endpoint returns no object ID, so the user is identified by sub. A personal Microsoft
-            // account returns no name claim, and its name parts as givenname and familyname, without the underscores of
-            // OpenID Connect, so that spelling is read as well.
-            return new UserInfo(
-                OAuth2Json.GetString(user, "sub"),
-                GetOidcDisplayName(user) ?? JoinNameParts(user, "givenname", "familyname"),
-                OAuth2Json.GetString(user, "email"),
-                json);
+            // A personal Microsoft account returns no name claim, and its name parts as givenname and familyname, without the
+            // underscores of OpenID Connect.
+            return JoinNameParts(user, "givenname", "familyname");
         }
     }
 }

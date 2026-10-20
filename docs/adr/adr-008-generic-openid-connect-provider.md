@@ -56,6 +56,19 @@ has none. The user is then only in the ID token of the token response.
 - The checks are shared code that LINE uses for the email address in its ID token, and that Apple can use. LINE keeps its
   behavior: it does not check the issuer, and an ID token that cannot be read leaves the email address out instead of failing
   the sign-in.
+- The dedicated OpenID Connect providers, Google, Auth0, Okta and Microsoft Entra ID, run the same checks on the ID token of a
+  sign-in and compare its `sub` with that of the user information. A token response without an ID token, when `openid` is not
+  requested, is not checked, as before. The issuer is checked where it is known from the options alone:
+  - Google: `https://accounts.google.com` or `accounts.google.com`, the two values that Google documents.
+  - Auth0: `https://<Domain>/`. Auth0 names the domain the request went to, with a trailing slash, and every endpoint is built
+    from `Domain`, so a custom domain is named too.
+  - Okta: not checked. The issuer mode of an authorization server decides whether a token names the Okta domain or a custom
+    domain, so the issuer can differ from `Domain`.
+  - Microsoft Entra ID: not checked. The issuer names the tenant of the user, which `common`, `organizations` and `consumers`
+    do not fix in advance.
+
+  The audience is checked for all of them. The generic and the dedicated providers share one base class for the check and for
+  the mapping of the standard claims; each provider adds only the field it falls back to for the user name.
 - `OAuth2Client.GetUserInfoAsync(accessToken)` throws `NotSupportedException` for these options, as for Okta: an OpenID Connect
   front end proves who signed in with its ID token (ADR-007).
 
@@ -76,7 +89,11 @@ has none. The user is then only in the ID token of the token response.
   none. Use `GoogleOAuth2Options`, which sends it.
 - A provider whose discovery document names a template as its issuer, such as the `common` tenant of Microsoft Entra ID, cannot
   be read by discovery.
-- `tests/Polhem.OAuth2.UnitTests/IdTokenTests.cs`, `OidcOAuth2ProviderTests.cs` and `OidcDiscoveryTests.cs` cover the checks.
+- A sign-in with Google, Auth0, Okta or Microsoft Entra ID that used to succeed now fails when the user information names
+  another subject than the ID token, or when the ID token cannot be read or is for another client. The sign-ins in "Test
+  results" all passed the check.
+- `tests/Polhem.OAuth2.UnitTests/IdTokenTests.cs`, `OidcOAuth2ProviderTests.cs`, `OpenIdConnectProviderTests.cs` and
+  `OidcDiscoveryTests.cs` cover the checks.
   The fake provider serves an OpenID Connect provider with a discovery document and no user information endpoint under `/oidc`,
   which the device tests sign in to.
 
@@ -106,3 +123,15 @@ On 2026-10-20 the options were read with `FromDiscoveryAsync` and signed in with
 
 The device tests of [run 39354330719](https://github.com/polhem-dev/polhem-oauth2/actions/runs/39354330719) signed in to the
 OpenID Connect mode of the fake provider directly on iOS, Mac Catalyst and Android, and through the loopback client on Windows.
+
+On 2026-10-20 the dedicated providers signed in with real accounts through the loopback client, with the ID token check in
+place. Every sign-in succeeded, the ID token was issued to the client as a single audience, and the `sub` of the user
+information equalled that of the ID token:
+
+- Google: the issuer was `https://accounts.google.com`, the ID token had an `azp` equal to the client ID, and `sub` is numeric.
+- Auth0: the issuer was the domain with a trailing slash, and `sub` has the form `<provider>|<id>`.
+- Okta, with the `default` authorization server: the issuer was `https://<domain>/oauth2/default`.
+- Microsoft Entra ID, `common` tenant, with a personal account and a work account: the issuer named the tenant of each account,
+  the consumers tenant for the personal account. The Microsoft Graph user information returned the same pairwise `sub` as the
+  ID token in both cases; it names the parts of a personal account's name `givenname` and `familyname`, and those of a work
+  account `given_name` and `family_name` with a `name`.
