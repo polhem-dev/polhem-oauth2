@@ -44,5 +44,42 @@ namespace Polhem.OAuth2.UnitTests
 
             Assert.Equal(ClientAuthenticationMethod.ClientSecretBasic, options.ClientAuthentication);
         }
+
+        [Fact]
+        [DisplayName("The sample settings read the Sign in with Apple key from the file that PrivateKeyPath names, relative to the settings file")]
+        public void Parse_ApplePrivateKeyPath_ReadsKeyFile()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(directory);
+            try
+            {
+                File.WriteAllText(Path.Combine(directory, "AuthKey_TEST.p8"), "key text");
+                const string json = """{"Providers":{"Apple":{"Web":{"ClientId":"com.example.web","TeamId":"T","KeyId":"K","PrivateKeyPath":"AuthKey_TEST.p8","RedirectUri":"https://app.example.com/auth/callback"}}}}""";
+
+                var options = (AppleOAuth2Options)OAuthConfig.Parse(json, Path.Combine(directory, "OAuthConfig.json")).GetClient("Apple", OAuthClientType.Web);
+
+                Assert.Equal("key text", options.PrivateKey);
+                Assert.Equal("K", options.KeyId);
+                Assert.Equal("T", options.TeamId);
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        [Theory]
+        [DisplayName("The sample settings refuse a Sign in with Apple key written into the file, and a key file that does not exist")]
+        [InlineData("\"PrivateKey\":\"-----BEGIN PRIVATE KEY-----\"", "PrivateKeyPath")]
+        [InlineData("\"PrivateKeyPath\":\"missing.p8\"", "does not exist")]
+        public void Parse_ApplePrivateKeyInline_ThrowsInvalidDataException(string field, string expectedMessage)
+        {
+            string json = "{\"Providers\":{\"Apple\":{\"Web\":{\"ClientId\":\"id\"," + field + "}}}}";
+
+            var exception = Assert.Throws<InvalidDataException>(() => OAuthConfig.Parse(json, Path.Combine(Path.GetTempPath(), "OAuthConfig.json")));
+
+            Assert.Contains(expectedMessage, exception.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("BEGIN", exception.Message, StringComparison.Ordinal);
+        }
     }
 }

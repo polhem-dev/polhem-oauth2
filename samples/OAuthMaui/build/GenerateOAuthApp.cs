@@ -135,7 +135,7 @@ static string? FindSecret(JsonNode? node, string path = "")
     foreach (var field in obj)
     {
         string fieldPath = path.Length == 0 ? field.Key : path + "." + field.Key;
-        if (field.Key.Contains("Secret", StringComparison.OrdinalIgnoreCase))
+        if (field.Key.Contains("Secret", StringComparison.OrdinalIgnoreCase) || field.Key.Contains("PrivateKey", StringComparison.OrdinalIgnoreCase))
             return fieldPath;
         if (FindSecret(field.Value, fieldPath) is { } found)
             return found;

@@ -14,3 +14,4 @@ Each record explains a design decision in Polhem.OAuth2 and the reasons behind i
 | [ADR-006](adr-006-app-sign-in.md) | Sign in from mobile applications directly or through the application's own back end |
 | [ADR-007](adr-007-access-token-from-front-end.md) | Return the user of an access token from a front end only after the provider names its client |
 | [ADR-008](adr-008-generic-openid-connect-provider.md) | Sign in with any OpenID Connect provider through one options type |
+| [ADR-009](adr-009-sign-in-with-apple.md) | Sign in with Apple through the web flow, with a client secret the library signs |

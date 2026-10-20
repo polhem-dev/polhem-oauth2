@@ -24,6 +24,19 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
   `ProviderName` is required, because users are identified by it. `UserInfoEndpoint` may be empty, and the user then comes
   from the ID token of the sign-in. Every ID token it reads must be issued to the client, and by `Issuer` when that is set, and
   the user information must have the subject of the ID token. See ADR-008.
+- `AppleOAuth2Options` signs in a web application with Apple. The library signs the client secret, an ES256 JSON Web Token, with
+  `PrivateKey`, the `.p8` file of a Sign in with Apple key, and `KeyId` and `TeamId`, and replaces it before it expires; a secret
+  signed in advance is accepted in `ClientSecret`. `UserId` and `Email` come from the ID token, and the name from the `user`
+  parameter that Apple sends only with the first sign-in of a user. `LoopbackOAuth2Client` and `AppOAuth2Client` refuse these
+  options, and a mobile application signs in through the back-end relay. See ADR-009.
+- `AuthorizationCallback.User` and a constructor that takes it carry the `user` parameter of Apple to `CompleteAuthorizationAsync`
+  of a server framework other than the two web packages.
+- `OAuth2Client.UsesFormPostResponse` tells whether the provider returns to the callback with a form POST from its own site, as
+  Apple does when the `name` or `email` scope is requested.
+- The `OAuth2Manager` of Polhem.OAuth2.AspNetCore and of Polhem.OAuth2.AspNet read a POST callback from its form, and keep the
+  pending sign-in of a client whose provider returns with a form POST in a `SameSite=None` cookie, which a browser sends with
+  that request. Every other client keeps `SameSite=Lax`. The callback of such a client must accept POST and be left out of
+  antiforgery validation. See ADR-005.
 
 ### Changed
 
