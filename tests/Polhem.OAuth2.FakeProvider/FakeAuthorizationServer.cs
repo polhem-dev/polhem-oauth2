@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace Polhem.OAuth2.FakeProvider
@@ -13,6 +14,8 @@ namespace Polhem.OAuth2.FakeProvider
     /// Under <c>/github</c> the same server answers the way GitHub does: the token endpoint reports an error with status 200,
     /// answers in form encoding unless the request asks for JSON, and issues no refresh token; the API refuses a request
     /// without a <c>User-Agent</c> header; and <c>/user</c> has no email address, which <c>/user/emails</c> lists instead.
+    /// Under <c>/oidc</c> it is an OpenID Connect provider with a discovery document and no user information endpoint, whose
+    /// token endpoint returns the user in an ID token.
     /// </remarks>
     internal sealed class FakeAuthorizationServer
     {
@@ -20,14 +23,18 @@ namespace Polhem.OAuth2.FakeProvider
         private const string InvalidGrant = "invalid_grant";
 
         private readonly ConcurrentDictionary<string, FakeAuthorizationCode> _codes = new(StringComparer.Ordinal);
+        private readonly string _origin;
         private readonly string _webClientId;
         private readonly string _webClientSecret;
 
-        public FakeAuthorizationServer(string webClientId, string webClientSecret)
+        public FakeAuthorizationServer(string origin, string webClientId, string webClientSecret)
         {
+            _origin = origin;
             _webClientId = webClientId;
             _webClientSecret = webClientSecret;
         }
+
+        private string OidcIssuer => _origin + FakeProviderValues.OidcPath;
 
         public void Map(IEndpointRouteBuilder endpoints)
         {
@@ -39,6 +46,55 @@ namespace Polhem.OAuth2.FakeProvider
             endpoints.MapPost("/github/login/oauth/access_token", ExchangeGitHubAsync);
             endpoints.MapGet("/github/user", GetGitHubUser);
             endpoints.MapGet("/github/user/emails", GetGitHubEmails);
+
+            endpoints.MapGet(FakeProviderValues.OidcPath + "/.well-known/openid-configuration", GetDiscoveryDocument);
+            endpoints.MapPost(FakeProviderValues.OidcPath + "/token", ExchangeOidcAsync);
+        }
+
+        // The authorization endpoint is shared with the other modes. The document lists no user information endpoint.
+        private IResult GetDiscoveryDocument()
+        {
+            return Results.Json(new Dictionary<string, object>
+            {
+                ["issuer"] = OidcIssuer,
+                ["authorization_endpoint"] = _origin + "/authorize",
+                ["token_endpoint"] = OidcIssuer + "/token",
+                ["jwks_uri"] = OidcIssuer + "/jwks",
+                ["response_types_supported"] = new[] { "code" },
+                ["subject_types_supported"] = new[] { "public" },
+                ["id_token_signing_alg_values_supported"] = new[] { "RS256" },
+                ["code_challenge_methods_supported"] = new[] { "S256" },
+                ["token_endpoint_auth_methods_supported"] = new[] { "client_secret_post" }
+            });
+        }
+
+        private async Task<IResult> ExchangeOidcAsync(HttpRequest request)
+        {
+            var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
+            string clientId = form["client_id"].ToString();
+            if (Redeem(form, refreshable: true) is { } error)
+                return TokenError(error);
+
+            var token = CreateToken();
+            token["id_token"] = CreateIdToken(clientId);
+            return Results.Json(token);
+        }
+
+        // The library reads an ID token from the token endpoint without verifying its signature, so the signature is a placeholder.
+        private string CreateIdToken(string clientId)
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            byte[] payload = JsonSerializer.SerializeToUtf8Bytes(new Dictionary<string, object>
+            {
+                ["iss"] = OidcIssuer,
+                ["aud"] = clientId,
+                ["sub"] = FakeProviderValues.UserId,
+                ["name"] = FakeProviderValues.UserName,
+                ["email"] = FakeProviderValues.Email,
+                ["iat"] = now,
+                ["exp"] = now + 300
+            });
+            return WebEncoders.Base64UrlEncode("""{"alg":"RS256","typ":"JWT"}"""u8.ToArray()) + "." + WebEncoders.Base64UrlEncode(payload) + ".fake-signature";
         }
 
         private IResult Authorize(HttpRequest request)

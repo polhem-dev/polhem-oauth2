@@ -32,6 +32,20 @@ internal static class FakeProvider
         };
     }
 
+    /// <summary>
+    /// Reads the options of the OpenID Connect mode from its discovery document, which names no user information
+    /// endpoint, so the user comes from the ID token.
+    /// </summary>
+    public static async Task<OidcOAuth2Options> CreateOidcOptionsAsync(string clientId, string redirectUri)
+    {
+        var origin = Origin ?? throw new InvalidOperationException("The fake provider is not configured.");
+        var options = await OidcOAuth2Options.FromDiscoveryAsync(origin.GetLeftPart(UriPartial.Authority) + FakeProviderValues.OidcPath);
+        options.ProviderName = "Fake OpenID Connect";
+        options.ClientId = clientId;
+        options.RedirectUri = redirectUri;
+        return options;
+    }
+
     public static Uri GetUri(string pathAndQuery)
     {
         var origin = Origin ?? throw new InvalidOperationException("The fake provider is not configured.");
