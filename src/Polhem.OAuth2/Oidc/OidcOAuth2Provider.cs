@@ -67,11 +67,7 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         protected override Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
         {
-            return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
-                $"{ProviderName} is an OpenID Connect provider, so a front end proves who signed in with the ID token of the sign-in, "
-                + "whose audience is its client ID, rather than with an access token. Validate the ID token in the back end, "
-                + "checking its signature, issuer, expiry and audience, for example with JwtBearer authentication, instead of "
-                + "passing an access token to this method."));
+            return Task.FromException<IReadOnlyCollection<string>>(CreateIdTokenFrontEndException());
         }
 
         /// <inheritdoc/>

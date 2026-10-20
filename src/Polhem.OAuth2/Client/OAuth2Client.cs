@@ -39,7 +39,9 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentException">
         /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope or an accepted client ID is empty, or an endpoint is
         /// not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
-        /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint.
+        /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint. For
+        /// <see cref="AppleOAuth2Options"/>, also: neither the private key with its key ID and team ID nor a client secret is
+        /// set, the private key is not valid, or a user information endpoint is set.
         /// </exception>
         public OAuth2Client(OAuth2Options options, HttpClient? httpClient = null) : this(options, httpClient, publicClient: false)
         {
@@ -59,6 +61,13 @@ namespace Polhem.OAuth2
                 throw new ArgumentException(error, nameof(options));
 
             _provider = OAuth2Provider.Create(copy, httpClientFactory);
+            if (publicClient && !_provider.SupportsPublicClient)
+            {
+                throw new ArgumentException(
+                    $"{_provider.ProviderName} cannot sign in from a desktop or mobile application directly, because it accepts only https redirect URIs on a domain name and requires the client secret. "
+                    + "Sign in through the application's own back end instead, such as the back-end relay of Polhem.OAuth2.AspNetCore.",
+                    nameof(options));
+            }
             _isPublicClient = publicClient;
             // RFC 8252 requires PKCE for native applications, because their client secret cannot be kept confidential.
             _usePkce = publicClient || copy.UsePkce;
@@ -84,7 +93,9 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentException">
         /// The client ID is empty, the redirect URI is not an absolute http or https URI, a scope or an accepted client ID is empty, or an endpoint is
         /// not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
-        /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint.
+        /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint. For
+        /// <see cref="AppleOAuth2Options"/>, also: neither the private key with its key ID and team ID nor a client secret is
+        /// set, the private key is not valid, or a user information endpoint is set.
         /// </exception>
         public static OAuth2Client Create(OAuth2Options options, Func<HttpClient> httpClientFactory)
         {
@@ -92,6 +103,18 @@ namespace Polhem.OAuth2
 
             return new OAuth2Client(options, httpClientFactory, publicClient: false, appRedirectUri: false);
         }
+
+        /// <summary>
+        /// Gets a value indicating whether the provider returns to the redirect URI with a form POST from its own site
+        /// (<c>response_mode=form_post</c>) rather than a GET redirect. Sign in with Apple does when the name or email scope
+        /// is requested.
+        /// </summary>
+        /// <remarks>
+        /// The callback endpoint must then accept POST and read the parameters from the form. A cookie that keeps the pending
+        /// sign-in reaches the callback only with <c>SameSite=None</c>, because a browser leaves a <c>SameSite=Lax</c> cookie
+        /// out of a POST from another site. The managers of Polhem.OAuth2.AspNetCore and Polhem.OAuth2.AspNet do both.
+        /// </remarks>
+        public bool UsesFormPostResponse => _provider.UsesFormPost;
 
         /// <summary>
         /// Gets the redirect URI of the copied options, which were validated when the client was created.
@@ -168,6 +191,7 @@ namespace Polhem.OAuth2
                     .ExchangeCodeAsync(code, pending.RedirectUri, _usePkce ? pending.CodeVerifier : null, _isPublicClient, cancellationToken)
                     .ConfigureAwait(false);
                 UserInfo userInfo = await _provider.GetUserInfoAsync(token, cancellationToken).ConfigureAwait(false);
+                userInfo = _provider.AddCallbackDetails(userInfo, callback);
 
                 return AuthorizationResult.Success(_provider.ProviderName, token, userInfo);
             }
