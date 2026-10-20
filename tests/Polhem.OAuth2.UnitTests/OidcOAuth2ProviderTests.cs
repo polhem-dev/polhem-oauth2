@@ -6,6 +6,8 @@ namespace Polhem.OAuth2.UnitTests
 {
     public class OidcOAuth2ProviderTests
     {
+        private static readonly string[] s_defaultScopes = ["openid", "profile", "email"];
+
         private const string Issuer = "https://idp.example.com/realms/demo";
         private const string ClientId = "client-id";
         private const string RedirectUri = "https://app.example.com/auth/callback";
@@ -16,7 +18,7 @@ namespace Polhem.OAuth2.UnitTests
         {
             var options = new OidcOAuth2Options();
 
-            Assert.Equal(new[] { "openid", "profile", "email" }, options.Scopes);
+            Assert.Equal(s_defaultScopes, options.Scopes);
             Assert.Empty(options.ProviderName);
             Assert.Empty(options.Issuer);
             Assert.Empty(options.UserInfoEndpoint);

@@ -193,9 +193,10 @@ namespace Polhem.OAuth2
         /// <returns>True if the value is an absolute https URI without a fragment; otherwise, false.</returns>
         private protected static bool IsEndpointUri(string? endpoint)
         {
-            return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+            return endpoint is not null
+                && Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
                 && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)
-                && endpoint!.IndexOf('#') < 0;
+                && endpoint.IndexOf('#') < 0;
         }
 
         /// <summary>
