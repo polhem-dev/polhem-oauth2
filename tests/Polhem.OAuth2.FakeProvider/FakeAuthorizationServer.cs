@@ -21,6 +21,13 @@ namespace Polhem.OAuth2.FakeProvider
     {
         private const string AccessToken = "fake-access-token";
         private const string InvalidGrant = "invalid_grant";
+        private const string EmailField = "email";
+
+        private static readonly string[] s_responseTypes = ["code"];
+        private static readonly string[] s_subjectTypes = ["public"];
+        private static readonly string[] s_signingAlgorithms = ["RS256"];
+        private static readonly string[] s_codeChallengeMethods = ["S256"];
+        private static readonly string[] s_clientAuthenticationMethods = ["client_secret_post"];
 
         private readonly ConcurrentDictionary<string, FakeAuthorizationCode> _codes = new(StringComparer.Ordinal);
         private readonly string _origin;
@@ -60,11 +67,11 @@ namespace Polhem.OAuth2.FakeProvider
                 ["authorization_endpoint"] = _origin + "/authorize",
                 ["token_endpoint"] = OidcIssuer + "/token",
                 ["jwks_uri"] = OidcIssuer + "/jwks",
-                ["response_types_supported"] = new[] { "code" },
-                ["subject_types_supported"] = new[] { "public" },
-                ["id_token_signing_alg_values_supported"] = new[] { "RS256" },
-                ["code_challenge_methods_supported"] = new[] { "S256" },
-                ["token_endpoint_auth_methods_supported"] = new[] { "client_secret_post" }
+                ["response_types_supported"] = s_responseTypes,
+                ["subject_types_supported"] = s_subjectTypes,
+                ["id_token_signing_alg_values_supported"] = s_signingAlgorithms,
+                ["code_challenge_methods_supported"] = s_codeChallengeMethods,
+                ["token_endpoint_auth_methods_supported"] = s_clientAuthenticationMethods
             });
         }
 
@@ -90,7 +97,7 @@ namespace Polhem.OAuth2.FakeProvider
                 ["aud"] = clientId,
                 ["sub"] = FakeProviderValues.UserId,
                 ["name"] = FakeProviderValues.UserName,
-                ["email"] = FakeProviderValues.Email,
+                [EmailField] = FakeProviderValues.Email,
                 ["iat"] = now,
                 ["exp"] = now + 300
             });
@@ -193,7 +200,7 @@ namespace Polhem.OAuth2.FakeProvider
             {
                 ["sub"] = FakeProviderValues.UserId,
                 ["name"] = FakeProviderValues.UserName,
-                ["email"] = FakeProviderValues.Email
+                [EmailField] = FakeProviderValues.Email
             });
         }
 
@@ -210,7 +217,7 @@ namespace Polhem.OAuth2.FakeProvider
                 ["id"] = FakeProviderValues.GitHubUserId,
                 ["login"] = FakeProviderValues.GitHubLogin,
                 ["name"] = FakeProviderValues.UserName,
-                ["email"] = null
+                [EmailField] = null
             });
         }
 
@@ -224,9 +231,9 @@ namespace Polhem.OAuth2.FakeProvider
             // The primary address is not the first, and an unverified address comes before it, so a client has to look at both flags.
             return Results.Json(new[]
             {
-                new Dictionary<string, object?> { ["email"] = "unverified@example.com", ["primary"] = false, ["verified"] = false, ["visibility"] = null },
-                new Dictionary<string, object?> { ["email"] = "secondary@example.com", ["primary"] = false, ["verified"] = true, ["visibility"] = null },
-                new Dictionary<string, object?> { ["email"] = FakeProviderValues.Email, ["primary"] = true, ["verified"] = true, ["visibility"] = "private" }
+                new Dictionary<string, object?> { [EmailField] = "unverified@example.com", ["primary"] = false, ["verified"] = false, ["visibility"] = null },
+                new Dictionary<string, object?> { [EmailField] = "secondary@example.com", ["primary"] = false, ["verified"] = true, ["visibility"] = null },
+                new Dictionary<string, object?> { [EmailField] = FakeProviderValues.Email, ["primary"] = true, ["verified"] = true, ["visibility"] = "private" }
             });
         }
 
