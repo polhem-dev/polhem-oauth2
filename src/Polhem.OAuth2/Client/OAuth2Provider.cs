@@ -81,6 +81,18 @@ namespace Polhem.OAuth2
         protected virtual bool SupportsRefreshToken => true;
 
         /// <summary>
+        /// Gets a value indicating whether a public client, <see cref="LoopbackOAuth2Client"/> or <see cref="AppOAuth2Client"/>,
+        /// can sign in with the provider. A provider that refuses every redirect URI such a client can use returns false.
+        /// </summary>
+        public virtual bool SupportsPublicClient => true;
+
+        /// <summary>
+        /// Gets a value indicating whether the provider returns to the redirect URI with a form POST from its own site
+        /// (<c>response_mode=form_post</c>) rather than a GET redirect.
+        /// </summary>
+        public virtual bool UsesFormPost => false;
+
+        /// <summary>
         /// Creates the provider that matches the type of the options.
         /// </summary>
         /// <param name="options">The OAuth2 options.</param>
@@ -199,6 +211,18 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
+        /// Adds to the user information what the provider sent with the redirect rather than in a response to the library.
+        /// The default adds nothing.
+        /// </summary>
+        /// <param name="user">The user information read from the provider's responses.</param>
+        /// <param name="callback">The parameters of the redirect, whose state matched the sign-in.</param>
+        /// <returns>The user information to return.</returns>
+        public virtual UserInfo AddCallbackDetails(UserInfo user, AuthorizationCallback callback)
+        {
+            return user;
+        }
+
+        /// <summary>
         /// Retrieves the user information of an access token that the application did not obtain itself, after checking that
         /// the token was issued to <see cref="OAuth2Options.ClientId"/> or one of <see cref="OAuth2Options.AcceptedClientIds"/>.
         /// </summary>
@@ -282,6 +306,15 @@ namespace Polhem.OAuth2
         protected virtual string GetTokenRedirectUri(string redirectUri)
         {
             return redirectUri;
+        }
+
+        /// <summary>
+        /// Gets the client secret to send to the token endpoint. The default is <see cref="OAuth2Options.ClientSecret"/>.
+        /// </summary>
+        /// <returns>The client secret, or an empty string when none is sent.</returns>
+        protected virtual string GetClientSecret()
+        {
+            return Options.ClientSecret;
         }
 
         /// <summary>
@@ -493,7 +526,7 @@ namespace Polhem.OAuth2
         private AuthenticationHeaderValue? AddClientAuthentication(Dictionary<string, string> parameters, bool publicClient)
         {
             // A public client authenticates the code exchange with PKCE, because its client secret cannot be kept confidential (ADR-004).
-            if (Options.ClientSecret is not { Length: > 0 } clientSecret || (publicClient && !RequiresClientSecret))
+            if ((publicClient && !RequiresClientSecret) || GetClientSecret() is not { Length: > 0 } clientSecret)
                 return null;
 
             if (Options.ClientAuthentication == ClientAuthenticationMethod.ClientSecretBasic)

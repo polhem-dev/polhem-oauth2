@@ -86,6 +86,20 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
+        /// Creates the exception for <see cref="OAuth2Provider.GetTokenClientIdsAsync"/> of a provider whose front end proves
+        /// who signed in with the ID token of the sign-in rather than with an access token.
+        /// </summary>
+        /// <returns>The exception.</returns>
+        protected NotSupportedException CreateIdTokenFrontEndException()
+        {
+            return new NotSupportedException(
+                $"{ProviderName} is an OpenID Connect provider, so a front end proves who signed in with the ID token of the sign-in, "
+                + "whose audience is its client ID, rather than with an access token. Validate the ID token in the back end, "
+                + "checking its signature, issuer, expiry and audience, for example with JwtBearer authentication, instead of "
+                + "passing an access token to this method.");
+        }
+
+        /// <summary>
         /// Gets the user name to use when the claims have neither <c>name</c> nor the given and family names.
         /// </summary>
         /// <param name="user">The root object of the user information, or the payload of the ID token.</param>
