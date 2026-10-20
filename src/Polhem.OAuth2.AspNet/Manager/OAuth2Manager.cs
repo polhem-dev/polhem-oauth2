@@ -16,6 +16,14 @@ namespace Polhem.OAuth2.AspNet
     /// Every server that can receive the callback must use the same machine key.
     /// </para>
     /// <para>The cookie is marked Secure, so the sign-in must start and end on HTTPS pages. It expires after 10 minutes.</para>
+    /// <para>
+    /// The cookie is <c>SameSite=Lax</c>, and <c>SameSite=None</c> for a client whose provider returns with a form POST
+    /// from its own site (<see cref="OAuth2Client.UsesFormPostResponse"/>), because a browser leaves a Lax cookie out of
+    /// that request. System.Web writes <c>SameSite=None</c> only with the November 2019 update of .NET Framework 4.7.2 or
+    /// later, and not when the <c>aspnet:SupressSameSiteNone</c> application setting, spelled that way, is true. Without the
+    /// attribute, browsers that treat such a cookie as Lax leave it out of the POST, so the sign-in of such a client can fail
+    /// depending on the browser. Some older browsers, such as Safari on iOS 12, treat <c>SameSite=None</c> as Strict.
+    /// </para>
     /// </remarks>
     public static class OAuth2Manager
     {
@@ -94,7 +102,7 @@ namespace Polhem.OAuth2.AspNet
             byte[] payload = PendingAuthorizationCookie.Serialize(clientName, request.Pending, DateTimeOffset.UtcNow);
             string value = HttpServerUtility.UrlTokenEncode(MachineKey.Protect(payload, PendingAuthorizationCookie.ProtectionPurpose));
             string cookieName = PendingAuthorizationCookie.NamePrefix + request.Pending.State;
-            context.Response.Cookies.Add(CreateCookie(cookieName, value, DateTime.UtcNow.Add(PendingAuthorizationCookie.Lifetime)));
+            context.Response.Cookies.Add(CreateCookie(cookieName, value, DateTime.UtcNow.Add(PendingAuthorizationCookie.Lifetime), client.UsesFormPostResponse));
             return request.Url;
         }
 
@@ -164,6 +172,12 @@ namespace Polhem.OAuth2.AspNet
         /// decrypted. Any other exception propagates.
         /// </para>
         /// <para>
+        /// The parameters come from the query of a GET request, and from the form of a POST request, which a provider sends
+        /// when <see cref="OAuth2Client.UsesFormPostResponse"/> is true, as Sign in with Apple does. Accept both methods at
+        /// the callback, and leave it out of antiforgery validation: the provider's site cannot send a token, and the state
+        /// protects the callback instead. The form is read without request validation.
+        /// </para>
+        /// <para>
         /// The response removes the sign-in cookie before the code is exchanged, so the browser cannot complete the same
         /// sign-in twice.
         /// </para>
@@ -176,7 +190,7 @@ namespace Polhem.OAuth2.AspNet
             if (context is null)
                 throw new ArgumentNullException(nameof(context));
 
-            string? state = GetSingleValue(context.Request, "state");
+            string? state = GetCallbackValue(context.Request, "state");
 
             PendingSignIn signIn;
             try
@@ -195,8 +209,10 @@ namespace Polhem.OAuth2.AspNet
             var client = GetClient(signIn.ClientName)
                 ?? throw new InvalidOperationException($"The sign-in was started with the OAuth2 client '{signIn.ClientName}', which is no longer registered.");
 
+            var request = context.Request;
             var callback = new AuthorizationCallback(
-                GetSingleValue(context.Request, "code"), state, GetSingleValue(context.Request, "error"), GetSingleValue(context.Request, "error_description"));
+                GetCallbackValue(request, "code"), state, GetCallbackValue(request, "error"), GetCallbackValue(request, "error_description"),
+                GetCallbackValue(request, "user"));
 
             // WARNING: The HTTP context is not used after this await, which does not resume on the request's synchronization context.
             return await client.CompleteAuthorizationAsync(callback, signIn.Pending, cancellationToken).ConfigureAwait(false);
@@ -219,7 +235,7 @@ namespace Polhem.OAuth2.AspNet
             string cookieValue = context.Request.Cookies[cookieName]?.Value
                 ?? throw new OAuth2Exception("No sign-in started in this browser matches the state. It may have expired.");
 
-            context.Response.Cookies.Add(CreateCookie(cookieName, string.Empty, DateTime.UtcNow.AddDays(-1)));
+            context.Response.Cookies.Add(CreateCookie(cookieName, string.Empty, DateTime.UtcNow.AddDays(-1), IsPost(context.Request)));
             var signIn = PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), DateTimeOffset.UtcNow);
             // System.Web has no back-end relay (ADR-006), so a relayed sign-in is refused rather than completed as a web sign-in.
             if (signIn.AppRedirectUri is not null)
@@ -247,7 +263,7 @@ namespace Polhem.OAuth2.AspNet
                 ?? throw new CryptographicException("The sign-in cookie is not valid.");
         }
 
-        private static HttpCookie CreateCookie(string name, string value, DateTime expires)
+        private static HttpCookie CreateCookie(string name, string value, DateTime expires, bool crossSitePost)
         {
             return new HttpCookie(name, value)
             {
@@ -256,17 +272,28 @@ namespace Polhem.OAuth2.AspNet
                 Domain = null,
                 HttpOnly = true,
                 Secure = true,
-                // The provider redirects back with a top-level GET request, which carries a SameSite=Lax cookie.
-                SameSite = SameSiteMode.Lax,
+                // Most providers redirect back with a top-level GET request, which carries a SameSite=Lax cookie. A browser
+                // leaves a Lax cookie out of the form POST from the provider's site that response_mode=form_post makes, so only
+                // such a client gets SameSite=None. The state still binds the callback to this browser (ADR-005).
+                SameSite = crossSitePost ? SameSiteMode.None : SameSiteMode.Lax,
                 Path = "/",
                 Expires = expires
             };
         }
 
-        // A repeated parameter is treated as missing: joining the values would produce a state that matches nothing.
-        private static string? GetSingleValue(HttpRequestBase request, string name)
+        private static bool IsPost(HttpRequestBase request)
         {
-            string[]? values = request.QueryString.GetValues(name);
+            return string.Equals(request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase);
+        }
+
+        // A provider that returns with a form POST (response_mode=form_post) sends the parameters in the body, and any other in
+        // the query of a GET request. A POST reads only its form, so a parameter cannot come from the query of a POST. The form
+        // is read without request validation, because the user parameter of Sign in with Apple holds JSON and a name that the
+        // user typed; the library only compares or parses these values, and never writes them into a page.
+        // A repeated parameter is treated as missing: joining the values would produce a state that matches nothing.
+        private static string? GetCallbackValue(HttpRequestBase request, string name)
+        {
+            string[]? values = IsPost(request) ? request.Unvalidated.Form.GetValues(name) : request.QueryString.GetValues(name);
             return values is { Length: 1 } ? values[0] : null;
         }
     }

@@ -75,7 +75,11 @@ namespace Polhem.OAuth2.UnitTests
 
         private static string Hex(byte[] bytes)
         {
+#if NET
+            return Convert.ToHexString(bytes);
+#else
             return BitConverter.ToString(bytes).Replace("-", string.Empty);
+#endif
         }
     }
 }

@@ -4,7 +4,8 @@
 
 ## Status
 
-Accepted (2026-09-14)
+Accepted (2026-09-14). Revised on 2026-10-20 for providers that return to the callback with a form POST, which Sign in
+with Apple does.
 
 ## Context
 
@@ -32,8 +33,16 @@ state, encrypted with a key read from the `OAUTH2_STATE_KEY` environment variabl
   `MachineKey.Protect` on System.Web. Both encrypt and authenticate the value.
 - Cookie attributes:
   - The name starts with `__Host-`, so browsers accept the cookie only when it is Secure, has the path `/` and names no domain.
-  - HTTP-only, and `SameSite=Lax`: the provider redirects back with a top-level GET request, which carries a Lax cookie.
+  - HTTP-only, and `SameSite=Lax`: most providers redirect back with a top-level GET request, which carries a Lax cookie.
+  - `SameSite=None` instead for a client whose provider returns with a form POST from its own site
+    (`response_mode=form_post`, reported by `OAuth2Client.UsesFormPostResponse`), because a browser leaves a Lax cookie out
+    of that cross-site POST. Sign in with Apple requires it whenever the `name` or `email` scope is requested. Every other
+    client keeps `SameSite=Lax`, and the attribute is not configurable.
   - A lifetime of 10 minutes. ASP.NET Core also marks the cookie essential, so that a cookie consent policy does not drop it.
+- The callback reads the parameters from the query of a GET request and from the form of a POST request, only from that
+  one place, and treats a repeated parameter as missing. ASP.NET Core reads only a UTF-8 `application/x-www-form-urlencoded`
+  body. System.Web reads the form without request validation, because the `user` parameter of Apple holds JSON and a name
+  that the user typed; the library only compares or parses these values.
 - The callback finds the cookie by the returned state, removes it on the response, rejects a sign-in that started more than
   10 minutes ago, and passes the values to `OAuth2Client.CompleteAuthorizationAsync`, which compares the state before it
   uses any other value.
@@ -55,6 +64,16 @@ binds it to a correlation cookie of its own.
 - Each unfinished sign-in leaves a cookie for up to 10 minutes, so a browser that starts many sign-ins without finishing
   them sends larger requests during that time.
 - The sign-in must start and end on HTTPS pages.
+- A `SameSite=None` cookie is sent with a POST from any site, but it is still found only by the state of its own sign-in.
+  An attacker's page cannot name the state of the victim's sign-in, which it does not know, and cannot place a cookie for its
+  own sign-in in the victim's browser, because the `__Host-` prefix and the data protection keep it from setting one. The
+  state therefore binds the callback to the browser as before.
+- The callback of a form POST client must accept POST and be left out of antiforgery validation, such as
+  `[IgnoreAntiforgeryToken]` under `AutoValidateAntiforgeryTokenAttribute`, because the provider's page sends no token.
+- A form POST client fails where the browser does not send the `SameSite=None` cookie: a cookie policy whose
+  `MinimumSameSitePolicy` is stricter than None; System.Web without the November 2019 update of .NET Framework 4.7.2 or later,
+  or with the `aspnet:SupressSameSiteNone` setting, which leave the attribute out; and older browsers such as Safari on iOS 12,
+  which treat `SameSite=None` as Strict.
 - `tests/Polhem.OAuth2.UnitTests/AspNetCoreOAuth2ManagerTests.cs`, `AspNetOAuth2ManagerTests.cs` (run on .NET Framework)
-  and `PendingAuthorizationCookieTests.cs` cover the cookie attributes, sign-ins in parallel, missing and altered cookies,
+  and `PendingAuthorizationCookieTests.cs` cover the cookie attributes, the `SameSite=None` cookie and the form POST callback, sign-ins in parallel, missing and altered cookies,
   expiry, and the removal of the cookie in the callback.

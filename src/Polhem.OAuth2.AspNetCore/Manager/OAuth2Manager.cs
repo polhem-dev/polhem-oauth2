@@ -19,6 +19,13 @@ namespace Polhem.OAuth2.AspNetCore
     /// </para>
     /// <para>The cookie is marked Secure, so the sign-in must start and end on HTTPS pages. It expires after 10 minutes.</para>
     /// <para>
+    /// The cookie is <c>SameSite=Lax</c>, and <c>SameSite=None</c> for a client whose provider returns with a form POST
+    /// from its own site (<see cref="OAuth2Client.UsesFormPostResponse"/>), because a browser leaves a Lax cookie out of
+    /// that request. A cookie policy whose <c>MinimumSameSitePolicy</c> is stricter than None raises that cookie to the
+    /// minimum, and the sign-in of such a client then fails because the browser does not send the cookie. Some older
+    /// browsers, such as Safari on iOS 12, treat <c>SameSite=None</c> as Strict, so the sign-in of such a client fails there.
+    /// </para>
+    /// <para>
     /// With <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(Microsoft.Extensions.DependencyInjection.IServiceCollection, Action{OAuth2AppRelayOptions})"/>, the
     /// same clients also sign in mobile applications through the back-end relay of ADR-006:
     /// <see cref="RedirectToAppAuthorization"/>, <see cref="RedirectToAppAsync"/> and <see cref="RedeemAppCodeAsync"/>.
@@ -119,8 +126,15 @@ namespace Polhem.OAuth2.AspNetCore
         /// <para>
         /// In addition to the failures described on <see cref="OAuth2Client.CompleteAuthorizationAsync"/>, these become a
         /// failed result: an <see cref="OAuth2Exception"/> when the state is missing or no sign-in cookie matches it, or the
-        /// sign-in started more than 10 minutes ago; and a <see cref="CryptographicException"/> when the cookie cannot be
-        /// decrypted. Any other exception propagates.
+        /// sign-in started more than 10 minutes ago, or the form of a POST callback exceeds the form limits; and a
+        /// <see cref="CryptographicException"/> when the cookie cannot be decrypted. Any other exception propagates.
+        /// </para>
+        /// <para>
+        /// The parameters come from the query of a GET request, and from the form of a POST request, which a provider sends
+        /// when <see cref="OAuth2Client.UsesFormPostResponse"/> is true, as Sign in with Apple does. Map the callback endpoint
+        /// for both methods, and leave it out of antiforgery validation: the provider's site cannot send a token, and the
+        /// state protects the callback instead. Only a body of type <c>application/x-www-form-urlencoded</c> in UTF-8 is read;
+        /// any other POST has no parameters, so its sign-in fails because the state is missing.
         /// </para>
         /// <para>
         /// The response removes the sign-in cookie before the code is exchanged, so the browser cannot complete the same
@@ -141,36 +155,64 @@ namespace Polhem.OAuth2.AspNetCore
             // A relayed sign-in that an earlier call in this request left behind must not be returned for this one.
             context.Items.Remove(s_appSignInKey);
 
-            var query = context.Request.Query;
-            string? state = GetSingleValue(query, "state");
-
-            PendingSignIn signIn;
-            try
-            {
-                signIn = TakePendingAuthorization(context, state);
-            }
-            catch (OAuth2Exception ex)
-            {
-                return AuthorizationResult.Failure(ex);
-            }
-            catch (CryptographicException ex)
-            {
-                return AuthorizationResult.Failure(ex);
-            }
-
-            string clientName = signIn.ClientName;
-            var client = GetClient(clientName)
-                ?? throw new InvalidOperationException($"The sign-in was started with the OAuth2 client '{clientName}', which is no longer registered.");
-            if (signIn.AppRedirectUri is { } appRedirectUri && signIn.AppCodeChallenge is { } appCodeChallenge)
-                context.Items[s_appSignInKey] = new AppSignIn(clientName, appRedirectUri, appCodeChallenge);
-
-            var callback = new AuthorizationCallback(
-                GetSingleValue(query, "code"), state, GetSingleValue(query, "error"), GetSingleValue(query, "error_description"));
-
             using (var requestCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, context.RequestAborted))
             {
+                Func<string, string?> getValue;
+                try
+                {
+                    getValue = await ReadCallbackParametersAsync(context.Request, requestCancellation.Token).ConfigureAwait(false);
+                }
+                catch (InvalidDataException ex)
+                {
+                    return AuthorizationResult.Failure(new OAuth2Exception("The form of the callback cannot be read.", ex));
+                }
+
+                string? state = getValue("state");
+
+                PendingSignIn signIn;
+                try
+                {
+                    signIn = TakePendingAuthorization(context, state);
+                }
+                catch (OAuth2Exception ex)
+                {
+                    return AuthorizationResult.Failure(ex);
+                }
+                catch (CryptographicException ex)
+                {
+                    return AuthorizationResult.Failure(ex);
+                }
+
+                string clientName = signIn.ClientName;
+                var client = GetClient(clientName)
+                    ?? throw new InvalidOperationException($"The sign-in was started with the OAuth2 client '{clientName}', which is no longer registered.");
+                if (signIn.AppRedirectUri is { } appRedirectUri && signIn.AppCodeChallenge is { } appCodeChallenge)
+                    context.Items[s_appSignInKey] = new AppSignIn(clientName, appRedirectUri, appCodeChallenge);
+
+                var callback = new AuthorizationCallback(
+                    getValue("code"), state, getValue("error"), getValue("error_description"), getValue("user"));
+
                 return await client.CompleteAuthorizationAsync(callback, signIn.Pending, requestCancellation.Token).ConfigureAwait(false);
             }
+        }
+
+        // A provider that returns with a form POST (response_mode=form_post) sends the parameters in the body, and any other in
+        // the query of a GET request. A POST reads only its form, so a parameter cannot come from the query of a POST.
+        private static async Task<Func<string, string?>> ReadCallbackParametersAsync(HttpRequest request, CancellationToken cancellationToken)
+        {
+            if (!HttpMethods.IsPost(request.Method))
+            {
+                var query = request.Query;
+                return name => GetSingleValue(query.TryGetValue(name, out StringValues values), values);
+            }
+
+            // A provider posts application/x-www-form-urlencoded in UTF-8. Any other body is not read, so that a request from
+            // anyone cannot make the server buffer a multipart upload or fail on a charset it does not support.
+            if (!IsUtf8FormContent(request.ContentType))
+                return _ => null;
+
+            var form = await request.ReadFormAsync(cancellationToken).ConfigureAwait(false);
+            return name => GetSingleValue(form.TryGetValue(name, out StringValues values), values);
         }
 
         private string StartSignIn(HttpContext context, string clientName, string? appRedirectUri, string? appCodeChallenge)
@@ -186,7 +228,8 @@ namespace Polhem.OAuth2.AspNetCore
                 ? PendingAuthorizationCookie.SerializeRelayed(clientName, request.Pending, now, appRedirectUri, appCodeChallenge)
                 : PendingAuthorizationCookie.Serialize(clientName, request.Pending, now);
             string cookieName = PendingAuthorizationCookie.NamePrefix + request.Pending.State;
-            context.Response.Cookies.Append(cookieName, WebEncoders.Base64UrlEncode(_protector.Protect(payload)), CreateCookieOptions(PendingAuthorizationCookie.Lifetime));
+            var cookieOptions = CreateCookieOptions(PendingAuthorizationCookie.Lifetime, crossSitePost: client.UsesFormPostResponse);
+            context.Response.Cookies.Append(cookieName, WebEncoders.Base64UrlEncode(_protector.Protect(payload)), cookieOptions);
             return request.Url;
         }
 
@@ -200,7 +243,7 @@ namespace Polhem.OAuth2.AspNetCore
             string cookieValue = context.Request.Cookies[cookieName]
                 ?? throw new OAuth2Exception("No sign-in started in this browser matches the state. It may have expired.");
 
-            context.Response.Cookies.Delete(cookieName, CreateCookieOptions(maxAge: null));
+            context.Response.Cookies.Delete(cookieName, CreateCookieOptions(maxAge: null, crossSitePost: HttpMethods.IsPost(context.Request.Method)));
             return PendingAuthorizationCookie.Deserialize(Unprotect(cookieValue), _timeProvider.GetUtcNow());
         }
 
@@ -219,14 +262,16 @@ namespace Polhem.OAuth2.AspNetCore
             return _protector.Unprotect(protectedPayload);
         }
 
-        private static CookieOptions CreateCookieOptions(TimeSpan? maxAge)
+        private static CookieOptions CreateCookieOptions(TimeSpan? maxAge, bool crossSitePost)
         {
             return new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
-                // The provider redirects back with a top-level GET request, which carries a SameSite=Lax cookie.
-                SameSite = SameSiteMode.Lax,
+                // Most providers redirect back with a top-level GET request, which carries a SameSite=Lax cookie. A browser
+                // leaves a Lax cookie out of the form POST from the provider's site that response_mode=form_post makes, so only
+                // such a client gets SameSite=None. The state still binds the callback to this browser (ADR-005).
+                SameSite = crossSitePost ? SameSiteMode.None : SameSiteMode.Lax,
                 Path = "/",
                 MaxAge = maxAge,
                 // Without this, a cookie consent policy would drop the cookie and every sign-in would fail.
@@ -234,10 +279,17 @@ namespace Polhem.OAuth2.AspNetCore
             };
         }
 
-        // A repeated parameter is treated as missing: joining the values would produce a state that matches nothing.
-        private static string? GetSingleValue(IQueryCollection query, string name)
+        private static bool IsUtf8FormContent(string? contentType)
         {
-            return query.TryGetValue(name, out StringValues values) && values.Count == 1 ? values[0] : null;
+            return Microsoft.Net.Http.Headers.MediaTypeHeaderValue.TryParse(contentType, out var mediaType)
+                && string.Equals(mediaType.MediaType.Value, "application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)
+                && (!mediaType.Charset.HasValue || string.Equals(mediaType.Charset.Value, "utf-8", StringComparison.OrdinalIgnoreCase));
+        }
+
+        // A repeated parameter is treated as missing: joining the values would produce a state that matches nothing.
+        private static string? GetSingleValue(bool found, StringValues values)
+        {
+            return found && values.Count == 1 ? values[0] : null;
         }
     }
 }

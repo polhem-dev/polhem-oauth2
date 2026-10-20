@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-14）
+已採納（2026-09-14）。2026-10-20 修訂：加入以 form POST 回到回呼網址的 provider（Sign in with Apple 就是如此）。
 
 ## 背景
 
@@ -26,8 +26,14 @@ Bee.OAuth2 在每個瀏覽器只用一個 cookie 保存 state，把 code verifie
 - cookie 的值以平台的 data protection 保護：ASP.NET Core 用 data protection，System.Web 用 `MachineKey.Protect`。兩者都會加密並驗證內容。
 - cookie 屬性：
   - 名稱以 `__Host-` 開頭，瀏覽器只在 cookie 為 Secure、路徑為 `/`、沒有指定網域時才接受。
-  - HTTP-only，且 `SameSite=Lax`：provider 以最上層的 GET 請求導回，會帶著 Lax 的 cookie。
+  - HTTP-only，且 `SameSite=Lax`：大多數 provider 以最上層的 GET 請求導回，會帶著 Lax 的 cookie。
+  - provider 從它自己的網站以 form POST 回來的 client（`response_mode=form_post`，由 `OAuth2Client.UsesFormPostResponse` 回報），
+    改用 `SameSite=None`，因為瀏覽器不會在這種跨站 POST 帶上 Lax 的 cookie。Sign in with Apple 只要要求 `name` 或 `email` scope 就必須這樣。
+    其他 client 一律維持 `SameSite=Lax`，這個屬性不開放設定。
   - 有效期限 10 分鐘。ASP.NET Core 另外把 cookie 標記為必要，避免 cookie 同意政策把它擋掉。
+- 回呼時，GET 請求只從 query、POST 請求只從 form 讀參數，同一個參數出現兩次視為缺少。ASP.NET Core 只讀 UTF-8 的
+  `application/x-www-form-urlencoded` 內容。System.Web 讀 form 時不經過 request validation，因為 Apple 的 `user` 參數是 JSON，
+  內含使用者自己輸入的姓名；套件對這些值只做比對或解析。
 - 回呼時依回傳的 state 找到 cookie、在回應中刪除它、拒絕超過 10 分鐘前開始的登入，再把值交給 `OAuth2Client.CompleteAuthorizationAsync`；
   後者在使用其他值之前，會先比對 state。
 - cookie 的格式只在 `src/Shared/PendingAuthorizationCookie.cs` 定義一次，由兩個網頁套件一起編譯。
@@ -42,5 +48,12 @@ ASP.NET Core 內建的 OAuth handler 也依循同樣的原則：以 data protect
 - 登入必須在 10 分鐘內完成。升級到這個設計之前已開始的登入，升級後無法完成，使用者要重新登入。
 - 每個沒有完成的登入都會留下一個 cookie，最多 10 分鐘；在這段時間內反覆開始登入卻不完成的瀏覽器，送出的請求會比較大。
 - 登入的起點與回呼頁面都必須走 HTTPS。
+- `SameSite=None` 的 cookie 會隨任何網站發出的 POST 送出，但仍然只能用它那次登入的 state 找到。攻擊者的網頁不知道受害者那次登入的 state，
+  也無法把自己那次登入的 cookie 放進受害者的瀏覽器，因為 `__Host-` 前綴與 data protection 讓它設不了這個 cookie。所以 state 一樣把回呼綁定在瀏覽器上。
+- form POST client 的回呼必須接受 POST，並排除在 antiforgery 驗證之外（例如在 `AutoValidateAntiforgeryTokenAttribute` 之下加上
+  `[IgnoreAntiforgeryToken]`），因為 provider 的頁面不會送出 token。
+- 瀏覽器不送出 `SameSite=None` cookie 的情況下，form POST client 會登入失敗：cookie policy 的 `MinimumSameSitePolicy` 比 None 嚴格；
+  System.Web 沒有 .NET Framework 4.7.2 以上 2019 年 11 月的更新，或設了 `aspnet:SupressSameSiteNone`，這兩者都會省略這個屬性；
+  以及把 `SameSite=None` 當成 Strict 的舊瀏覽器，例如 iOS 12 的 Safari。
 - `tests/Polhem.OAuth2.UnitTests/AspNetCoreOAuth2ManagerTests.cs`、`AspNetOAuth2ManagerTests.cs`（在 .NET Framework 上執行）
-  與 `PendingAuthorizationCookieTests.cs`，涵蓋 cookie 的屬性、同時進行多個登入、cookie 遺失或遭竄改、逾期，以及回呼時刪除 cookie。
+  與 `PendingAuthorizationCookieTests.cs`，涵蓋 cookie 的屬性、`SameSite=None` 的 cookie 與 form POST 的回呼、同時進行多個登入、cookie 遺失或遭竄改、逾期，以及回呼時刪除 cookie。

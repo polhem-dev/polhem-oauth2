@@ -300,6 +300,59 @@ namespace Polhem.OAuth2.UnitTests
             await Assert.ThrowsAsync<ArgumentNullException>(() => OAuth2Manager.CompleteAuthorizationAsync(null!));
         }
 
+        [Fact]
+        [DisplayName("A client whose provider returns with a form POST keeps its sign-in in a SameSite=None cookie")]
+        public void CreateAuthorizationUrl_FormPostClient_SetsSameSiteNoneCookie()
+        {
+            string clientName = RegisterAppleClient(new StubHttpMessageHandler());
+            var context = new FakeHttpContext();
+
+            OAuth2Manager.CreateAuthorizationUrl(context, clientName);
+
+            var cookie = Assert.Single(GetCookies(context.Response.Cookies));
+            Assert.Equal(SameSiteMode.None, cookie.SameSite);
+            Assert.True(cookie.Secure);
+            Assert.True(cookie.HttpOnly);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync reads a POST callback from its form without request validation, with the user parameter, and removes the SameSite=None cookie")]
+        public async Task CompleteAuthorizationAsync_FormPost_ReadsFormAndRemovesCookie()
+        {
+            string idToken = TestIdToken.Create("""{"iss":"https://appleid.apple.com","aud":"client-id","sub":"u1"}""");
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, $$"""{"access_token":"access","id_token":"{{idToken}}"}""");
+            string clientName = RegisterAppleClient(handler);
+            var signIn = StartSignIn(clientName);
+            // A name with markup would make validated form access throw HttpRequestValidationException.
+            string user = HttpUtility.UrlEncode("""{"name":{"firstName":"<Ada>","lastName":"Lovelace"}}""");
+            var callback = FakeHttpContext.Post($"state={signIn.State}&code=abc&user={user}", cookies: signIn.Cookie);
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(callback);
+
+            Assert.True(result.IsSuccess, result.Exception?.ToString());
+            Assert.Equal("u1", result.UserInfo.UserId);
+            Assert.Equal("<Ada> Lovelace", result.UserInfo.UserName);
+            var removal = Assert.Single(GetCookies(callback.Response.Cookies));
+            Assert.Equal(signIn.Cookie.Name, removal.Name);
+            Assert.Equal(SameSiteMode.None, removal.SameSite);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync reads a POST callback only from its form, so parameters in the query fail")]
+        public async Task CompleteAuthorizationAsync_FormPostWithQueryOnly_ReturnsFailedResult()
+        {
+            var handler = new StubHttpMessageHandler();
+            string clientName = RegisterAppleClient(handler);
+            var signIn = StartSignIn(clientName);
+            var callback = FakeHttpContext.Post(string.Empty, $"state={signIn.State}&code=abc", signIn.Cookie);
+
+            var result = await OAuth2Manager.CompleteAuthorizationAsync(callback);
+
+            Assert.False(result.IsSuccess);
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.Empty(handler.Requests);
+        }
+
         private static string NewClientName()
         {
             return "Test-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
@@ -309,6 +362,14 @@ namespace Polhem.OAuth2.UnitTests
         {
             string clientName = NewClientName();
             OAuth2Manager.RegisterClient(clientName, CreateOptions(), handler.CreateClient());
+            return clientName;
+        }
+
+        private static string RegisterAppleClient(StubHttpMessageHandler handler)
+        {
+            string clientName = NewClientName();
+            var options = new AppleOAuth2Options { ClientId = "client-id", RedirectUri = RedirectUri, ClientSecret = "signed" };
+            OAuth2Manager.RegisterClient(clientName, options, handler.CreateClient());
             return clientName;
         }
 

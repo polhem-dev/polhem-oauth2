@@ -378,6 +378,84 @@ namespace Polhem.OAuth2.UnitTests
             await Assert.ThrowsAsync<ArgumentNullException>(() => manager.CompleteAuthorizationAsync(null!));
         }
 
+        [Fact]
+        [DisplayName("A client whose provider returns with a form POST keeps its sign-in in a SameSite=None cookie, and other clients in a Lax one")]
+        public void CreateAuthorizationUrl_FormPostClient_SetsSameSiteNoneCookie()
+        {
+            var manager = CreateManager(new StubHttpMessageHandler(), "Apple", "Google");
+            var apple = AspNetCoreTestContext.Create();
+            var google = AspNetCoreTestContext.Create();
+
+            manager.CreateAuthorizationUrl(apple, "Apple");
+            manager.CreateAuthorizationUrl(google, "Google");
+
+            var appleCookie = Assert.Single(apple.Response.GetTypedHeaders().SetCookie);
+            Assert.Equal(Microsoft.Net.Http.Headers.SameSiteMode.None, appleCookie.SameSite);
+            Assert.True(appleCookie.Secure);
+            Assert.True(appleCookie.HttpOnly);
+            Assert.StartsWith("__Host-", appleCookie.Name.Value, StringComparison.Ordinal);
+            Assert.Equal(Microsoft.Net.Http.Headers.SameSiteMode.Lax, Assert.Single(google.Response.GetTypedHeaders().SetCookie).SameSite);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync reads a POST callback from its form, with the user parameter, and removes the SameSite=None cookie")]
+        public async Task CompleteAuthorizationAsync_FormPost_ReadsFormAndRemovesCookie()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, AppleTokenJson());
+            var manager = CreateManager(handler, "Apple");
+            var signIn = StartSignIn(manager, "Apple");
+            string user = Uri.EscapeDataString("""{"name":{"firstName":"Ada","lastName":"Lovelace"}}""");
+            var callback = AspNetCoreTestContext.CreatePost(
+                $"state={signIn.State}&code=abc&user={user}", "application/x-www-form-urlencoded; charset=UTF-8", cookies: signIn.Cookie);
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.True(result.IsSuccess, result.Exception?.ToString());
+            Assert.Equal("u1", result.UserInfo!.UserId);
+            Assert.Equal("Ada Lovelace", result.UserInfo.UserName);
+            Assert.Equal("abc", Assert.Single(handler.Requests).FormValue("code"));
+            var removal = Assert.Single(callback.Response.GetTypedHeaders().SetCookie);
+            Assert.Equal(signIn.CookieName, removal.Name.Value);
+            Assert.Equal(Microsoft.Net.Http.Headers.SameSiteMode.None, removal.SameSite);
+            Assert.True(removal.Secure);
+        }
+
+        [Theory]
+        [DisplayName("CompleteAuthorizationAsync reads a POST callback only from its form: parameters in the query, another content type or a repeated state fail")]
+        [InlineData("", "application/x-www-form-urlencoded", true)]
+        [InlineData("state={state}&code=abc", "text/plain", false)]
+        [InlineData("state={state}&state={state}&code=abc", "application/x-www-form-urlencoded", false)]
+        [InlineData("state={state}&code=abc", "application/x-www-form-urlencoded; charset=utf-7", false)]
+        [InlineData("--abc\r\nContent-Disposition: form-data; name=\"state\"\r\n\r\n{state}", "multipart/form-data; boundary=abc", false)]
+        public async Task CompleteAuthorizationAsync_FormPostWithoutFormValues_ReturnsFailedResult(string body, string contentType, bool valuesInQuery)
+        {
+            var handler = new StubHttpMessageHandler();
+            var manager = CreateManager(handler, "Apple");
+            var signIn = StartSignIn(manager, "Apple");
+            string? query = valuesInQuery ? $"?state={signIn.State}&code=abc" : null;
+            var callback = AspNetCoreTestContext.CreatePost(body.Replace("{state}", signIn.State), contentType, query, signIn.Cookie);
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.False(result.IsSuccess);
+            Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.Empty(handler.Requests);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync turns a form that exceeds the form limits into a failed result")]
+        public async Task CompleteAuthorizationAsync_FormOverLimits_ReturnsFailedResult()
+        {
+            var manager = CreateManager(new StubHttpMessageHandler(), "Apple");
+            var callback = AspNetCoreTestContext.CreatePost(new string('k', 5000) + "=v");
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.False(result.IsSuccess);
+            var exception = Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.IsType<InvalidDataException>(exception.InnerException);
+        }
+
         private static OAuth2Manager CreateManager(StubHttpMessageHandler handler, params string[] clientNames)
         {
             return CreateManager(handler, new EphemeralDataProtectionProvider(), clientNames);
@@ -403,10 +481,21 @@ namespace Polhem.OAuth2.UnitTests
 
         private static OAuth2Options CreateOptions(string clientName)
         {
-            OAuth2Options options = clientName == "Line" ? new LineOAuth2Options() : new GoogleOAuth2Options();
+            OAuth2Options options = clientName switch
+            {
+                "Line" => new LineOAuth2Options(),
+                "Apple" => new AppleOAuth2Options { ClientSecret = "signed" },
+                _ => new GoogleOAuth2Options()
+            };
             options.ClientId = "client-id";
             options.RedirectUri = RedirectUri;
             return options;
+        }
+
+        private static string AppleTokenJson()
+        {
+            string idToken = TestIdToken.Create("""{"iss":"https://appleid.apple.com","aud":"client-id","sub":"u1"}""");
+            return $$"""{"access_token":"access","token_type":"Bearer","id_token":"{{idToken}}"}""";
         }
 
         private static SignIn StartSignIn(OAuth2Manager manager, string clientName)
