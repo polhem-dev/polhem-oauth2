@@ -7,7 +7,7 @@
 Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAuth2Client` and the web sign-in cookie, and on
 2026-09-21 for the error object of Facebook and for `AppOAuth2Client`, which ADR-006 added, and on 2026-10-15 for token
 errors that GitHub reports with status 200. Revised again on 2026-10-15 for `OAuth2Client.GetUserInfoAsync`, which
-ADR-007 added.
+ADR-007 added, and on 2026-10-20 for the ID token checks and the discovery of ADR-008.
 
 ## Context
 
@@ -24,7 +24,10 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
     `ErrorDescription`. A token response with status 200 that names an error is read the same way, because GitHub reports
     failures of its token endpoint like that, and RFC 6749 gives a successful response no error field;
   - a state that is missing or does not match, and a missing authorization code or PKCE code verifier;
-  - a token response without an access token, and an empty user information response.
+  - a token response without an access token, and an empty user information response;
+  - an ID token of the sign-in that `OidcOAuth2Options` cannot read, that was issued to another client or by another issuer,
+    or whose subject differs from the user information, and a discovery document that does not describe a usable provider
+    (ADR-008).
 - Completing a sign-in turns only the failures a sign-in is expected to produce into a failed result:
   - `OAuth2Client.CompleteAuthorizationAsync`: `OAuth2Exception`, `HttpRequestException`, `TaskCanceledException` when a
     request times out, and `JsonException`.

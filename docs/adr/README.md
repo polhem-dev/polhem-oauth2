@@ -13,3 +13,4 @@ Each record explains a design decision in Polhem.OAuth2 and the reasons behind i
 | [ADR-005](adr-005-web-sign-in-cookie.md) | Keep each web sign-in in its own protected cookie |
 | [ADR-006](adr-006-app-sign-in.md) | Sign in from mobile applications directly or through the application's own back end |
 | [ADR-007](adr-007-access-token-from-front-end.md) | Return the user of an access token from a front end only after the provider names its client |
+| [ADR-008](adr-008-generic-openid-connect-provider.md) | Sign in with any OpenID Connect provider through one options type |

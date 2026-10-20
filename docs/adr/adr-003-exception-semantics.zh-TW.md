@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`。
+已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`；2026-10-20 修訂，涵蓋 ADR-008 的 ID token 檢查與 discovery。
 
 ## 背景
 
@@ -20,7 +20,9 @@
     （沒有 code 時改用 `type`），`message` 放在 `ErrorDescription`。狀態碼 200、卻帶有錯誤的 token 回應也以同樣方式讀取：
     GitHub 的 token 端點就是這樣回報失敗，而 RFC 6749 的成功回應本來就沒有錯誤欄位；
   - state 不存在或不相符，以及缺少授權碼或 PKCE code verifier；
-  - token 回應裡沒有 access token，以及使用者資訊回應為空。
+  - token 回應裡沒有 access token，以及使用者資訊回應為空；
+  - `OidcOAuth2Options` 讀不了登入取得的 ID token、ID token 發給其他 client 或由其他 issuer 簽發、其 subject 與使用者資訊不同，
+    以及 discovery 文件描述的 provider 無法使用（ADR-008）。
 - 完成登入時，只把登入預期會發生的失敗轉成失敗結果：
   - `OAuth2Client.CompleteAuthorizationAsync`：`OAuth2Exception`、`HttpRequestException`、請求逾時時的 `TaskCanceledException`，以及 `JsonException`。
   - ASP.NET 與 ASP.NET Core 的 manager 另外還有：沒有 cookie 對應到 state 或登入太久以前開始時的 `OAuth2Exception`，
