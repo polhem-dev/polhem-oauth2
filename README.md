@@ -9,24 +9,27 @@
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=code_smells)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=coverage)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 
-Lightweight sign-in for .NET with OAuth2 and OpenID Connect. Desktop and console applications sign in through the system
+Lightweight sign-in for .NET with OAuth2 and OpenID Connect (OIDC). Desktop and console applications sign in through the system
 browser with a loopback redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Android, iOS and Mac
 Catalyst sign in through `WebAuthenticator`, directly or through their own back end. ASP.NET Core and ASP.NET (System.Web)
 applications use the authorization code flow with PKCE, and keep each sign-in in a protected cookie.
 
 ## Supported accounts
 
+Every account signs in with the OAuth2 authorization code flow. "OAuth2 + OIDC" means the account also returns an
+OIDC ID token, which the library checks or reads the user from; "OAuth2" means the user comes from the provider's own API.
+
 | Account | Protocol | Desktop and console | .NET MAUI | ASP.NET Core and System.Web |
 |---------|----------|---------------------|-----------|-----------------------------|
-| [Google](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/google.md) | OpenID Connect | Yes | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
+| [Google](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/google.md) | OAuth2 + OIDC | Yes | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
 | [Facebook](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/facebook.md) | OAuth2 | Yes | Directly or through the back end | Yes |
-| [LINE](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/line.md) | OAuth2, with the email address from the ID token | Yes | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
-| [Microsoft Entra ID](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/microsoft-entra-id.md) | OpenID Connect | Yes | Directly or through the back end | Yes |
-| [Auth0](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/auth0.md) | OpenID Connect | Yes | Directly or through the back end | Yes |
-| [Okta](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/okta.md) | OpenID Connect | Yes | Directly or through the back end | Yes |
+| [LINE](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/line.md) | OAuth2, with the email address from the OIDC ID token | Yes | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
+| [Microsoft Entra ID](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/microsoft-entra-id.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
+| [Auth0](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/auth0.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
+| [Okta](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/okta.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
 | [GitHub](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/github.md) | OAuth2 | Yes | Through the back end only | Yes |
-| [Sign in with Apple](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/apple.md) | OpenID Connect | No | Through the back end only | Yes |
-| [Any other OpenID Connect provider](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/openid-connect.md), such as Keycloak or GitLab | OpenID Connect | Yes, when the provider accepts a public client | Directly or through the back end | Yes |
+| [Sign in with Apple](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/apple.md) | OAuth2 + OIDC | No | Through the back end only | Yes |
+| [Any other OIDC provider](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/openid-connect.md), such as Keycloak or GitLab | OAuth2 + OIDC | Yes, when the provider accepts a public client | Directly or through the back end | Yes |
 
 "Through the back end" means that the application signs in through its own ASP.NET Core back end, as the
 [.NET MAUI guide](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/maui.md) describes. Each account's

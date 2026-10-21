@@ -9,24 +9,27 @@
 [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=code_smells)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=coverage)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 
-輕量的 .NET 登入套件，支援 OAuth2 與 OpenID Connect。桌面與主控台應用程式透過系統瀏覽器、loopback 回呼與 PKCE 登入，
+輕量的 .NET 登入套件，支援 OAuth2 與 OpenID Connect（OIDC）。桌面與主控台應用程式透過系統瀏覽器、loopback 回呼與 PKCE 登入，
 可在 Windows、macOS、Linux 上使用。Android、iOS 與 Mac Catalyst 上的 .NET MAUI 應用程式透過 `WebAuthenticator` 登入，
 可以直連，也可以經由自己的後端中轉。ASP.NET Core 與 ASP.NET（System.Web）應用程式使用搭配 PKCE 的授權碼流程，
 每次登入各自保存在一個加密的 cookie。
 
 ## 支援的帳號
 
+所有帳號都用 OAuth2 的授權碼流程登入。「OAuth2 + OIDC」表示該帳號另外回傳 OIDC 的 ID token，套件會檢查它或從它讀出使用者；
+「OAuth2」表示使用者資料來自 provider 自己的 API。
+
 | 帳號 | 協定 | 桌面與主控台 | .NET MAUI | ASP.NET Core 與 System.Web |
 |------|------|--------------|-----------|----------------------------|
-| [Google](docs/zh-TW/providers/google.md) | OpenID Connect | 可以 | iOS 與 Mac Catalyst 直連；Android 經由後端中轉 | 可以 |
+| [Google](docs/zh-TW/providers/google.md) | OAuth2 + OIDC | 可以 | iOS 與 Mac Catalyst 直連；Android 經由後端中轉 | 可以 |
 | [Facebook](docs/zh-TW/providers/facebook.md) | OAuth2 | 可以 | 直連或經由後端中轉 | 可以 |
-| [LINE](docs/zh-TW/providers/line.md) | OAuth2，email 取自 ID token | 可以 | iOS 與 Mac Catalyst 直連；Android 經由後端中轉 | 可以 |
-| [Microsoft Entra ID](docs/zh-TW/providers/microsoft-entra-id.md) | OpenID Connect | 可以 | 直連或經由後端中轉 | 可以 |
-| [Auth0](docs/zh-TW/providers/auth0.md) | OpenID Connect | 可以 | 直連或經由後端中轉 | 可以 |
-| [Okta](docs/zh-TW/providers/okta.md) | OpenID Connect | 可以 | 直連或經由後端中轉 | 可以 |
+| [LINE](docs/zh-TW/providers/line.md) | OAuth2，email 取自 OIDC 的 ID token | 可以 | iOS 與 Mac Catalyst 直連；Android 經由後端中轉 | 可以 |
+| [Microsoft Entra ID](docs/zh-TW/providers/microsoft-entra-id.md) | OAuth2 + OIDC | 可以 | 直連或經由後端中轉 | 可以 |
+| [Auth0](docs/zh-TW/providers/auth0.md) | OAuth2 + OIDC | 可以 | 直連或經由後端中轉 | 可以 |
+| [Okta](docs/zh-TW/providers/okta.md) | OAuth2 + OIDC | 可以 | 直連或經由後端中轉 | 可以 |
 | [GitHub](docs/zh-TW/providers/github.md) | OAuth2 | 可以 | 只能經由後端中轉 | 可以 |
-| [Sign in with Apple](docs/zh-TW/providers/apple.md) | OpenID Connect | 不支援 | 只能經由後端中轉 | 可以 |
-| [其他任何 OpenID Connect provider](docs/zh-TW/providers/openid-connect.md)，例如 Keycloak 或 GitLab | OpenID Connect | provider 接受公開 client 時可以 | 直連或經由後端中轉 | 可以 |
+| [Sign in with Apple](docs/zh-TW/providers/apple.md) | OAuth2 + OIDC | 不支援 | 只能經由後端中轉 | 可以 |
+| [其他任何 OIDC provider](docs/zh-TW/providers/openid-connect.md)，例如 Keycloak 或 GitLab | OAuth2 + OIDC | provider 接受公開 client 時可以 | 直連或經由後端中轉 | 可以 |
 
 「經由後端中轉」是指應用程式經由自己的 ASP.NET Core 後端登入，做法見 [.NET MAUI 應用程式](docs/zh-TW/guides/maui.md)。
 每個帳號的文件說明要在 provider 後台登記什麼，以及實測過的結果。
