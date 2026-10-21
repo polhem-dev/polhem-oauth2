@@ -59,7 +59,9 @@ Notes on the table:
 - GitHub was added on 2026-10-15, with `samples/OAuthMaui` on the iPhone 17 Pro simulator and on Mac Catalyst rather than
   the throwaway application. Its settings page refuses `<scheme>:/<path>` and accepts `<scheme>://<path>`. GitHub redirected to the
   application, but its token endpoint requires the client secret for every code exchange and answered
-  `incorrect_client_credentials`, so an application signs in to GitHub through the back-end relay only.
+  `incorrect_client_credentials`, so an application signs in to GitHub through the back-end relay only. Since 2026-10-21
+  `AppOAuth2Client` refuses the GitHub options, as it refuses the Apple ones, so a client secret is not built into an
+  application by mistake.
 
 ## Decision
 

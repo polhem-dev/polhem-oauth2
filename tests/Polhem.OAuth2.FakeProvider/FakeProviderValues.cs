@@ -27,6 +27,12 @@ namespace Polhem.OAuth2.FakeProvider
         public const string AppleRelayClientName = "FakeApple";
 
         /// <summary>
+        /// The name under which the relay registers its web client for the GitHub mode under <c>/github</c>, which an
+        /// application signs in to only through the back end.
+        /// </summary>
+        public const string GitHubRelayClientName = "FakeGitHub";
+
+        /// <summary>
         /// The path under which the fake provider answers the way Sign in with Apple does.
         /// </summary>
         public const string ApplePath = "/apple";

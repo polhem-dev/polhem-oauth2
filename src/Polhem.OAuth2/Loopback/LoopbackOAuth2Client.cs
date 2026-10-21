@@ -47,8 +47,8 @@ namespace Polhem.OAuth2
         /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">
-        /// The redirect URI is not an absolute http URI on localhost or a loopback address, the client ID is empty, a scope is
-        /// empty, or an endpoint is not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
+        /// The redirect URI is not an absolute http URI on localhost or a loopback address, the client ID is empty, a scope or
+        /// an accepted client ID is empty, or an endpoint is not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
         /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint. The options
         /// are <see cref="AppleOAuth2Options"/>, which only a web client can sign in with.
         /// </exception>

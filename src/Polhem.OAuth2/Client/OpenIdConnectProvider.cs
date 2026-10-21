@@ -31,6 +31,12 @@ namespace Polhem.OAuth2
         /// </summary>
         protected abstract IReadOnlyCollection<string> IdTokenIssuers { get; }
 
+        /// <summary>
+        /// Gets the comparer of the <c>aud</c> and <c>azp</c> claims of an ID token with the client ID, which compares them
+        /// ordinally unless the provider writes its client IDs in another form than they may be configured in.
+        /// </summary>
+        protected virtual IEqualityComparer<string> ClientIdComparer => StringComparer.Ordinal;
+
         /// <inheritdoc/>
         /// <remarks>
         /// An ID token in the token response must be issued to the client, and by one of <see cref="IdTokenIssuers"/> when
@@ -69,7 +75,7 @@ namespace Polhem.OAuth2
         /// <exception cref="OAuth2Exception">The token cannot be read, or is issued to another client or by another issuer.</exception>
         protected JsonDocument ReadIdTokenClaims(string idToken)
         {
-            return IdToken.ReadClaims(idToken, Options.ClientId, IdTokenIssuers);
+            return IdToken.ReadClaims(idToken, Options.ClientId, IdTokenIssuers, ClientIdComparer);
         }
 
         /// <summary>
@@ -107,13 +113,29 @@ namespace Polhem.OAuth2
         protected abstract string? GetFallbackUserName(JsonElement user);
 
         /// <inheritdoc/>
+        /// <remarks>
+        /// The email address is not returned in <see cref="UserInfo.Email"/> when <c>email_verified</c> is false, so that an
+        /// address the provider has not verified is not mistaken for one it has. The claim is read from the same JSON as the
+        /// address, the user information or the ID token, and an address without it is kept. <see cref="UserInfo.RawJson"/>
+        /// still holds the address.
+        /// </remarks>
         protected sealed override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
             return new UserInfo(
                 OAuth2Json.GetString(user, SubjectClaim),
                 GetOidcDisplayName(user) ?? GetFallbackUserName(user),
-                OAuth2Json.GetString(user, "email"),
+                IsEmailUnverified(user) ? null : OAuth2Json.GetString(user, "email"),
                 json);
+        }
+
+        // OpenID Connect Core 1.0, section 5.1, makes email_verified a boolean, and Sign in with Apple sends it as the string
+        // "true" or "false" as well.
+        private static bool IsEmailUnverified(JsonElement user)
+        {
+            if (user.ValueKind != JsonValueKind.Object || !user.TryGetProperty("email_verified", out var verified))
+                return false;
+            return verified.ValueKind == JsonValueKind.False
+                || (verified.ValueKind == JsonValueKind.String && string.Equals(verified.GetString(), "false", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

@@ -68,6 +68,13 @@ namespace Polhem.OAuth2
                     + "Sign in through the application's own back end instead, such as the back-end relay of Polhem.OAuth2.AspNetCore.",
                     nameof(options));
             }
+            if (appRedirectUri && !_provider.SupportsAppClient)
+            {
+                throw new ArgumentException(
+                    $"{_provider.ProviderName} cannot sign in from a mobile application directly, because it requires the client secret for every code exchange, which an application cannot keep confidential. "
+                    + "Sign in through the application's own back end instead, such as the back-end relay of Polhem.OAuth2.AspNetCore.",
+                    nameof(options));
+            }
             _isPublicClient = publicClient;
             // RFC 8252 requires PKCE for native applications, because their client secret cannot be kept confidential.
             _usePkce = publicClient || copy.UsePkce;
@@ -153,7 +160,7 @@ namespace Polhem.OAuth2
         /// Completes a sign-in when the provider redirects back: checks the callback against the pending authorization,
         /// exchanges the authorization code for tokens, and retrieves the user information.
         /// </summary>
-        /// <param name="callback">The query parameters of the redirect back to the application.</param>
+        /// <param name="callback">The parameters of the redirect back to the application, from its query or, for a form POST, its form.</param>
         /// <param name="pending">The values kept from <see cref="CreateAuthorizationRequest()"/> for this sign-in.</param>
         /// <param name="cancellationToken">Cancels the requests to the provider.</param>
         /// <returns>A successful result with the tokens and user information, or a failed result that carries the exception.</returns>
@@ -161,7 +168,9 @@ namespace Polhem.OAuth2
         /// <para>
         /// Only the failures a sign-in is expected to produce become a failed result: an <see cref="OAuth2Exception"/> when
         /// the state does not match, the provider returned an error, the authorization code or the PKCE code verifier is
-        /// missing, or the token endpoint returned an error or a token type other than Bearer; an
+        /// missing, the token endpoint returned an error or a token type other than Bearer, or the ID token of an OpenID
+        /// Connect provider cannot be read, is issued to another client or by another issuer, or names another subject
+        /// than the user information; an
         /// <see cref="HttpRequestException"/>; a
         /// <see cref="TaskCanceledException"/> when a request times out; and a <see cref="JsonException"/> for a response
         /// that is not valid JSON. Any other exception propagates.
@@ -247,7 +256,7 @@ namespace Polhem.OAuth2
         /// limits how many it answers. Limit how often the endpoint of the back end that calls this method can be used.
         /// </para>
         /// <para>
-        /// Microsoft Entra ID, Auth0 and Okta are not supported: the front end sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
+        /// Microsoft Entra ID, Auth0, Okta, Sign in with Apple and <see cref="OidcOAuth2Options"/> are not supported: the front end sends the ID token of the sign-in instead, or requests an access token for an API of the back end. The back end then
         /// validates the token itself: its signature with the provider's published keys, its issuer and expiry, and an
         /// audience that is exactly one of the accepted client IDs for an ID token, or the API for an access token. A
         /// validator that skips the audience can accept tokens issued to any application of the same provider.

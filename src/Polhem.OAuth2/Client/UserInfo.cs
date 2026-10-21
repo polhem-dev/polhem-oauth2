@@ -41,6 +41,11 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Gets the user's email address, or null if the response does not include one.
         /// </summary>
+        /// <remarks>
+        /// An OpenID Connect provider leaves the address out when its <c>email_verified</c> claim is false, and GitHub
+        /// returns only a public or verified primary address. Other providers do not say whether the address is verified, so
+        /// identify a user by <see cref="UserId"/> rather than by this address.
+        /// </remarks>
         public string? Email { get; }
 
         /// <summary>
