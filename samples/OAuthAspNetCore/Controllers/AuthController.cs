@@ -32,7 +32,7 @@ namespace OAuthAspNetCore.Controllers
         // Sign in with Apple returns with a form POST from its own site, which carries no antiforgery token. The sample
         // registers no antiforgery filter, so the POST reaches this action, and the state that the manager compares
         // protects the callback. An application that validates antiforgery tokens globally exempts this action with
-        // [IgnoreAntiforgeryToken], as the README and ADR-005 describe.
+        // [IgnoreAntiforgeryToken], as docs/en/guides/web-sign-in-state.md and ADR-005 describe.
         [HttpGet("callback")]
         [HttpPost("callback")]
         public async Task<IActionResult> Callback()
