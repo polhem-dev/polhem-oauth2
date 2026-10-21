@@ -28,7 +28,7 @@ OIDC ID token, which the library checks or reads the user from; "OAuth2" means t
 | [Auth0](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/auth0.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
 | [Okta](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/okta.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
 | [GitHub](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/github.md) | OAuth2 | Yes | Through the back end only | Yes |
-| [Sign in with Apple](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/apple.md) | OAuth2 + OIDC | No | Through the back end only | Yes |
+| [Apple](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/apple.md) | OAuth2 + OIDC | No | Through the back end only | Yes |
 | [Any other OIDC provider](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/openid-connect.md), such as Keycloak or GitLab | OAuth2 + OIDC | Yes, when the provider accepts a public client | Directly or through the back end | Yes |
 
 "Through the back end" means that the application signs in through its own ASP.NET Core back end, as the

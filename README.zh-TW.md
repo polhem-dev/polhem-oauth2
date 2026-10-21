@@ -28,7 +28,7 @@
 | [Auth0](docs/zh-TW/providers/auth0.md) | OAuth2 + OIDC | 可以 | 直連或經由後端中轉 | 可以 |
 | [Okta](docs/zh-TW/providers/okta.md) | OAuth2 + OIDC | 可以 | 直連或經由後端中轉 | 可以 |
 | [GitHub](docs/zh-TW/providers/github.md) | OAuth2 | 可以 | 只能經由後端中轉 | 可以 |
-| [Sign in with Apple](docs/zh-TW/providers/apple.md) | OAuth2 + OIDC | 不支援 | 只能經由後端中轉 | 可以 |
+| [Apple](docs/zh-TW/providers/apple.md) | OAuth2 + OIDC | 不支援 | 只能經由後端中轉 | 可以 |
 | [其他任何 OIDC provider](docs/zh-TW/providers/openid-connect.md)，例如 Keycloak 或 GitLab | OAuth2 + OIDC | provider 接受公開 client 時可以 | 直連或經由後端中轉 | 可以 |
 
 「經由後端中轉」是指應用程式經由自己的 ASP.NET Core 後端登入，做法見 [.NET MAUI 應用程式](docs/zh-TW/guides/maui.md)。
