@@ -12,6 +12,7 @@
   `SameSite=None`，瀏覽器才會在那個請求帶上它。
 - 回呼時，GET 請求讀 query，POST 請求讀 form。form POST 的 client 要讓回呼同時接受兩種方法，並排除在 antiforgery 驗證之外
   （例如 `[IgnoreAntiforgeryToken]`），因為 provider 的頁面不會送 token，回呼由 state 保護。cookie policy 的 `MinimumSameSitePolicy`
-  比 None 嚴格，或 System.Web 沒有 .NET Framework 4.7.2 的 2019 年 11 月更新時，瀏覽器不會送出這個 cookie，登入會失敗。
+  比 None 嚴格，或 System.Web 沒有 .NET Framework 4.7.2 的 2019 年 11 月更新、或設了 `aspnet:SupressSameSiteNone`（拼法就是如此）時，
+  瀏覽器不會送出這個 cookie，登入會失敗。
 - 登入必須在 10 分鐘內完成。回呼時會先刪除 cookie，再用授權碼換 token。
 - 所有可能收到回呼的伺服器都必須能解開 cookie：ASP.NET Core 要共用 data protection 的金鑰環，System.Web 要使用相同的 machine key。

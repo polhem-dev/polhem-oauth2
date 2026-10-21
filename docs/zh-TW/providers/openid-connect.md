@@ -42,6 +42,11 @@ Google 拒絕不送 client secret 的桌面 client；登入 Google 請用 [`Goog
 在 provider 登記回呼網址，再依 [ASP.NET Core](../guides/aspnetcore.md) 或
 [ASP.NET（System.Web）](../guides/aspnet-system-web.md) 的說明設定。
 
+登入多家 provider 的應用程式，等於把登入託付給每一家。惡意或被入侵的 provider 可以讓使用者去應用程式的另一家 provider 登入，
+再讓那次登入的授權碼送到它自己的 token 端點（mix-up 攻擊，RFC 9700 第 4.4 節）。本函式庫不檢查回呼來自哪一家 provider；
+讓這種授權碼無法使用的，是另一家 provider 換 token 時要求網頁應用程式的 client secret，以及發出授權碼那次登入的 PKCE code
+verifier。所以 provider 允許時，每個網頁 client 都要設定 client secret，`UsePkce` 維持預設的開啟，並且只加入信任的 provider。
+
 ## Token 與使用者
 
 `UserId` 是 `sub` claim。函式庫會檢查每次登入取得的 ID token：檢查 audience，設定了 `Issuer` 時也檢查 issuer。

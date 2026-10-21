@@ -125,19 +125,16 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 `OidcOAuth2Options.FromDiscoveryAsync` 從 provider 的 discovery 文件讀出端點。在應用程式啟動時呼叫一次：
 
 ```csharp
-var google = await OidcOAuth2Options.FromDiscoveryAsync("https://accounts.google.com");
-google.ProviderName = "Google";
-google.ClientId = "your-client-id";
-google.ClientSecret = "your-client-secret";
-google.RedirectUri = "https://localhost:7032/auth/callback";
-builder.Services.AddOAuth2Client("Google", google);
+var keycloak = await OidcOAuth2Options.FromDiscoveryAsync("https://sso.example.com/realms/example");
+keycloak.ProviderName = "Keycloak";
+keycloak.ClientId = "your-client-id";
+keycloak.ClientSecret = "your-client-secret";
+keycloak.RedirectUri = "https://localhost:7032/auth/callback";
+builder.Services.AddOAuth2Client("Keycloak", keycloak);
 ```
 
-上面的 controller 不用改。要登入其他 OpenID Connect provider（例如 Keycloak、GitLab 或 AWS Cognito）時，把
-`https://accounts.google.com` 換成那家 provider 的網址，並給它一個自己的 `ProviderName`。
-
-這個寫法用在網頁應用程式。桌面應用程式登入 Google 請用 `GoogleOAuth2Options`：Google 的 Desktop app client
-沒有 client secret 時會拒絕換 token，而 `OidcOAuth2Options` 在桌面應用程式不會送出 secret。
+上面的 controller 不用改。其他 OpenID Connect provider（例如 GitLab 或 AWS Cognito）把網址換成那家 provider 的，並給它一個自己的
+`ProviderName`。有專用 options 的 provider（例如 Google）請改用它自己的 options。
 
 ## 更多文件
 
