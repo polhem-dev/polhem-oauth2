@@ -12,7 +12,7 @@
 2. 把 repo 根目錄的 `OAuthConfig.example.json` 複製成 `OAuthConfig.json`。每個要測的 provider，在它的 `Desktop` 區段
    填入 client 憑證，以及在該 provider 登記的 `RedirectUri`。`OAuthConfig.json` 已被 git 忽略，不要把憑證 commit 進去。
    建置時會複製到輸出目錄，工具就是從那裡讀。這份檔案與所有 sample 共用，結構說明在
-   [repo README](../../README.zh-TW.md) 的 Samples 一節。
+   [Samples](../../docs/zh-TW/guides/samples.md#設定) 一文。
 
 各 provider 比對回呼網址的規則不同，所以每個 `Desktop` 區段各有自己的 `RedirectUri`。port 一定要寫：沒寫 port 的網址
 等於 port 80，而 macOS 不允許沒有管理員權限的程式監聽它。port 寫 `0` 會自動挑一個可用的 port，適用於接受任意 loopback port 的 provider。

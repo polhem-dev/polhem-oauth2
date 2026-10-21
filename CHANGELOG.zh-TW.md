@@ -153,7 +153,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 ## [1.0.0] - 2026-09-14
 
 以 Polhem 名義發佈的第一版，延續自 [Bee.OAuth2](https://github.com/jeff377/bee-oauth2)；以下變更都是相對於 Bee.OAuth2 的最後一版。
-應用程式如何遷移，見 README 的[從 Bee.OAuth2 遷移](README.zh-TW.md#從-beeoauth2-遷移)。
+應用程式如何遷移，見[從 Bee.OAuth2 遷移](docs/zh-TW/guides/migrating-from-bee-oauth2.md)。
 
 ### 新增
 

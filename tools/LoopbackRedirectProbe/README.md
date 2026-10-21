@@ -12,7 +12,7 @@ applications use, and shows whether the provider accepts that redirect URI and w
 2. Copy `OAuthConfig.example.json` in the repository root to `OAuthConfig.json`. For each provider you test, fill in the
    client credentials and the registered `RedirectUri` in the `Desktop` section of that provider. `OAuthConfig.json` is
    ignored by git; do not commit credentials. The build copies it to the output folder, where the probe reads it. The
-   samples share this file, and the "Samples" section of the [repository README](../../README.md) describes its shape.
+   samples share this file, and the [Samples](../../docs/en/guides/samples.md#settings) guide describes its shape.
 
 Providers compare redirect URIs differently, so each `Desktop` section has its own `RedirectUri`. Always write the port:
 a URI without one means port 80, which a program without administrator rights cannot listen on in macOS. Port `0` picks

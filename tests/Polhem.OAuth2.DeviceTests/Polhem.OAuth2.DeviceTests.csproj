@@ -62,7 +62,7 @@
        settings and the README need files that are not on the device. -->
   <ItemGroup>
     <Compile Include="..\Polhem.OAuth2.UnitTests\*.cs"
-             Exclude="..\Polhem.OAuth2.UnitTests\AspNet*.cs;..\Polhem.OAuth2.UnitTests\FakeHttpContext.cs;..\Polhem.OAuth2.UnitTests\PendingAuthorizationCookieTests.cs;..\Polhem.OAuth2.UnitTests\SampleConfigTests.cs;..\Polhem.OAuth2.UnitTests\ReadmeDefaultsTests.cs"
+             Exclude="..\Polhem.OAuth2.UnitTests\AspNet*.cs;..\Polhem.OAuth2.UnitTests\FakeHttpContext.cs;..\Polhem.OAuth2.UnitTests\PendingAuthorizationCookieTests.cs;..\Polhem.OAuth2.UnitTests\SampleConfigTests.cs;..\Polhem.OAuth2.UnitTests\DocumentedDefaultsTests.cs"
              Link="UnitTests\%(Filename)%(Extension)" />
   </ItemGroup>
 
