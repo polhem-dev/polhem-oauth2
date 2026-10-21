@@ -3,7 +3,7 @@ using OAuthSamples;
 
 namespace Polhem.OAuth2.UnitTests
 {
-    // The README describes how the samples read OAuthConfig.json. These tests hold the loader to it.
+    // docs/en/guides/samples.md describes how the samples read OAuthConfig.json. These tests hold the loader to it.
     public class SampleConfigTests
     {
         [Theory]
