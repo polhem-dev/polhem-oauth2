@@ -2,252 +2,64 @@
 
 **English** | [繁體中文](CHANGELOG.zh-TW.md)
 
-Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org/).
+Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore, a few lines per version. Each
+version links to its release notes under [`docs/en/changelogs/`](docs/en/changelogs/), which describe every change in
+full and, for each breaking change, who it affects and how to migrate. Breaking changes are marked **Breaking:** here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Added
+Details and migration steps: [docs/en/changelogs/1.4.0.md](docs/en/changelogs/1.4.0.md)
 
-- `GitHubOAuth2Options` signs in with GitHub, through a GitHub App or an OAuth App. `UserId` is the numeric account ID. When
-  the user keeps the email address private, the address comes from `/user/emails`: the primary one, if it is verified. A
-  failure of that request leaves `Email` null instead of failing the sign-in. GitHub requires the client secret for every code
-  exchange, so it is sent from a public client too, and a mobile application signs in to GitHub through the back-end relay.
-- `OAuth2Client.GetUserInfoAsync(accessToken)` returns the user of an access token that a front end obtained and sent to the
-  back end. Before it asks for the user information, it checks with the provider that the token was issued to `ClientId` or
-  one of the new `OAuth2Options.AcceptedClientIds`, and the check cannot be skipped. It supports Google, LINE, Facebook and
-  GitHub; Facebook and GitHub need `ClientSecret` and accept only tokens issued to `ClientId`. Microsoft Entra ID,
-  Auth0 and Okta throw `NotSupportedException`, whose message points to the ID token. A refused, expired or foreign token is a
-  failed result. See ADR-007.
-- `OidcOAuth2Options` signs in with any other OpenID Connect provider, such as Keycloak or GitLab, with endpoints set by hand or
-  read by `OidcOAuth2Options.FromDiscoveryAsync(authority)`, whose document must name the authority as its issuer. Its
-  `ProviderName` is required, because users are identified by it. `UserInfoEndpoint` may be empty, and the user then comes
-  from the ID token of the sign-in. Every ID token it reads must be issued to the client, and by `Issuer` when that is set, and
-  the user information must have the subject of the ID token. See ADR-008.
-- `AppleOAuth2Options` signs in a web application with Apple. The library signs the client secret, an ES256 JSON Web Token, with
-  `PrivateKey`, the `.p8` file of a Sign in with Apple key, and `KeyId` and `TeamId`, and replaces it before it expires; a secret
-  signed in advance is accepted in `ClientSecret`. `UserId` and `Email` come from the ID token, and the name from the `user`
-  parameter that Apple sends only with the first sign-in of a user. `LoopbackOAuth2Client` and `AppOAuth2Client` refuse these
-  options, and a mobile application signs in through the back-end relay. See ADR-009.
-- `AuthorizationCallback.User` and a constructor that takes it carry the `user` parameter of Apple to `CompleteAuthorizationAsync`
-  of a server framework other than the two web packages.
-- `OAuth2Client.UsesFormPostResponse` tells whether the provider returns to the callback with a form POST from its own site, as
-  Apple does when the `name` or `email` scope is requested.
-- The `OAuth2Manager` of Polhem.OAuth2.AspNetCore and of Polhem.OAuth2.AspNet read a POST callback from its form, and keep the
-  pending sign-in of a client whose provider returns with a form POST in a `SameSite=None` cookie, which a browser sends with
-  that request. Every other client keeps `SameSite=Lax`. The callback of such a client must accept POST and be left out of
-  antiforgery validation. See ADR-005.
-
-### Changed
-
-- Google, Auth0, Okta and Microsoft Entra ID check the ID token of the sign-in, as `OidcOAuth2Options` does: it must be
-  issued to the client, and the user information must have its `sub`. Google also checks that the issuer is
-  `https://accounts.google.com` or `accounts.google.com`, and Auth0 that it is the host of the authorization or token endpoint with a trailing slash, such as `https://<Domain>/`; Okta and Microsoft Entra ID
-  do not check the issuer, which their settings do not fix. A sign-in now fails with `OAuth2Exception` when the user
-  information names another subject than the ID token, or when the ID token cannot be read or is for another client. A token
-  response without an ID token, for example when `openid` is not requested, is not checked. See ADR-008.
-- LINE leaves the email address out when its ID token has an authorized party (`azp`) other than the channel ID, or has
-  audiences besides the channel ID and no authorized party. LINE issues neither, so a sign-in is not expected to change.
-
-- A token response with status 200 that names an `error` fails with an `OAuth2Exception` that carries the provider's error
-  code, instead of the generic error about a missing access token. GitHub reports failures of its token endpoint this way.
-- Every request to a provider names the library in its `User-Agent` header, as `Polhem.OAuth2/<version>`, after the products
-  of the default `User-Agent` of an `HttpClient` that the application passes in. The GitHub API refuses a request without one.
-- Token requests send `Accept: application/json`. RFC 6749 already has the token endpoint answer in JSON, and GitHub
-  answers in form encoding without the header.
+- `GitHubOAuth2Options` signs in with GitHub, through a GitHub App or an OAuth App.
+- `OAuth2Client.GetUserInfoAsync(accessToken)` returns the user of an access token from a front end, after the provider confirms which client it was issued to.
+- `OidcOAuth2Options` signs in with any other OpenID Connect provider, with endpoints set by hand or read from its discovery document.
+- `AppleOAuth2Options` signs a web application in with Apple, and the web managers accept the form POST callback it returns with.
+- Google, Auth0, Okta and Microsoft Entra ID check the ID token of a sign-in against the client and the user information.
+- Requests to providers name the library in `User-Agent` and ask the token endpoint for JSON, and a token error sent with status 200 carries the provider's error code.
 
 ## [1.3.0] - 2026-09-26
 
-### Added
+Details and migration steps: [docs/en/changelogs/1.3.0.md](docs/en/changelogs/1.3.0.md)
 
-- Polhem.OAuth2 has a net8.0 build. An application on .NET 8 or 9 loaded the netstandard2.0 build before, whose default
-  `HttpClient` kept pooled connections without a lifetime and did not follow a DNS change of a provider host. It now gets the
-  handler that replaces them regularly, as on .NET 10.
-- `OAuth2Manager` in Polhem.OAuth2.AspNetCore can be derived from. Its public members are virtual, and a protected constructor
-  creates a manager with no clients and no relay, so a test of a controller can pass a class that overrides what it needs.
-- `AddOAuth2AppRelay(services, configuration)` registers the back-end relay with the settings of a configuration section, such as
-  `builder.Configuration.GetSection("AppRelay")`. A key other than `AppRedirectUris` and `CodeLifetime` is an error.
-- `OAuth2Options.ClientAuthentication` sends the client secret in an HTTP Basic header when set to
-  `ClientAuthenticationMethod.ClientSecretBasic`, instead of in the request body. Okta registers a web application for that
-  method by default.
-
-### Changed
-
-- `LoopbackOAuth2Client` and `AppOAuth2Client` send a client secret that is set to LINE, as they already did to Google. A LINE
-  Login channel that serves web apps only refused a refresh without it (`invalid_client`), and a desktop application
-  registers its loopback redirect URI as a web app. A mobile application sets no secret and is not affected.
-- On .NET Framework, a client that uses the default `HttpClient` sets `ConnectionLeaseTimeout` on the `ServicePoint` of the token
-  and user information hosts, so a pooled connection is replaced regularly and a DNS change is followed, as on .NET. The
-  setting applies to the whole process for those hosts.
-- The documentation of `TokenResponse.Scope` no longer says that the scopes are separated by spaces. The value is the one the
-  token endpoint returned, unchanged.
-- A token response that names a token type other than `Bearer` now fails the sign-in or the refresh with an `OAuth2Exception`.
-  RFC 6749, section 7.1, forbids a client to use a token whose type it does not understand, and the client sends the access token
-  as a bearer token. The comparison ignores case, and a response without a token type is still accepted.
-- The `message` and `innerException` parameters of the `OAuth2Exception` constructors are nullable, as those of `Exception` are.
-- The shared `HttpClient` that a client uses when none is passed in no longer follows redirects. A token request carries the
-  client secret and the authorization code in its body, which a 307 or 308 redirect would send on to another location, so a
-  redirect response now fails the request. An application that passes its own `HttpClient` can set `AllowAutoRedirect` to
-  false the same way.
-- `RefreshTokenAsync` for a provider that issues no refresh tokens, Facebook, returns a faulted task instead of throwing when it
-  is called, so a caller that starts the task and awaits it later catches the `NotSupportedException` as well.
-- `LoopbackOAuth2Client` reads `Timeout` and `OpenBrowser` once when a sign-in starts, so a change made during a sign-in applies
-  to the next one. The documentation of `Timeout` now says that the time is counted from just before the authorization URL is
-  opened.
-- Polhem.OAuth2.AspNetCore is marked as compatible with trimming and native AOT, so the analyzers check it as they already
-  checked the core package.
-
-### Fixed
-
-- The token request and the user information request read the response body without the cancellation token, so canceling or
-  a timeout did not stop a slow body. On .NET 8 and later the read now stops; the netstandard2.0 build checks the token before
-  the read.
-- `LoopbackOAuth2Client` showed the page of a failed sign-in for a redirect with an empty `error` parameter and a code, although
-  the sign-in completed. An empty error now counts as none on the page as well.
-- The System.Web package no longer lets the `domain` of `<httpCookies>` in web.config reach the sign-in cookie. Browsers
-  reject a `__Host-` cookie that names a domain, so with that setting every sign-in failed.
-- In ASP.NET Core, a second call to `CompleteAuthorizationAsync` in the same request no longer leaves the relayed sign-in of the
-  first call for `RedirectToAppAsync` to return.
-- The System.Web package refuses a sign-in cookie that names an application to relay to, instead of completing it as a web
-  sign-in. It has no back-end relay (ADR-006).
+- **Breaking:** A token response that names a token type other than `Bearer` fails the sign-in or the refresh.
+- **Breaking:** The shared `HttpClient` that a client uses when none is passed in no longer follows redirects.
+- Polhem.OAuth2 has a net8.0 build, whose default `HttpClient` replaces pooled connections and follows DNS changes, as on .NET 10.
+- `OAuth2Options.ClientAuthentication` can send the client secret in an HTTP Basic header.
+- `AddOAuth2AppRelay` reads its settings from a configuration section, and the ASP.NET Core `OAuth2Manager` can be derived from.
+- Reading a response body now honors cancellation, and several sign-in failures of the web packages and the loopback client are fixed.
 
 ## [1.2.0] - 2026-09-25
 
-### Added
+Details and migration steps: [docs/en/changelogs/1.2.0.md](docs/en/changelogs/1.2.0.md)
 
-- `OAuth2Options.IsAppRedirectUri` checks whether a redirect URI can return a sign-in to an application. It is the rule that
-  `AppOAuth2Client` already applied, and the back-end relay of Polhem.OAuth2.AspNetCore now calls it for
-  `OAuth2AppRelayOptions.AppRedirectUris` instead of repeating it.
-- `OAuth2Manager.TryRedirectToAppAuthorization` starts a relayed sign-in with values that come from the request, and returns false
-  for a client name, a redirect URI or a code challenge that is not valid, instead of throwing. An endpoint that an application
-  opens no longer has to catch exceptions to answer with status 400.
-- `OAuth2Client.Create(options, httpClientFactory)` creates a client that asks for the `HttpClient` of each request to the
-  provider, and `AddOAuth2ClientWithHttpClientFactory` registers one in ASP.NET Core with an `HttpClient` from the service
-  provider, such as one from `IHttpClientFactory`, whose handler rotation is honored that way.
-- `OAuth2Manager.CreateAppAuthorizationUrl`, `TryCreateAppAuthorizationUrl` and `CreateAppRedirectUrlAsync` return the URL
-  of a relayed sign-in instead of redirecting the response, as `CreateAuthorizationUrl` does for a web sign-in, for a caller
-  that redirects in its own way, such as a minimal API. The methods that redirect remain.
-
-### Changed
-
-- `OAuth2Manager.RedirectToAppAsync` throws `InvalidOperationException` when the sign-in names an application redirect URI
-  that is no longer in `OAuth2AppRelayOptions.AppRedirectUris`, instead of redirecting to it. It also stops when the callback
-  request is aborted, as `CompleteAuthorizationAsync` does, so passing `HttpContext.RequestAborted` is no longer needed.
-- `OAuth2AppRelayOptions.CodeLifetime` can be at most 10 minutes, which RFC 6749, section 4.1.2, recommends for an authorization
-  code. A longer value is rejected by `AddOAuth2AppRelay`.
-- An endpoint with a fragment is rejected when the client is created, as RFC 6749, section 3.1, requires. Such an endpoint never
-  worked, because the fragment swallowed the parameters added after it.
-- `UserInfo.UserName` falls back to the given and family names joined for every OpenID Connect provider when the response
-  has no name, as it already did for Microsoft Entra ID; Auth0 falls back to the nickname and Okta to the preferred user
-  name only after that. Facebook asks the Graph API for `first_name` and `last_name` as well, and joins them when `name`
-  is missing, so `UserInfo.RawJson` from Facebook now includes those fields.
-
-### Fixed
-
-- The query of `AuthorizationEndpoint` is kept, and the parameters of the authorization request are added after it, as RFC 6749,
-  section 3.1, requires. An endpoint such as `https://tenant.auth0.com/authorize?audience=...` produced a URL with two question
-  marks, which the provider refused. The same applies to the `UserInfoEndpoint` of Facebook.
-- An error from the token endpoint of Facebook becomes an `OAuth2Exception`, as for every other provider. Facebook reports a
-  Graph API error object, which was read as a response without an error code and thrown as an `HttpRequestException`. `Error`
-  holds the numeric code of the Graph API error, and `ErrorDescription` its message.
-- A relay code is no longer refused early on a server whose clock runs up to a minute ahead of the server that issued it. The
-  cache still ends the lifetime of the code at `CodeLifetime`.
-
-### Security
-
-- The back-end relay protects its entries in `IDistributedCache` with ASP.NET Core data protection. Version 1.1.0 stored the
-  user information of a relayed sign-in unprotected until the code was redeemed, and trusted whatever the cache returned, so
-  the cache had to be as trusted as the application. While servers of both versions share a cache, a code issued by one version
-  is not redeemed by the other. See [ADR-006](docs/adr/adr-006-app-sign-in.md).
+- **Breaking:** The back-end relay protects its cache entries with data protection, so a code is not redeemed by a server of another version.
+- **Breaking:** The relay refuses an application redirect URI that is no longer listed, and a `CodeLifetime` longer than 10 minutes.
+- **Breaking:** A Facebook token endpoint error becomes an `OAuth2Exception` instead of an `HttpRequestException`.
+- `OAuth2Client.Create(options, httpClientFactory)` and `AddOAuth2ClientWithHttpClientFactory` take each `HttpClient` from a factory, such as `IHttpClientFactory`.
+- The relay can be started without exceptions and can return its URLs instead of redirecting, through `TryRedirectToAppAuthorization` and the `Create…Url` methods.
+- The query of an authorization endpoint is kept, and `UserInfo.UserName` falls back to the given and family names for every OpenID Connect provider.
 
 ## [1.1.0] - 2026-09-19
 
-### Added
+Details and migration steps: [docs/en/changelogs/1.1.0.md](docs/en/changelogs/1.1.0.md)
 
-- `AppOAuth2Client` signs in from .NET MAUI applications on Android, iOS and Mac Catalyst: it opens the sign-in through a
-  delegate such as `WebAuthenticator`, accepts custom-scheme and `https` redirect URIs, and always uses PKCE, so it needs no
-  client secret. See [ADR-006](docs/adr/adr-006-app-sign-in.md).
-- The back-end relay in Polhem.OAuth2.AspNetCore: `AddOAuth2AppRelay`, `OAuth2AppRelayOptions`, and
-  `OAuth2Manager.RedirectToAppAuthorization`, `RedirectToAppAsync` and `RedeemAppCodeAsync` let an application sign in
-  through its own back end, which keeps the provider's tokens and gives the application a single-use code.
-- The net10.0 build of Polhem.OAuth2 is marked AOT compatible, so the trim and AOT analyzers check it.
-- The OAuthMaui sample, and relay endpoints in the OAuthAspNetCore sample.
-
-### Changed
-
-- When an `AppOAuth2Client` signs in to Facebook with an `fb<app id>` redirect URI, the token request adds the trailing
-  slash that Facebook requires.
-- The documentation of `LoopbackOAuth2Client.SignInAsync` names `PlatformNotSupportedException`, which the default browser
-  throws on iOS.
-
-### Fixed
-
-- The Microsoft Entra ID provider fills `UserName` for a personal Microsoft account, which sends no `name` claim: it joins the
-  given and family names instead ([#2](https://github.com/polhem-dev/polhem-oauth2/issues/2)).
+- `AppOAuth2Client` signs in from .NET MAUI applications on Android, iOS and Mac Catalyst.
+- The back-end relay of Polhem.OAuth2.AspNetCore lets an application sign in through its own back end, which keeps the provider's tokens.
+- The net10.0 build of Polhem.OAuth2 is marked AOT compatible.
+- The Microsoft Entra ID provider fills `UserName` for a personal Microsoft account.
 
 ## [1.0.0] - 2026-09-14
 
-The first release under the Polhem name. It continues [Bee.OAuth2](https://github.com/jeff377/bee-oauth2); the changes
-below are relative to the last Bee.OAuth2 release. How to move an application over is described in
-[Migrating from Bee.OAuth2](docs/en/guides/migrating-from-bee-oauth2.md).
+Details and migration steps: [docs/en/changelogs/1.0.0.md](docs/en/changelogs/1.0.0.md)
 
-### Added
-
-- `LoopbackOAuth2Client` signs in from desktop and console applications through the system browser and a loopback
-  redirect, always with PKCE, on Windows, macOS and Linux. See [ADR-004](docs/adr/adr-004-system-browser-loopback.md).
-- `OAuth2Client` runs the authorization code flow without an HTTP framework, in two steps: `CreateAuthorizationRequest`
-  and `CompleteAuthorizationAsync`.
-- `TokenResponse` holds the access, refresh and ID tokens with their type, lifetime and scopes. `AuthorizationResult.Token`
-  carries it, and `RefreshTokenAsync` on each client obtains new tokens.
-- `AddOAuth2Client` registers a client, `OAuth2Manager` and data protection in an ASP.NET Core application.
-- `OAuth2Exception`, thrown for protocol failures. Its `Error` and `ErrorDescription` carry the error code and description
-  returned by the provider.
-- `AzureOAuth2Options.Tenant`, for applications registered in a single Microsoft Entra ID tenant.
-- The Okta provider (`OktaOAuth2Options`). An empty `AuthorizationServerId` selects the org authorization server.
-- The LINE provider reads the email address from the ID token.
-- Every client accepts an `HttpClient`, and asynchronous methods take a `CancellationToken`.
-- A net10.0 target for Polhem.OAuth2, which has no package dependencies.
-- Nullable reference type annotations on the public API.
-
-### Changed
-
-- Package IDs and namespaces are renamed from `Bee.OAuth2` to `Polhem.OAuth2`.
-- The web packages keep each sign-in in a cookie of its own, protected with ASP.NET Core data protection or `MachineKey`,
-  and no longer use session state or the `OAUTH2_STATE_KEY` environment variable. See
-  [ADR-005](docs/adr/adr-005-web-sign-in-cookie.md).
-- `OAuth2Manager` provides `CreateAuthorizationUrl`, `RedirectToAuthorization`, `CompleteAuthorizationAsync` and
-  `GetClient`. The ASP.NET Core methods take the `HttpContext`, and the System.Web `RegisterClient` takes the options.
-- `UsePkce` is `true` by default.
-- A web client sends the client secret whenever one is set, also with PKCE. A loopback client sends it only to Google.
-- A client copies and checks its options when it is created. Endpoints must be absolute https URIs, and `Domain` of Auth0
-  and Okta accepts only https.
-- `AuthorizationResult` and `UserInfo` are sealed and read-only, and `AuthorizationResult.AccessToken` is replaced by `Token`.
-- Polhem.OAuth2.AspNet targets .NET Framework 4.7.2 instead of 4.8.
-- Polhem.OAuth2.AspNetCore targets net10.0 instead of net8.0, and references the ASP.NET Core shared framework instead
-  of the `Microsoft.AspNetCore.Http.Abstractions` package.
-- JSON is parsed with System.Text.Json, which the netstandard2.0 build references as a package. The packages no longer
-  depend on `Bee.Base` or `Newtonsoft.Json`. See [ADR-001](docs/adr/adr-001-drop-bee-base.md).
-- A user information field whose value is JSON null is now `null` instead of an empty string, so fallback fields take effect.
-- Facebook uses Graph API v26.0, and Google uses its current authorization and user information endpoints.
-- `AuthorizationResult.Exception` holds only the failures an OAuth2 sign-in is expected to produce; other exceptions are
-  thrown. An error response from the token endpoint becomes an `OAuth2Exception`. Exception messages include the HTTP
-  status code but not the response body. See [ADR-003](docs/adr/adr-003-exception-semantics.md).
-- The Microsoft Entra ID user identifier is read from `sub`, which the OpenID Connect user information endpoint returns.
-
-### Removed
-
-- `Bee.OAuth2.WinForms` and `Bee.OAuth2.Desktop`, together with the embedded WebView2 sign-in window. Use
-  `LoopbackOAuth2Client` instead.
-- The provider classes, `IOAuth2Provider`, `BaseOAuth2Client`, `IStateStorage`, `PkceHelper`, `OAuth2StateCryptor`, and
-  the `OAuth2Client` and `StateStorage` types of the web packages. Applications use an options type with a client or a manager.
-
-### Security
-
-- Each sign-in has a new random state and PKCE code verifier, and web applications keep them encrypted and authenticated
-  until the callback. The sign-in cookie uses the `__Host-` prefix and is Secure, HTTP-only and SameSite=Lax.
-- The loopback listener ends the wait only for a request that names the redirect URI's host and carries the state of the
-  sign-in, and it reads connections side by side.
-- Provider endpoints must use https.
+- **Breaking:** Bee.OAuth2 is renamed Polhem.OAuth2: package IDs, namespaces and target frameworks change, and the desktop packages are replaced by `LoopbackOAuth2Client`.
+- **Breaking:** The provider classes and the state storage types are no longer public, and `AuthorizationResult` and `UserInfo` are sealed and read-only.
+- **Breaking:** The web packages keep each sign-in in a protected cookie instead of session state, and their methods are renamed.
+- **Breaking:** PKCE is on by default, options are checked when a client is created, endpoints must use https, and unexpected exceptions are thrown.
+- **Breaking:** A JSON null field of the user information is `null`, and the Microsoft Entra ID user identifier is read from `sub`.
+- `LoopbackOAuth2Client` signs in from desktop and console applications through the system browser, and every client returns its tokens and refreshes them.
 
 [Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0
