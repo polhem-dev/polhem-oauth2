@@ -8,7 +8,8 @@ Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAu
 2026-09-21 for the error object of Facebook and for `AppOAuth2Client`, which ADR-006 added, and on 2026-10-15 for token
 errors that GitHub reports with status 200. Revised again on 2026-10-15 for `OAuth2Client.GetUserInfoAsync`, which
 ADR-007 added, and on 2026-10-20 for the ID token checks and the discovery of ADR-008, and for Sign in with Apple (ADR-009). Revised on 2026-10-21: the ID token failures apply to every OpenID Connect
-provider, as they have since the dedicated providers began to check the ID token.
+provider, as they have since the dedicated providers began to check the ID token. Revised the same day for a POST
+callback whose body cannot be read in ASP.NET Core.
 
 ## Context
 
@@ -35,7 +36,9 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
   - `OAuth2Client.CompleteAuthorizationAsync`: `OAuth2Exception`, `HttpRequestException`, `TaskCanceledException` when a
     request times out, and `JsonException`.
   - The ASP.NET and ASP.NET Core managers also: `OAuth2Exception` when no sign-in cookie matches the state or the sign-in
-    is too old, or, in ASP.NET Core, when the form of a POST callback exceeds the form limits, and `CryptographicException` when the cookie cannot be decrypted.
+    is too old, or, in ASP.NET Core, when the form of a POST callback exceeds the form limits or its body cannot be read,
+    such as one over the request size limit or cut short, and `CryptographicException` when the cookie cannot be decrypted.
+    A request aborted while its body is read throws `OperationCanceledException`, as an aborted request does elsewhere.
   - `LoopbackOAuth2Client.SignInAsync` also: the failures described in ADR-004.
   - `AppOAuth2Client.SignInAsync` also: the failures described in ADR-006.
   - `OAuth2Client.GetUserInfoAsync`, which returns the user of an access token from a front end: the same exceptions as

@@ -30,6 +30,40 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Contains($"Microsoft Entra ID 預設使用 `{entraTenant}` tenant。", ReadRepositoryFile("docs/zh-TW/providers/microsoft-entra-id.md"), StringComparison.Ordinal);
         }
 
+        [Fact]
+        [DisplayName("The provider documents in both languages state the default scopes that the options have")]
+        public void Documents_StatedScopes_MatchOptions()
+        {
+            string gitHub = string.Join(" ", new GitHubOAuth2Options().Scopes);
+            string apple = string.Join(" ", new AppleOAuth2Options().Scopes);
+            string oidc = string.Join(" ", new OidcOAuth2Options().Scopes);
+
+            Assert.Contains($"The options ask for the scopes `{gitHub}`.", ReadRepositoryFile("docs/en/providers/github.md"), StringComparison.Ordinal);
+            Assert.Contains($"options 要求的 scope 為 `{gitHub}`。", ReadRepositoryFile("docs/zh-TW/providers/github.md"), StringComparison.Ordinal);
+            Assert.Contains($"The default scopes `{apple}`", ReadRepositoryFile("docs/en/providers/apple.md"), StringComparison.Ordinal);
+            Assert.Contains($"預設的 scope `{apple}`", ReadRepositoryFile("docs/zh-TW/providers/apple.md"), StringComparison.Ordinal);
+            Assert.Contains($"The default scopes are `{oidc}`", ReadRepositoryFile("docs/en/providers/openid-connect.md"), StringComparison.Ordinal);
+            Assert.Contains($"預設 scope 為 `{oidc}`", ReadRepositoryFile("docs/zh-TW/providers/openid-connect.md"), StringComparison.Ordinal);
+        }
+
+        [Theory]
+        [DisplayName("The READMEs in both languages state the target frameworks of each package")]
+        [InlineData("Polhem.OAuth2")]
+        [InlineData("Polhem.OAuth2.AspNetCore")]
+        [InlineData("Polhem.OAuth2.AspNet")]
+        public void Readmes_StatedTargetFrameworks_MatchProjects(string package)
+        {
+            var project = System.Xml.Linq.XDocument.Parse(ReadRepositoryFile($"src/{package}/{package}.csproj"));
+            string? names = project.Descendants()
+                .FirstOrDefault(element => element.Name.LocalName is "TargetFrameworks" or "TargetFramework")?.Value;
+            Assert.False(string.IsNullOrEmpty(names), $"{package}.csproj names no target framework.");
+            string[] frameworks = names!.Split(';');
+            string link = $"[{package}](https://www.nuget.org/packages/{package})";
+
+            Assert.Contains($"{link} | {string.Join(", ", frameworks)} |", ReadRepositoryFile("README.md"), StringComparison.Ordinal);
+            Assert.Contains($"{link} | {string.Join("、", frameworks)} |", ReadRepositoryFile("README.zh-TW.md"), StringComparison.Ordinal);
+        }
+
         private static string ReadRepositoryFile(string name)
         {
             for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

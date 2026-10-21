@@ -98,7 +98,7 @@ namespace Polhem.OAuth2
             ArgumentNullException.ThrowIfNull(user);
             ArgumentNullException.ThrowIfNull(callback);
 
-            return user.UserName is null && ReadName(callback.User) is { } name
+            return user.UserName is null && ReadName(callback.UserJson) is { } name
                 ? new UserInfo(user.UserId, name, user.Email, user.RawJson)
                 : user;
         }

@@ -126,7 +126,8 @@ namespace Polhem.OAuth2.AspNetCore
         /// <para>
         /// In addition to the failures described on <see cref="OAuth2Client.CompleteAuthorizationAsync"/>, these become a
         /// failed result: an <see cref="OAuth2Exception"/> when the state is missing or no sign-in cookie matches it, or the
-        /// sign-in started more than 10 minutes ago, or the form of a POST callback exceeds the form limits; and a
+        /// sign-in started more than 10 minutes ago, or the form of a POST callback exceeds the form limits or cannot be read,
+        /// for example because the body exceeds the request size limit or ends early; and a
         /// <see cref="CryptographicException"/> when the cookie cannot be decrypted. Any other exception propagates.
         /// </para>
         /// <para>
@@ -165,6 +166,17 @@ namespace Polhem.OAuth2.AspNetCore
                 catch (InvalidDataException ex)
                 {
                     return AuthorizationResult.Failure(new OAuth2Exception("The form of the callback cannot be read.", ex));
+                }
+                catch (IOException ex) when (!requestCancellation.IsCancellationRequested)
+                {
+                    // A body over the request size limit, or one cut short, is what the sender posted, as a form over the
+                    // form limits is. Kestrel reports both with BadHttpRequestException, an IOException.
+                    return AuthorizationResult.Failure(new OAuth2Exception("The form of the callback cannot be read.", ex));
+                }
+                catch (IOException ex)
+                {
+                    // The request was aborted while its body was read, which ADR-003 reports as a cancellation.
+                    throw new OperationCanceledException("The callback request was aborted.", ex, requestCancellation.Token);
                 }
 
                 string? state = getValue("state");
@@ -283,7 +295,8 @@ namespace Polhem.OAuth2.AspNetCore
         {
             return Microsoft.Net.Http.Headers.MediaTypeHeaderValue.TryParse(contentType, out var mediaType)
                 && string.Equals(mediaType.MediaType.Value, "application/x-www-form-urlencoded", StringComparison.OrdinalIgnoreCase)
-                && (!mediaType.Charset.HasValue || string.Equals(mediaType.Charset.Value, "utf-8", StringComparison.OrdinalIgnoreCase));
+                && (!mediaType.Charset.HasValue
+                    || Microsoft.Net.Http.Headers.HeaderUtilities.RemoveQuotes(mediaType.Charset).Equals("utf-8", StringComparison.OrdinalIgnoreCase));
         }
 
         // A repeated parameter is treated as missing: joining the values would produce a state that matches nothing.

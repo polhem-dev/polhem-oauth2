@@ -28,6 +28,8 @@ namespace Polhem.OAuth2.AspNet
     public static class OAuth2Manager
     {
         private static readonly ConcurrentDictionary<string, OAuth2Client> s_clients = new ConcurrentDictionary<string, OAuth2Client>(StringComparer.Ordinal);
+        private static readonly List<OidcClientIdentity> s_oidcIdentities = [];
+        private static readonly object s_registrationLock = new object();
 
         /// <summary>
         /// Registers an OAuth2 client under a name. Register every client when the application starts, for example in
@@ -42,15 +44,27 @@ namespace Polhem.OAuth2.AspNet
         /// <paramref name="clientName"/> is null, empty or white space, or <paramref name="options"/> is not valid.
         /// </exception>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
-        /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// A client is already registered under <paramref name="clientName"/>, or the options are <see cref="OidcOAuth2Options"/>
+        /// with the provider name of a client registered before but another issuer.
+        /// </exception>
         public static void RegisterClient(string clientName, OAuth2Options options, HttpClient? httpClient = null)
         {
             if (string.IsNullOrWhiteSpace(clientName))
                 throw new ArgumentException("The client name cannot be null, empty or white space.", nameof(clientName));
 
             var client = new OAuth2Client(options, httpClient);
-            if (!s_clients.TryAdd(clientName, client))
-                throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
+            var identity = OidcClientIdentity.From(clientName, options);
+            // The conflict check and the registration happen together, so that two calls at once cannot both pass the check.
+            lock (s_registrationLock)
+            {
+                if (identity is not null && s_oidcIdentities.Select(identity.GetConflictError).FirstOrDefault(error => error is not null) is { } conflict)
+                    throw new InvalidOperationException(conflict);
+                if (!s_clients.TryAdd(clientName, client))
+                    throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
+                if (identity is not null)
+                    s_oidcIdentities.Add(identity);
+            }
         }
 
         /// <summary>

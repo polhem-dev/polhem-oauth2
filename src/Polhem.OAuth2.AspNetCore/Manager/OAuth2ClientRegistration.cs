@@ -11,11 +11,13 @@ namespace Polhem.OAuth2.AspNetCore
         /// Initializes a new instance of the <see cref="OAuth2ClientRegistration"/> class for a client that is complete.
         /// </summary>
         /// <param name="name">The name that identifies the client.</param>
+        /// <param name="options">The OAuth2 options that the client was created from.</param>
         /// <param name="client">The client.</param>
-        public OAuth2ClientRegistration(string name, OAuth2Client client)
+        public OAuth2ClientRegistration(string name, OAuth2Options options, OAuth2Client client)
         {
             Name = name;
             Client = client;
+            OidcIdentity = OidcClientIdentity.From(name, options);
         }
 
         /// <summary>
@@ -30,6 +32,7 @@ namespace Polhem.OAuth2.AspNetCore
             Name = name;
             Client = OAuth2Client.Create(options, () => httpClientFactory(
                 _services ?? throw new InvalidOperationException("The OAuth2 client was used before the service provider was built.")));
+            OidcIdentity = OidcClientIdentity.From(name, options);
         }
 
         /// <summary>
@@ -41,6 +44,11 @@ namespace Polhem.OAuth2.AspNetCore
         /// Gets the client.
         /// </summary>
         public OAuth2Client Client { get; }
+
+        /// <summary>
+        /// Gets the provider name and the issuer of a client of <see cref="OidcOAuth2Options"/>, or null for any other client.
+        /// </summary>
+        public OidcClientIdentity? OidcIdentity { get; }
 
         /// <summary>
         /// Gives the client the service provider that its HTTP clients come from. The first call wins.

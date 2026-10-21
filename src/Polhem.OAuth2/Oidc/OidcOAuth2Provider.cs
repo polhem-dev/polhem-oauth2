@@ -20,7 +20,7 @@ namespace Polhem.OAuth2
             if (options.GetProviderNameError() is { } error)
                 throw new ArgumentException(error, nameof(options));
             _options = options;
-            IdTokenIssuers = options.Issuer.Length == 0 ? Array.Empty<string>() : new[] { options.Issuer };
+            IdTokenIssuers = string.IsNullOrEmpty(options.Issuer) ? Array.Empty<string>() : new[] { options.Issuer };
         }
 
         /// <inheritdoc/>

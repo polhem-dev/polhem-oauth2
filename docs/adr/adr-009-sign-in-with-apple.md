@@ -53,7 +53,7 @@ Apple differs from the providers before it exactly where the library made assump
   client ID and the issuer `https://appleid.apple.com`, and the token needs a `sub`. `UserInfo.RawJson` holds that payload.
 - The name is joined from the strings `name.firstName` and `name.lastName` of the `user` parameter. The browser posts the
   parameter, so its email address is ignored in favor of the ID token's, a value that is not such a JSON object or is longer
-  than 4096 characters is ignored, and only strings are used. `AuthorizationCallback` gains a `User` property and a
+  than 4096 characters is ignored, and only strings are used. `AuthorizationCallback` gains a `UserJson` property and a
   constructor that takes it.
 - Apple sends the name only the first time a user authorizes the application. `UserName` is null afterwards, and the
   application keeps the name from the first sign-in itself.
