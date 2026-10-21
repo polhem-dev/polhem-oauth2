@@ -87,6 +87,14 @@ namespace Polhem.OAuth2
         public virtual bool SupportsPublicClient => true;
 
         /// <summary>
+        /// Gets a value indicating whether <see cref="AppOAuth2Client"/> can sign in with the provider directly. A provider
+        /// whose code exchange fails without the client secret for every client type, such as GitHub, returns false, because
+        /// a mobile application cannot keep the secret, while a desktop application may choose to. When <see cref="SupportsPublicClient"/> is false, the
+        /// application client is refused before this value is read.
+        /// </summary>
+        public virtual bool SupportsAppClient => SupportsPublicClient;
+
+        /// <summary>
         /// Gets a value indicating whether the provider returns to the redirect URI with a form POST from its own site
         /// (<c>response_mode=form_post</c>) rather than a GET redirect.
         /// </summary>

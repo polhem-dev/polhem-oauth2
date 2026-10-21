@@ -35,6 +35,13 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         /// <remarks>
+        /// GitHub redirects to an application, but refuses the code exchange without the client secret, which a mobile
+        /// application cannot keep (ADR-006). <see cref="LoopbackOAuth2Client"/> still signs in, with the secret.
+        /// </remarks>
+        public override bool SupportsAppClient => false;
+
+        /// <inheritdoc/>
+        /// <remarks>
         /// <para>
         /// <c>/user</c> has an email address only when the user made one public, which GitHub allows only for a verified
         /// address. Otherwise the primary address is read from <c>/user/emails</c>, if it is verified. That request needs

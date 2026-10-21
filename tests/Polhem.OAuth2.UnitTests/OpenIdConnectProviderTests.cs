@@ -214,6 +214,82 @@ namespace Polhem.OAuth2.UnitTests
             Assert.IsType<OAuth2Exception>(result.Exception);
         }
 
+        [Theory]
+        [MemberData(nameof(ProvidersAndIssuers))]
+        [DisplayName("An email address that the provider marks as unverified is left out, as a boolean or as a string")]
+        public async Task GetUserInfoAsync_EmailNotVerified_HasNoEmail(string providerName, string issuer)
+        {
+            foreach (string verified in new[] { "false", "\"false\"", "\"False\"" })
+            {
+                var handler = new StubHttpMessageHandler().Respond(
+                    HttpStatusCode.OK, $$"""{"sub":"u1","email":"ada@example.com","email_verified":{{verified}}}""");
+                var provider = CreateProvider(providerName, handler);
+
+                var user = await provider.GetUserInfoAsync(Token(IdToken(issuer, ClientId, "u1")), CancellationToken.None);
+
+                Assert.Null(user.Email);
+                Assert.Equal("u1", user.UserId);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(ProvidersAndIssuers))]
+        [DisplayName("An email address that the provider marks as verified, or does not mark, is kept")]
+        public async Task GetUserInfoAsync_EmailVerifiedOrUnmarked_KeepsEmail(string providerName, string issuer)
+        {
+            foreach (string field in new[] { ",\"email_verified\":true", ",\"email_verified\":\"true\"", "" })
+            {
+                var handler = new StubHttpMessageHandler().Respond(
+                    HttpStatusCode.OK, $$"""{"sub":"u1","email":"ada@example.com"{{field}}}""");
+                var provider = CreateProvider(providerName, handler);
+
+                var user = await provider.GetUserInfoAsync(Token(IdToken(issuer, ClientId, "u1")), CancellationToken.None);
+
+                Assert.Equal("ada@example.com", user.Email);
+            }
+        }
+
+        [Fact]
+        [DisplayName("Microsoft Entra ID compares the client ID of the ID token as a GUID, so a client ID set in upper case matches")]
+        public async Task GetUserInfoAsync_AzureClientIdInOtherCase_ReturnsUser()
+        {
+            const string configured = "6731DE76-14A6-49AE-97BC-6EBA6914391E";
+            const string issued = "6731de76-14a6-49ae-97bc-6eba6914391e";
+            string[] idTokens =
+            {
+                TestIdToken.Create($$"""{"aud":"{{issued}}","sub":"u1"}"""),
+                TestIdToken.Create($$"""{"aud":["{{issued}}","other"],"azp":"{{issued}}","sub":"u1"}""")
+            };
+            foreach (string idToken in idTokens)
+            {
+                var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"sub":"u1"}""");
+                var options = new AzureOAuth2Options { ClientId = configured, RedirectUri = RedirectUri };
+                var provider = OAuth2Provider.Create(options, handler.CreateClient());
+
+                var user = await provider.GetUserInfoAsync(Token(idToken), CancellationToken.None);
+
+                Assert.Equal("u1", user.UserId);
+            }
+        }
+
+        [Fact]
+        [DisplayName("Microsoft Entra ID still refuses an ID token for another GUID, and the other providers compare the client ID ordinally")]
+        public async Task GetUserInfoAsync_OtherClientId_ThrowsOAuth2Exception()
+        {
+            var azure = OAuth2Provider.Create(
+                new AzureOAuth2Options { ClientId = "6731de76-14a6-49ae-97bc-6eba6914391e", RedirectUri = RedirectUri },
+                new StubHttpMessageHandler().CreateClient());
+            var google = CreateProvider("Google", new StubHttpMessageHandler());
+
+            var otherGuid = await Assert.ThrowsAsync<OAuth2Exception>(() => azure.GetUserInfoAsync(
+                Token(IdToken("https://login.microsoftonline.com/t/v2.0", "00000000-14a6-49ae-97bc-6eba6914391e", "u1")), CancellationToken.None));
+            var otherCase = await Assert.ThrowsAsync<OAuth2Exception>(() => google.GetUserInfoAsync(
+                Token(IdToken("https://accounts.google.com", "CLIENT-ID", "u1")), CancellationToken.None));
+
+            Assert.Contains("another client", otherGuid.Message, StringComparison.Ordinal);
+            Assert.Contains("another client", otherCase.Message, StringComparison.Ordinal);
+        }
+
         private static OAuth2Provider CreateProvider(string providerName, StubHttpMessageHandler handler)
         {
             return OAuth2Provider.Create(TestOptions.Create(providerName, RedirectUri), handler.CreateClient());

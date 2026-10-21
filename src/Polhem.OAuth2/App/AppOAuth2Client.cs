@@ -45,9 +45,10 @@ namespace Polhem.OAuth2
         /// <exception cref="ArgumentNullException"><paramref name="options"/> or <paramref name="authenticate"/> is null.</exception>
         /// <exception cref="ArgumentException">
         /// The redirect URI is not an absolute https URI or custom scheme URI without a fragment, the client ID is empty, a
-        /// scope is empty, or an endpoint is not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
+        /// scope or an accepted client ID is empty, or an endpoint is not an absolute https URI without a fragment. For <see cref="OidcOAuth2Options"/>, also: the provider name is empty, the
         /// issuer is not valid, or the issuer or the openid scope is missing without a user information endpoint. The options
-        /// are <see cref="AppleOAuth2Options"/>, which only a web client can sign in with.
+        /// are <see cref="AppleOAuth2Options"/>, which only a web client can sign in with, or <see cref="GitHubOAuth2Options"/>,
+        /// which an application signs in with through its own back end.
         /// </exception>
         public AppOAuth2Client(
             OAuth2Options options, Func<Uri, Uri, CancellationToken, Task<Uri>> authenticate, HttpClient? httpClient = null)

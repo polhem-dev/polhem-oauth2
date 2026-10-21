@@ -53,6 +53,7 @@ Custom Tabs，並回傳 provider 導回的網址。在 .NET 10 上它無法在 W
 - GitHub 於 2026-10-15 加入，改用 `samples/OAuthMaui` 在 iPhone 17 Pro 模擬器與 Mac Catalyst 上實測，而不是用完即丟的應用程式。
   它的設定頁不接受 `<scheme>:/<path>`，接受 `<scheme>://<path>`。GitHub 有導回應用程式，但它的 token 端點每次換 token
   都要求 client secret，回應 `incorrect_client_credentials`，所以應用程式只能透過後端中轉登入 GitHub。
+  自 2026-10-21 起，`AppOAuth2Client` 會像拒絕 Apple 的 options 一樣拒絕 GitHub 的 options，避免 client secret 被誤放進應用程式。
 
 ## 決策
 

@@ -228,6 +228,22 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("An email address of the ID token that Apple marks as unverified is left out")]
+        public async Task CompleteAuthorizationAsync_EmailNotVerified_HasNoEmail()
+        {
+            const string payload = """{"iss":"https://appleid.apple.com","aud":"com.example.web","sub":"u1","email":"ada@example.com","email_verified":"false"}""";
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, TokenJson(payload));
+            var client = new OAuth2Client(CreateOptions(privateKey: null, clientSecret: "signed"), handler.CreateClient());
+            var pending = client.CreateAuthorizationRequest().Pending;
+
+            var result = await client.CompleteAuthorizationAsync(new AuthorizationCallback("code-value", pending.State, null, null), pending);
+
+            Assert.True(result.IsSuccess, result.Exception?.ToString());
+            Assert.Equal("u1", result.UserInfo!.UserId);
+            Assert.Null(result.UserInfo.Email);
+        }
+
+        [Fact]
         [DisplayName("A later sign-in without the user parameter has no user name")]
         public async Task CompleteAuthorizationAsync_NoUserParameter_HasNoName()
         {

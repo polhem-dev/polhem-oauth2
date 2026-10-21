@@ -3,6 +3,9 @@
 [English](../../en/guides/identifying-users.md) | **繁體中文**
 
 - 以 provider 名稱加上 `UserInfo.UserId` 識別使用者，不要用 `Email`：email 可能變更，而且各 provider 是否驗證過 email 並不一致。
+- OpenID Connect provider（Google、Auth0、Okta、Microsoft Entra ID、Sign in with Apple 與 `OidcOAuth2Options`）的
+  `email_verified` claim 為 false 時，`Email` 是 null。不送這個 claim 的 provider（例如 Microsoft Entra ID）回傳的 email
+  沒有標示是否驗證過，所以不要只憑 email 把一次登入連結到既有帳號。
 - provider 名稱是 `AuthorizationResult.ProviderName`：`Google`、`Facebook`、`LINE`、`Azure`（Microsoft Entra ID）、`Auth0`、`Okta`、`GitHub`、
   `Apple`，或 `OidcOAuth2Options` 的 `ProviderName`。
   它與 client 註冊時使用的名稱無關。

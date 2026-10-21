@@ -51,16 +51,21 @@ namespace Polhem.OAuth2
         /// The values, one of which the <c>iss</c> claim must equal, compared ordinally, or an empty collection to leave the
         /// issuer unchecked.
         /// </param>
+        /// <param name="clientIdComparer">
+        /// Compares the <c>aud</c> and <c>azp</c> claims with <paramref name="clientId"/>, or null to compare them ordinally.
+        /// </param>
         /// <returns>The payload, a parsed JSON object, which the caller disposes.</returns>
         /// <exception cref="OAuth2Exception">
         /// The token is not a JSON Web Token with a JSON object as its payload, is issued to another client, or names another
         /// issuer.
         /// </exception>
-        public static JsonDocument ReadClaims(string idToken, string clientId, IReadOnlyCollection<string> issuers)
+        public static JsonDocument ReadClaims(
+            string idToken, string clientId, IReadOnlyCollection<string> issuers, IEqualityComparer<string>? clientIdComparer = null)
         {
             ArgumentNullException.ThrowIfNull(idToken);
             ArgumentNullException.ThrowIfNull(clientId);
             ArgumentNullException.ThrowIfNull(issuers);
+            var comparer = clientIdComparer ?? StringComparer.Ordinal;
 
             // An encrypted token (JSON Web Encryption) has five segments and is not supported.
             string[] segments = idToken.Split(s_segmentSeparator);
@@ -88,9 +93,9 @@ namespace Polhem.OAuth2
                 // must name the client as its authorized party, and an authorized party that is present must be the client.
                 bool hasAuthorizedParty = claims.TryGetProperty("azp", out _);
                 if (clientId.Length == 0
-                    || !HasAudience(claims, clientId, out bool hasOtherAudiences)
+                    || !HasAudience(claims, clientId, comparer, out bool hasOtherAudiences)
                     || ((hasAuthorizedParty || hasOtherAudiences)
-                        && !string.Equals(OAuth2Json.GetProtocolString(claims, "azp"), clientId, StringComparison.Ordinal)))
+                        && !(OAuth2Json.GetProtocolString(claims, "azp") is { } authorizedParty && comparer.Equals(authorizedParty, clientId))))
                 {
                     throw new OAuth2Exception("The ID token was issued to another client.");
                 }
@@ -109,7 +114,7 @@ namespace Polhem.OAuth2
         }
 
         // The aud claim is either one string or an array of strings (RFC 7519, section 4.1.3).
-        private static bool HasAudience(JsonElement claims, string clientId, out bool hasOtherAudiences)
+        private static bool HasAudience(JsonElement claims, string clientId, IEqualityComparer<string> comparer, out bool hasOtherAudiences)
         {
             hasOtherAudiences = false;
             if (!claims.TryGetProperty("aud", out var audience))
@@ -118,12 +123,12 @@ namespace Polhem.OAuth2
             switch (audience.ValueKind)
             {
                 case JsonValueKind.String:
-                    return string.Equals(audience.GetString(), clientId, StringComparison.Ordinal);
+                    return audience.GetString() is { } value && comparer.Equals(value, clientId);
                 case JsonValueKind.Array:
                     bool found = false;
                     foreach (var item in audience.EnumerateArray())
                     {
-                        if (item.ValueKind == JsonValueKind.String && string.Equals(item.GetString(), clientId, StringComparison.Ordinal))
+                        if (item.ValueKind == JsonValueKind.String && item.GetString() is { } itemValue && comparer.Equals(itemValue, clientId))
                             found = true;
                         else
                             hasOtherAudiences = true;

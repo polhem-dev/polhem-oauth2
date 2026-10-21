@@ -8,7 +8,7 @@
 ## Options
 
 - `ClientId` 與 `RedirectUri` 為必填。所有 provider 共用的 options，
-  見[所有 provider 共用的 Options](../guides/options.md)。
+  見[所有 provider 共用的 Options](../guides/options.md)。client ID 以 GUID 的方式與 ID token 比對，大小寫不影響。
 - Microsoft Entra ID 預設使用 `common` tenant。只註冊在單一 tenant 的應用程式，要把 `Tenant` 設成該 tenant 的 ID
   或網域名稱。
 

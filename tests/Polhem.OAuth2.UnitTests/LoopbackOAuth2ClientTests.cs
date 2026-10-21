@@ -27,6 +27,15 @@ namespace Polhem.OAuth2.UnitTests
         }
 
         [Fact]
+        [DisplayName("The loopback client accepts the GitHub options, which the application client refuses")]
+        public void Constructor_GitHubOptions_Succeeds()
+        {
+            var options = TestOptions.Create("GitHub", "http://127.0.0.1:0/callback", "secret");
+
+            Assert.Null(Record.Exception(() => new LoopbackOAuth2Client(options)));
+        }
+
+        [Fact]
         [DisplayName("SignInAsync exchanges the code with the redirect URI of the bound port and leaves the options unchanged")]
         public async Task SignInAsync_CallbackWithState_ExchangesCodeWithBoundRedirectUri()
         {
