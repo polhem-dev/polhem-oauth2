@@ -169,7 +169,7 @@ namespace Polhem.OAuth2
             };
             if (codeVerifier is { Length: > 0 } verifier)
                 parameters["code_verifier"] = verifier;
-            return RequestTokenAsync(parameters, AddClientAuthentication(parameters, publicClient), cancellationToken);
+            return RequestAuthenticatedTokenAsync(parameters, publicClient, cancellationToken);
         }
 
         /// <summary>
@@ -199,7 +199,7 @@ namespace Polhem.OAuth2
                 ["refresh_token"] = refreshToken,
                 [ClientIdParameter] = Options.ClientId
             };
-            return RequestTokenAsync(parameters, AddClientAuthentication(parameters, publicClient), cancellationToken);
+            return RequestAuthenticatedTokenAsync(parameters, publicClient, cancellationToken);
         }
 
         /// <summary>
@@ -387,17 +387,18 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(token);
 
+            ProviderResponse response;
             using (var request = CreateUserInfoRequest(GetUserInfoUrl(), token.AccessToken))
-            using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
             {
-                if (!response.IsSuccessStatusCode)
-                    throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
-
-                string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                if (string.IsNullOrWhiteSpace(json))
-                    throw new OAuth2Exception("The user information response is empty.");
-                return json;
+                response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
             }
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Failed to retrieve user information. Status code: {(int)response.StatusCode}.");
+
+            string json = response.Body;
+            if (string.IsNullOrWhiteSpace(json))
+                throw new OAuth2Exception("The user information response is empty.");
+            return json;
         }
 
         /// <summary>
@@ -407,14 +408,16 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="request">The request.</param>
         /// <param name="cancellationToken">Cancels the request.</param>
-        /// <returns>The response, which the caller disposes.</returns>
-        /// <exception cref="HttpRequestException">The request failed.</exception>
+        /// <returns>The status code and the body of the response.</returns>
+        /// <exception cref="HttpRequestException">
+        /// The request failed, or the body is larger than <see cref="ProviderResponse.MaxBodyBytes"/>.
+        /// </exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
-        protected Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected Task<ProviderResponse> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            return LibraryUserAgent.SendAsync(_httpClientFactory(), request, cancellationToken);
+            return ProviderResponse.SendAsync(_httpClientFactory(), request, cancellationToken);
         }
 
         /// <summary>
@@ -466,17 +469,15 @@ namespace Polhem.OAuth2
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
+            var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+            string body = response.Body;
+            // The messages name the status code but never the request URI, which can carry the access token in its query.
+            if (!response.IsSuccessStatusCode)
             {
-                string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                // The messages name the status code but never the request URI, which can carry the access token in its query.
-                if (!response.IsSuccessStatusCode)
-                {
-                    throw (Exception?)ReadErrorResponse(body)
-                        ?? new HttpRequestException($"The token verification endpoint returned status code {(int)response.StatusCode}.");
-                }
-                return OAuth2Json.ParseObject(body);
+                throw (Exception?)ReadErrorResponse(body)
+                    ?? new HttpRequestException($"The token verification endpoint returned status code {(int)response.StatusCode}.");
             }
+            return OAuth2Json.ParseObject(body);
         }
 
         /// <summary>
@@ -530,6 +531,23 @@ namespace Polhem.OAuth2
             return SharedHttpClient.Instance;
         }
 
+        // A client secret that cannot be produced, such as one that the platform cannot sign for Apple, fails the request as a
+        // faulted task, like every other failure of it.
+        private Task<TokenResponse> RequestAuthenticatedTokenAsync(
+            Dictionary<string, string> parameters, bool publicClient, CancellationToken cancellationToken)
+        {
+            AuthenticationHeaderValue? authentication;
+            try
+            {
+                authentication = AddClientAuthentication(parameters, publicClient);
+            }
+            catch (OAuth2Exception ex)
+            {
+                return Task.FromException<TokenResponse>(ex);
+            }
+            return RequestTokenAsync(parameters, authentication, cancellationToken);
+        }
+
         // Adds the client secret to the body, or returns the Basic header that carries it, as the options ask.
         private AuthenticationHeaderValue? AddClientAuthentication(Dictionary<string, string> parameters, bool publicClient)
         {
@@ -571,16 +589,14 @@ namespace Polhem.OAuth2
                 // RFC 6749, section 5.1, has the token endpoint answer in JSON, but GitHub answers in form encoding unless
                 // the request asks for JSON.
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
+                var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+                string body = response.Body;
+                if (!response.IsSuccessStatusCode)
                 {
-                    string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        throw (Exception?)ReadErrorResponse(body)
-                            ?? new HttpRequestException($"The token endpoint returned status code {(int)response.StatusCode}.");
-                    }
-                    return ReadTokenResponse(body);
+                    throw (Exception?)ReadErrorResponse(body)
+                        ?? new HttpRequestException($"The token endpoint returned status code {(int)response.StatusCode}.");
                 }
+                return ReadTokenResponse(body);
             }
         }
 

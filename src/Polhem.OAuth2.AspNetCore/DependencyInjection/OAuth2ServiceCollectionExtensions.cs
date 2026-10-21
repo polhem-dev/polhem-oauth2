@@ -31,7 +31,10 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <exception cref="ArgumentException">
         /// <paramref name="clientName"/> is null, empty or white space, or <paramref name="options"/> is not valid.
         /// </exception>
-        /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// A client is already registered under <paramref name="clientName"/>, or the options are <see cref="OidcOAuth2Options"/>
+        /// with the provider name of a client registered before but another issuer.
+        /// </exception>
         public static IServiceCollection AddOAuth2Client(
             this IServiceCollection services, string clientName, OAuth2Options options, HttpClient? httpClient = null)
         {
@@ -41,7 +44,7 @@ namespace Microsoft.Extensions.DependencyInjection
             if (IsRegistered(services, clientName))
                 throw new InvalidOperationException($"An OAuth2 client is already registered under the name '{clientName}'.");
 
-            return AddRegistration(services, new OAuth2ClientRegistration(clientName, new OAuth2Client(options, httpClient)));
+            return AddRegistration(services, new OAuth2ClientRegistration(clientName, options, new OAuth2Client(options, httpClient)));
         }
 
         /// <summary>
@@ -65,7 +68,10 @@ namespace Microsoft.Extensions.DependencyInjection
         /// <exception cref="ArgumentException">
         /// <paramref name="clientName"/> is null, empty or white space, or <paramref name="options"/> is not valid.
         /// </exception>
-        /// <exception cref="InvalidOperationException">A client is already registered under <paramref name="clientName"/>.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// A client is already registered under <paramref name="clientName"/>, or the options are <see cref="OidcOAuth2Options"/>
+        /// with the provider name of a client registered before but another issuer.
+        /// </exception>
         public static IServiceCollection AddOAuth2ClientWithHttpClientFactory(
             this IServiceCollection services, string clientName, OAuth2Options options, Func<IServiceProvider, HttpClient> httpClientFactory)
         {
@@ -81,6 +87,14 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static IServiceCollection AddRegistration(IServiceCollection services, OAuth2ClientRegistration registration)
         {
+            if (registration.OidcIdentity is { } identity)
+            {
+                foreach (var other in GetRegistrations(services))
+                {
+                    if (other.OidcIdentity is { } otherIdentity && identity.GetConflictError(otherIdentity) is { } error)
+                        throw new InvalidOperationException(error);
+                }
+            }
             services.AddSingleton(registration);
             services.AddDataProtection();
             services.TryAddSingleton(provider => new OAuth2Manager(
@@ -176,12 +190,16 @@ namespace Microsoft.Extensions.DependencyInjection
 
         private static bool IsRegistered(IServiceCollection services, string clientName)
         {
+            return GetRegistrations(services).Any(registration => string.Equals(registration.Name, clientName, StringComparison.Ordinal));
+        }
+
+        private static IEnumerable<OAuth2ClientRegistration> GetRegistrations(IServiceCollection services)
+        {
             // The service type is compared first: reading ImplementationInstance of a keyed registration throws.
-            return services.Any(descriptor =>
-                descriptor.ServiceType == typeof(OAuth2ClientRegistration)
-                && !descriptor.IsKeyedService
-                && descriptor.ImplementationInstance is OAuth2ClientRegistration registration
-                && string.Equals(registration.Name, clientName, StringComparison.Ordinal));
+            return services
+                .Where(descriptor => descriptor.ServiceType == typeof(OAuth2ClientRegistration) && !descriptor.IsKeyedService)
+                .Select(descriptor => descriptor.ImplementationInstance)
+                .OfType<OAuth2ClientRegistration>();
         }
     }
 }

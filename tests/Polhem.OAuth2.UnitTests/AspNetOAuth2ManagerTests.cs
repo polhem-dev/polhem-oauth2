@@ -358,6 +358,38 @@ namespace Polhem.OAuth2.UnitTests
             return "Test-" + Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
         }
 
+        [Fact]
+        [DisplayName("RegisterClient refuses an OpenID Connect client with the provider name of another one but another issuer")]
+        public void RegisterClient_OidcNameOfAnotherIssuer_ThrowsInvalidOperationException()
+        {
+            // The registry is static, so the provider name is unique to this test.
+            string providerName = "Keycloak " + NewClientName();
+            string first = NewClientName();
+            OAuth2Manager.RegisterClient(first, CreateOidcOptions(providerName, "https://idp.example.com"));
+            OAuth2Manager.RegisterClient(NewClientName(), CreateOidcOptions(providerName, "https://idp.example.com"));
+
+            string second = NewClientName();
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => OAuth2Manager.RegisterClient(second, CreateOidcOptions(providerName, "https://other.example.com")));
+
+            Assert.Contains(first, exception.Message, StringComparison.Ordinal);
+            Assert.Null(OAuth2Manager.GetClient(second));
+        }
+
+        private static OidcOAuth2Options CreateOidcOptions(string providerName, string issuer)
+        {
+            return new OidcOAuth2Options
+            {
+                ProviderName = providerName,
+                Issuer = issuer,
+                ClientId = "client-id",
+                RedirectUri = RedirectUri,
+                AuthorizationEndpoint = issuer + "/authorize",
+                TokenEndpoint = issuer + "/token",
+                UserInfoEndpoint = issuer + "/userinfo"
+            };
+        }
+
         private static string RegisterClient(StubHttpMessageHandler handler)
         {
             string clientName = NewClientName();

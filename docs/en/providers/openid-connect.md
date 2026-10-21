@@ -21,7 +21,9 @@ builder.Services.AddOAuth2Client("GitLab", gitlab);
 ```
 
 - `ProviderName` is required. Users are identified by it together with `UserId`, and two providers can give the same user ID
-  to different people, so give each provider a name of its own and keep it.
+  to different people, so give each provider a name of its own and keep it. The name of a provider with options of its
+  own, such as `Google` or `GitHub`, is refused in any case, and the web packages refuse a second client with the same name
+  and another issuer.
 - The `issuer` of the discovery document must equal the authority you pass, apart from a trailing slash. The request is not
   cached, so do not call it for each sign-in, and pass only an authority the application trusts.
 - The endpoints and `Issuer` can also be set by hand. A provider without a user information endpoint leaves

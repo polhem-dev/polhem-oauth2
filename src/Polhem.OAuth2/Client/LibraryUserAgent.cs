@@ -42,10 +42,12 @@ namespace Polhem.OAuth2
         {
             // The header is set on the request rather than on the client, so that it also reaches a provider through an
             // HttpClient that the application passes in. The GitHub API refuses a request without it. A request header
-            // replaces the default header of the client, so the products of the application's own User-Agent come first.
-            foreach (var product in httpClient.DefaultRequestHeaders.UserAgent)
-                request.Headers.UserAgent.Add(product);
-            request.Headers.UserAgent.Add(Create());
+            // replaces the default header of the client, so the application's own User-Agent comes first, as it was set:
+            // a value added without validation is not a list of products, and would be lost by parsing it.
+            string library = Create().ToString();
+            request.Headers.TryAddWithoutValidation(
+                "User-Agent",
+                httpClient.DefaultRequestHeaders.TryGetValues("User-Agent", out var values) ? string.Join(" ", values) + " " + library : library);
             return httpClient.SendAsync(request, completionOption, cancellationToken);
         }
 

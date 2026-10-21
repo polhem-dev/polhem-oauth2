@@ -19,7 +19,8 @@ builder.Services.AddOAuth2Client("GitLab", gitlab);
 ```
 
 - `ProviderName` 必填。使用者以它加上 `UserId` 識別，而兩家 provider 可能把同一個使用者 ID 給不同的人，
-  所以每家 provider 都要有自己的名稱，而且命名後不要再改。
+  所以每家 provider 都要有自己的名稱，而且命名後不要再改。有專用 options 的 provider 名稱（例如 `Google`、`GitHub`）不論大小寫
+  都會被拒絕；網頁套件也會拒絕同名、但 issuer 不同的第二個 client。
 - discovery 文件的 `issuer` 必須等於傳入的 authority，結尾斜線除外。結果不會快取，所以不要每次登入都呼叫，
   而且只傳入應用程式信任的 authority。
 - 端點與 `Issuer` 也可以手動設定。沒有使用者資訊端點的 provider 讓 `UserInfoEndpoint` 保持空白：使用者改從登入取得的

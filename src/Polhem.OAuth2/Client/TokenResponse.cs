@@ -67,7 +67,12 @@ namespace Polhem.OAuth2
         /// <summary>
         /// Gets the OpenID Connect ID token, or null if the provider did not issue one.
         /// </summary>
-        /// <remarks>This library does not validate the ID token. Validate it before relying on its claims.</remarks>
+        /// <remarks>
+        /// The token is returned as the provider sent it. An OpenID Connect provider checks, when it reads the user, that the
+        /// token was issued to the client, and by the provider's issuer when that is known, but not its signature, which a
+        /// token straight from the token endpoint over TLS does not need. Validate it before relying on its claims anywhere
+        /// else, such as in another back end.
+        /// </remarks>
         public string? IdToken { get; }
 
         /// <summary>

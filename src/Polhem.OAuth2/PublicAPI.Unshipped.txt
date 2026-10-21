@@ -19,6 +19,6 @@ Polhem.OAuth2.AppleOAuth2Options.PrivateKey.get -> string!
 Polhem.OAuth2.AppleOAuth2Options.PrivateKey.set -> void
 Polhem.OAuth2.AppleOAuth2Options.TeamId.get -> string!
 Polhem.OAuth2.AppleOAuth2Options.TeamId.set -> void
-Polhem.OAuth2.AuthorizationCallback.AuthorizationCallback(string? code, string? state, string? error, string? errorDescription, string? user) -> void
-Polhem.OAuth2.AuthorizationCallback.User.get -> string?
+Polhem.OAuth2.AuthorizationCallback.AuthorizationCallback(string? code, string? state, string? error, string? errorDescription, string? userJson) -> void
+Polhem.OAuth2.AuthorizationCallback.UserJson.get -> string?
 Polhem.OAuth2.OAuth2Client.UsesFormPostResponse.get -> bool
