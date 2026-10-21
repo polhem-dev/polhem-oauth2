@@ -133,3 +133,7 @@ signed by the library:
 `samples/OAuthMaui` signed in through the back-end relay of the same web application, on the iPhone 17 Pro simulator, on Mac
 Catalyst and on an Android emulator. Each returned the user ID and the email address of the ID token, the same on every
 platform, and no name, because the account had authorized the application before.
+
+The device tests of [run 39521534642](https://github.com/polhem-dev/polhem-oauth2/actions/runs/39521534642) ran the unit tests,
+the signing of the client secret among them, on iOS, Mac Catalyst, Android and Windows, and signed in to the Sign in with Apple
+mode of the fake provider through the relay on iOS, Mac Catalyst and Android, with the form POST callback.

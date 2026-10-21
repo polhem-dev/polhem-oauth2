@@ -108,3 +108,7 @@ Apple 和既有的 provider 不同的地方，正好落在套件原本的假設�
 
 `samples/OAuthMaui` 經同一個網頁應用程式的後端中轉登入，在 iPhone 17 Pro 模擬器、Mac Catalyst 與 Android 模擬器上都成功，
 各自回傳 ID token 的使用者 ID 與 email（各平台相同），沒有姓名，因為這個帳號先前已授權過該應用程式。
+
+[run 39521534642](https://github.com/polhem-dev/polhem-oauth2/actions/runs/39521534642) 的 device tests 在 iOS、Mac Catalyst、Android 與
+Windows 上執行了單元測試（包括 client secret 的簽署），並在 iOS、Mac Catalyst 與 Android 上經中轉登入 fake provider 的 Sign in with Apple
+模式，走 form POST 回呼。
