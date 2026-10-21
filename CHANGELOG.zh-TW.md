@@ -4,9 +4,11 @@
 
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更，每個版本只列幾項重點。每個版本都連到
 [`docs/zh-TW/changelogs/`](docs/zh-TW/changelogs/) 下的發佈說明，那裡完整描述每一項變更，並說明每項破壞性變更影響誰、
-如何遷移。破壞性變更在這裡以 **破壞性：** 標示。格式依循 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，
-版號依循[語意化版本](https://semver.org/lang/zh-TW/)。1.2.0 與 1.3.0 以 minor 版發佈，卻含有破壞性變更，
-這是改寫本紀錄時才辨識出來的；自 1.4.0 起，破壞性變更會提升主版號。
+如何遷移。破壞性變更在這裡以 **破壞性：** 標示。格式依循 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)。
+
+> **1.x 的 minor 版本可能含有破壞性變更**，在這裡以 **破壞性：** 標示，遷移步驟寫在該版的發佈說明。patch 版本不含破壞性變更。
+> 從 2.0.0 起，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。參照這些套件時，請使用限制在一個 minor 版本內的範圍，
+> 例如 `[1.4,1.5)`，而不是 `1.*`。這項政策與它的理由見 [ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.zh-TW.md)。
 
 ## [Unreleased]
 
@@ -16,7 +18,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - `OAuth2Client.GetUserInfoAsync(accessToken)` 先由 provider 確認 token 發給哪個 client，再回傳前端送來的 access token 所屬的使用者。
 - `OidcOAuth2Options` 可以登入其他任何 OpenID Connect provider，端點可以手動設定，也可以從 discovery 文件讀取。
 - `AppleOAuth2Options` 讓網頁應用程式以 Apple 登入，網頁套件的 manager 也接受它以 form POST 送回的回呼。
-- Google、Auth0、Okta 與 Microsoft Entra ID 會以 client 與使用者資訊檢查登入取得的 ID token。
+- **破壞性：** Google、Auth0、Okta 與 Microsoft Entra ID 會以 client 與使用者資訊檢查登入取得的 ID token。
 - 送往 provider 的請求會在 `User-Agent` 標明函式庫、向 token 端點要求 JSON，以狀態碼 200 回傳的 token 錯誤也會帶著 provider 的錯誤代碼。
 
 ## [1.3.0] - 2026-09-26
