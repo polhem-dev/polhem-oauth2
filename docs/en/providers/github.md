@@ -38,7 +38,8 @@ Register the callback URL in the settings of the GitHub App or OAuth App, and fo
 
 ## Tokens and users
 
-- GitHub issues a refresh token when the app expires user tokens, which a new app does unless that is turned off.
+- A GitHub App issues a refresh token when it expires user tokens, which a new GitHub App does unless that is turned off.
+  An OAuth App issues no refresh token.
 - `UserId` is the numeric account ID, which stays when the user renames the account; the login does not, and another account
   can take it.
 - When the user keeps the email address private, the library reads the primary verified address from `/user/emails`; if that

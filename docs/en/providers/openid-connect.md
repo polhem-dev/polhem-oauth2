@@ -45,6 +45,13 @@ with PKCE. Google refuses a desktop client that sends no client secret; use [`Go
 Register the callback URL with the provider, and follow the guide for [ASP.NET Core](../guides/aspnetcore.md) or
 [ASP.NET (System.Web)](../guides/aspnet-system-web.md).
 
+An application that signs in with several providers trusts each of them with its sign-ins. A provider that is malicious or
+compromised can have the user sign in at another of the application's providers and receive that sign-in's code at its own
+token endpoint (a mix-up attack, RFC 9700, section 4.4). The library does not check which provider a callback came from.
+What keeps such a code useless is that the other provider requires the client secret of the web application to redeem it,
+and the PKCE code verifier of the sign-in it was issued for, so keep a client secret on every web client whose provider
+allows one, keep `UsePkce` on, as it is by default, and add only providers you trust.
+
 ## Tokens and users
 
 `UserId` is the `sub` claim. The library checks the ID token of each sign-in: its audience, and its issuer when `Issuer`

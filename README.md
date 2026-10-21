@@ -129,20 +129,17 @@ public class AuthController(OAuth2Manager oauth2Manager) : ControllerBase
 application starts:
 
 ```csharp
-var google = await OidcOAuth2Options.FromDiscoveryAsync("https://accounts.google.com");
-google.ProviderName = "Google";
-google.ClientId = "your-client-id";
-google.ClientSecret = "your-client-secret";
-google.RedirectUri = "https://localhost:7032/auth/callback";
-builder.Services.AddOAuth2Client("Google", google);
+var keycloak = await OidcOAuth2Options.FromDiscoveryAsync("https://sso.example.com/realms/example");
+keycloak.ProviderName = "Keycloak";
+keycloak.ClientId = "your-client-id";
+keycloak.ClientSecret = "your-client-secret";
+keycloak.RedirectUri = "https://localhost:7032/auth/callback";
+builder.Services.AddOAuth2Client("Keycloak", keycloak);
 ```
 
-The controller above works unchanged. To sign in with another OpenID Connect provider, such as Keycloak, GitLab or AWS Cognito,
-pass that provider's address instead of `https://accounts.google.com`, and give it a `ProviderName` of its own.
-
-Use this in web applications. A desktop application signs in to Google with `GoogleOAuth2Options`: Google refuses the
-code exchange of a Desktop app client without its client secret, and `OidcOAuth2Options` sends none from a desktop
-application.
+The controller above works unchanged. For another OpenID Connect provider, such as GitLab or AWS Cognito, pass that
+provider's address instead, and give it a `ProviderName` of its own. A provider that has options of its own, such as
+Google, signs in with those options instead.
 
 ## More documentation
 

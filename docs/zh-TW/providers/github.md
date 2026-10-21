@@ -33,7 +33,7 @@
 
 ## Token 與使用者
 
-- GitHub 在 App 開啟使用者 token 到期時發 refresh token，新建的 App 除非關閉，預設就是開啟。
+- GitHub App 開啟使用者 token 到期時會發 refresh token，新建的 GitHub App 除非關閉，預設就是開啟。OAuth App 不發 refresh token。
 - `UserId` 是數字帳號 ID，使用者改名後仍不變；login 則會變，還可能被其他帳號取走。
 - 使用者不公開 email 時，函式庫會從 `/user/emails` 讀取主要且已驗證的 email；這個請求失敗時 `Email` 為 null，
   登入仍然成功。
