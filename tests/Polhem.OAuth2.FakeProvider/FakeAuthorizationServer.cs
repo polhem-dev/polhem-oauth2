@@ -27,6 +27,8 @@ namespace Polhem.OAuth2.FakeProvider
         private const string AccessToken = "fake-access-token";
         private const string InvalidGrant = "invalid_grant";
         private const string EmailField = "email";
+        private const string ClientIdParameter = "client_id";
+        private const string StateParameter = "state";
 
         private static readonly string[] s_responseTypes = ["code"];
         private static readonly string[] s_subjectTypes = ["public"];
@@ -69,7 +71,7 @@ namespace Polhem.OAuth2.FakeProvider
         // Apple posts the result from its own page. The page here submits itself, so a browser completes the sign-in on its own.
         private IResult AuthorizeApple(HttpRequest request)
         {
-            string clientId = request.Query["client_id"].ToString();
+            string clientId = request.Query[ClientIdParameter].ToString();
             string redirectUri = request.Query["redirect_uri"].ToString();
             string[] scopes = request.Query["scope"].ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             bool formPost = request.Query["response_mode"] == "form_post";
@@ -82,7 +84,7 @@ namespace Polhem.OAuth2.FakeProvider
             string code = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(24));
             _codes[code] = new FakeAuthorizationCode(clientId, redirectUri, request.Query["code_challenge"].FirstOrDefault());
             string user = JsonSerializer.Serialize(new { name = new { firstName = "Fake", lastName = "User" }, email = FakeProviderValues.Email });
-            var fields = new Dictionary<string, string> { ["code"] = code, ["state"] = request.Query["state"].ToString(), ["user"] = user };
+            var fields = new Dictionary<string, string> { ["code"] = code, [StateParameter] = request.Query[StateParameter].ToString(), ["user"] = user };
 
             var html = new StringBuilder("<!doctype html><html><body onload=\"document.forms[0].submit()\">");
             html.Append("<form method=\"post\" action=\"").Append(WebUtility.HtmlEncode(redirectUri)).Append("\">");
@@ -101,7 +103,7 @@ namespace Polhem.OAuth2.FakeProvider
             var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
             if (form["client_secret"] != _webClientSecret)
                 return TokenError("invalid_client");
-            string clientId = form["client_id"].ToString();
+            string clientId = form[ClientIdParameter].ToString();
             if (Redeem(form, refreshable: true) is { } error)
                 return TokenError(error);
 
@@ -130,7 +132,7 @@ namespace Polhem.OAuth2.FakeProvider
         private async Task<IResult> ExchangeOidcAsync(HttpRequest request)
         {
             var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
-            string clientId = form["client_id"].ToString();
+            string clientId = form[ClientIdParameter].ToString();
             if (Redeem(form, refreshable: true) is { } error)
                 return TokenError(error);
 
@@ -161,9 +163,9 @@ namespace Polhem.OAuth2.FakeProvider
 
         private IResult Authorize(HttpRequest request)
         {
-            string clientId = request.Query["client_id"].ToString();
+            string clientId = request.Query[ClientIdParameter].ToString();
             string redirectUri = request.Query["redirect_uri"].ToString();
-            string state = request.Query["state"].ToString();
+            string state = request.Query[StateParameter].ToString();
             string? challenge = request.Query["code_challenge"].FirstOrDefault();
 
             if (request.Query["response_type"] != "code" || redirectUri.Length == 0 || !IsKnownClient(clientId))
@@ -177,7 +179,7 @@ namespace Polhem.OAuth2.FakeProvider
                 {
                     ["error"] = "access_denied",
                     ["error_description"] = "The user declined.",
-                    ["state"] = state
+                    [StateParameter] = state
                 }));
             }
 
@@ -186,7 +188,7 @@ namespace Polhem.OAuth2.FakeProvider
             return Results.Redirect(QueryHelpers.AddQueryString(redirectUri, new Dictionary<string, string?>
             {
                 ["code"] = code,
-                ["state"] = state
+                [StateParameter] = state
             }));
         }
 
@@ -204,14 +206,14 @@ namespace Polhem.OAuth2.FakeProvider
             var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
             // GitHub's OAuth Apps issue no refresh token, so a refresh grant fails like any unknown grant.
             var fields = Redeem(form, refreshable: false) is { } error
-                ? new Dictionary<string, string> { ["error"] = error, ["error_description"] = "The fake provider refused the request." }
-                : new Dictionary<string, string> { ["access_token"] = AccessToken, ["token_type"] = "bearer", ["scope"] = "read:user,user:email" };
+                ? new Dictionary<string, string?> { ["error"] = error, ["error_description"] = "The fake provider refused the request." }
+                : new Dictionary<string, string?> { ["access_token"] = AccessToken, ["token_type"] = "bearer", ["scope"] = "read:user,user:email" };
 
             // Status 200 in both cases, as GitHub answers.
             bool json = request.Headers.Accept.Any(value => value is not null && value.Contains("application/json", StringComparison.OrdinalIgnoreCase));
             return json
                 ? Results.Json(fields)
-                : Results.Text(QueryString.Create(fields!).ToUriComponent().TrimStart('?'), "application/x-www-form-urlencoded");
+                : Results.Text(QueryString.Create(fields).ToUriComponent().TrimStart('?'), "application/x-www-form-urlencoded");
         }
 
         // Returns the error code of the token request, or null when it succeeds.
@@ -228,22 +230,25 @@ namespace Polhem.OAuth2.FakeProvider
             // A code is used once, whatever the outcome, as RFC 6749 requires.
             if (!_codes.TryRemove(form["code"].ToString(), out var issued))
                 return InvalidGrant;
-            if (form["client_id"] != issued.ClientId || form["redirect_uri"] != issued.RedirectUri)
+            if (form[ClientIdParameter] != issued.ClientId || form["redirect_uri"] != issued.RedirectUri)
                 return InvalidGrant;
 
+            return AuthenticateCodeExchange(form, issued);
+        }
+
+        // A code issued with a challenge is redeemed with its verifier; any other code needs the web client's secret.
+        private string? AuthenticateCodeExchange(IFormCollection form, FakeAuthorizationCode issued)
+        {
             if (issued.CodeChallenge is { } challenge)
             {
                 string verifier = form["code_verifier"].ToString();
                 string expected = WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.ASCII.GetBytes(verifier)));
-                if (verifier.Length == 0 || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(challenge)))
-                    return InvalidGrant;
-            }
-            else if (issued.ClientId != _webClientId || form["client_secret"] != _webClientSecret)
-            {
-                return "invalid_client";
+                return verifier.Length == 0 || !CryptographicOperations.FixedTimeEquals(Encoding.ASCII.GetBytes(expected), Encoding.ASCII.GetBytes(challenge))
+                    ? InvalidGrant
+                    : null;
             }
 
-            return null;
+            return issued.ClientId != _webClientId || form["client_secret"] != _webClientSecret ? "invalid_client" : null;
         }
 
         private static IResult GetUser(HttpRequest request)

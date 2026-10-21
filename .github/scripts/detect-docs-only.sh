@@ -15,15 +15,15 @@
 set -euo pipefail
 
 build=true
-if [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] && git rev-parse -q --verify 'HEAD^2' > /dev/null; then
+if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]] && git rev-parse -q --verify 'HEAD^2' > /dev/null; then
   files=$(git diff --name-only --no-renames 'HEAD^1' HEAD)
   echo "Changed files:"
   printf '%s\n' "$files"
-  if [ -n "$files" ] && ! printf '%s\n' "$files" | grep -qv '\.md$'; then
+  if [[ -n "$files" ]] && ! printf '%s\n' "$files" | grep -qv '\.md$'; then
     build=false
   fi
 fi
 echo "build=$build" >> "$GITHUB_OUTPUT"
-if [ "$build" = false ]; then
+if [[ "$build" == false ]]; then
   echo "Only .md files changed: skipping this job's build steps (docs-check.yml checks the documents)"
 fi

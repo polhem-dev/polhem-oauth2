@@ -29,11 +29,11 @@ namespace OAuthAspNetCore.Controllers
                 : BadRequest("The client, the redirect URI or the code challenge is not valid.");
         }
 
-        // Sign in with Apple returns with a form POST from its own site, which carries no antiforgery token; the state
-        // that the manager compares protects the callback instead.
+        // Sign in with Apple returns with a form POST from its own site, which carries no antiforgery token. The sample
+        // registers no antiforgery filter, so the POST reaches this action, and the state that the manager compares
+        // protects the callback. An application that validates antiforgery tokens globally must exempt this action.
         [HttpGet("callback")]
         [HttpPost("callback")]
-        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> Callback()
         {
             var result = await _oauth2Manager.CompleteAuthorizationAsync(HttpContext, HttpContext.RequestAborted);
