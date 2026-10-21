@@ -10,7 +10,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 > 從 2.0.0 起，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。參照這些套件時，請使用限制在一個 minor 版本內的範圍，
 > 例如 `[1.4,1.5)`，而不是 `1.*`。這項政策與它的理由見 [ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.zh-TW.md)。
 
-## [Unreleased]
+## [1.4.0] - 2026-10-21
 
 詳細內容與遷移步驟：[docs/zh-TW/changelogs/1.4.0.md](docs/zh-TW/changelogs/1.4.0.md)
 
@@ -64,7 +64,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - **破壞性：** 使用者資訊裡值為 JSON null 的欄位是 `null`，Microsoft Entra ID 的使用者識別碼改讀 `sub`。
 - `LoopbackOAuth2Client` 讓桌面與主控台應用程式透過系統瀏覽器登入，每個 client 都會回傳 token，也可以更新 token。
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
+[1.4.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.4.0
 [1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0
 [1.2.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.2.0
 [1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0

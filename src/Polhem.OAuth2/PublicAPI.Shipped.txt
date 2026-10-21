@@ -3,16 +3,26 @@ Polhem.OAuth2.AppOAuth2Client
 Polhem.OAuth2.AppOAuth2Client.AppOAuth2Client(Polhem.OAuth2.OAuth2Options! options, System.Func<System.Uri!, System.Uri!, System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Uri!>!>! authenticate, System.Net.Http.HttpClient? httpClient = null) -> void
 Polhem.OAuth2.AppOAuth2Client.RefreshTokenAsync(string! refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.TokenResponse!>!
 Polhem.OAuth2.AppOAuth2Client.SignInAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+Polhem.OAuth2.AppleOAuth2Options
+Polhem.OAuth2.AppleOAuth2Options.AppleOAuth2Options() -> void
+Polhem.OAuth2.AppleOAuth2Options.KeyId.get -> string!
+Polhem.OAuth2.AppleOAuth2Options.KeyId.set -> void
+Polhem.OAuth2.AppleOAuth2Options.PrivateKey.get -> string!
+Polhem.OAuth2.AppleOAuth2Options.PrivateKey.set -> void
+Polhem.OAuth2.AppleOAuth2Options.TeamId.get -> string!
+Polhem.OAuth2.AppleOAuth2Options.TeamId.set -> void
 Polhem.OAuth2.Auth0OAuth2Options
 Polhem.OAuth2.Auth0OAuth2Options.Auth0OAuth2Options() -> void
 Polhem.OAuth2.Auth0OAuth2Options.Domain.get -> string!
 Polhem.OAuth2.Auth0OAuth2Options.Domain.set -> void
 Polhem.OAuth2.AuthorizationCallback
 Polhem.OAuth2.AuthorizationCallback.AuthorizationCallback(string? code, string? state, string? error, string? errorDescription) -> void
+Polhem.OAuth2.AuthorizationCallback.AuthorizationCallback(string? code, string? state, string? error, string? errorDescription, string? userJson) -> void
 Polhem.OAuth2.AuthorizationCallback.Code.get -> string?
 Polhem.OAuth2.AuthorizationCallback.Error.get -> string?
 Polhem.OAuth2.AuthorizationCallback.ErrorDescription.get -> string?
 Polhem.OAuth2.AuthorizationCallback.State.get -> string?
+Polhem.OAuth2.AuthorizationCallback.UserJson.get -> string?
 Polhem.OAuth2.AuthorizationRequest
 Polhem.OAuth2.AuthorizationRequest.Pending.get -> Polhem.OAuth2.PendingAuthorization!
 Polhem.OAuth2.AuthorizationRequest.Url.get -> string!
@@ -31,6 +41,8 @@ Polhem.OAuth2.ClientAuthenticationMethod.ClientSecretBasic = 1 -> Polhem.OAuth2.
 Polhem.OAuth2.ClientAuthenticationMethod.ClientSecretPost = 0 -> Polhem.OAuth2.ClientAuthenticationMethod
 Polhem.OAuth2.FacebookOAuth2Options
 Polhem.OAuth2.FacebookOAuth2Options.FacebookOAuth2Options() -> void
+Polhem.OAuth2.GitHubOAuth2Options
+Polhem.OAuth2.GitHubOAuth2Options.GitHubOAuth2Options() -> void
 Polhem.OAuth2.GoogleOAuth2Options
 Polhem.OAuth2.GoogleOAuth2Options.GoogleOAuth2Options() -> void
 Polhem.OAuth2.LineOAuth2Options
@@ -46,9 +58,11 @@ Polhem.OAuth2.LoopbackOAuth2Client.Timeout.set -> void
 Polhem.OAuth2.OAuth2Client
 Polhem.OAuth2.OAuth2Client.CompleteAuthorizationAsync(Polhem.OAuth2.AuthorizationCallback! callback, Polhem.OAuth2.PendingAuthorization! pending, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
 Polhem.OAuth2.OAuth2Client.CreateAuthorizationRequest() -> Polhem.OAuth2.AuthorizationRequest!
+Polhem.OAuth2.OAuth2Client.GetUserInfoAsync(string! accessToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
 Polhem.OAuth2.OAuth2Client.OAuth2Client(Polhem.OAuth2.OAuth2Options! options, System.Net.Http.HttpClient? httpClient = null) -> void
 Polhem.OAuth2.OAuth2Client.ProviderName.get -> string!
 Polhem.OAuth2.OAuth2Client.RefreshTokenAsync(string! refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.TokenResponse!>!
+Polhem.OAuth2.OAuth2Client.UsesFormPostResponse.get -> bool
 Polhem.OAuth2.OAuth2Exception
 Polhem.OAuth2.OAuth2Exception.Error.get -> string?
 Polhem.OAuth2.OAuth2Exception.ErrorDescription.get -> string?
@@ -57,6 +71,8 @@ Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message, string! error, st
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message) -> void
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message, System.Exception? innerException) -> void
 Polhem.OAuth2.OAuth2Options
+Polhem.OAuth2.OAuth2Options.AcceptedClientIds.get -> string![]!
+Polhem.OAuth2.OAuth2Options.AcceptedClientIds.set -> void
 Polhem.OAuth2.OAuth2Options.AuthorizationEndpoint.get -> string!
 Polhem.OAuth2.OAuth2Options.AuthorizationEndpoint.set -> void
 Polhem.OAuth2.OAuth2Options.ClientAuthentication.get -> Polhem.OAuth2.ClientAuthenticationMethod
@@ -75,6 +91,12 @@ Polhem.OAuth2.OAuth2Options.UsePkce.get -> bool
 Polhem.OAuth2.OAuth2Options.UsePkce.set -> void
 Polhem.OAuth2.OAuth2Options.UserInfoEndpoint.get -> string!
 Polhem.OAuth2.OAuth2Options.UserInfoEndpoint.set -> void
+Polhem.OAuth2.OidcOAuth2Options
+Polhem.OAuth2.OidcOAuth2Options.Issuer.get -> string!
+Polhem.OAuth2.OidcOAuth2Options.Issuer.set -> void
+Polhem.OAuth2.OidcOAuth2Options.OidcOAuth2Options() -> void
+Polhem.OAuth2.OidcOAuth2Options.ProviderName.get -> string!
+Polhem.OAuth2.OidcOAuth2Options.ProviderName.set -> void
 Polhem.OAuth2.OktaOAuth2Options
 Polhem.OAuth2.OktaOAuth2Options.AuthorizationServerId.get -> string!
 Polhem.OAuth2.OktaOAuth2Options.AuthorizationServerId.set -> void
@@ -105,3 +127,4 @@ static Polhem.OAuth2.AuthorizationResult.Failure(System.Exception! exception) ->
 static Polhem.OAuth2.AuthorizationResult.Success(string! providerName, Polhem.OAuth2.TokenResponse! token, Polhem.OAuth2.UserInfo! userInfo) -> Polhem.OAuth2.AuthorizationResult!
 static Polhem.OAuth2.OAuth2Client.Create(Polhem.OAuth2.OAuth2Options! options, System.Func<System.Net.Http.HttpClient!>! httpClientFactory) -> Polhem.OAuth2.OAuth2Client!
 static Polhem.OAuth2.OAuth2Options.IsAppRedirectUri(string? redirectUri) -> bool
+static Polhem.OAuth2.OidcOAuth2Options.FromDiscoveryAsync(string! authority, System.Net.Http.HttpClient? httpClient = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.OidcOAuth2Options!>!
