@@ -53,10 +53,11 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Polhem.OAuth2.AspNet")]
         public void Readmes_StatedTargetFrameworks_MatchProjects(string package)
         {
-            string project = ReadRepositoryFile($"src/{package}/{package}.csproj");
-            var match = System.Text.RegularExpressions.Regex.Match(project, "<TargetFrameworks?>([^<]+)</TargetFrameworks?>");
-            Assert.True(match.Success, $"{package}.csproj names no target framework.");
-            string[] frameworks = match.Groups[1].Value.Split(';');
+            var project = System.Xml.Linq.XDocument.Parse(ReadRepositoryFile($"src/{package}/{package}.csproj"));
+            string? names = project.Descendants()
+                .FirstOrDefault(element => element.Name.LocalName is "TargetFrameworks" or "TargetFramework")?.Value;
+            Assert.False(string.IsNullOrEmpty(names), $"{package}.csproj names no target framework.");
+            string[] frameworks = names!.Split(';');
             string link = $"[{package}](https://www.nuget.org/packages/{package})";
 
             Assert.Contains($"{link} | {string.Join(", ", frameworks)} |", ReadRepositoryFile("README.md"), StringComparison.Ordinal);

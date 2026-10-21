@@ -42,9 +42,10 @@ namespace Polhem.OAuth2
         /// <returns>The identity, or null when the options are not <see cref="OidcOAuth2Options"/>.</returns>
         public static OidcClientIdentity? From(string clientName, OAuth2Options options)
         {
-            return options is OidcOAuth2Options oidc
-                ? new OidcClientIdentity(clientName, oidc.ProviderName, string.IsNullOrEmpty(oidc.Issuer) ? oidc.TokenEndpoint : oidc.Issuer)
-                : null;
+            if (options is not OidcOAuth2Options oidc)
+                return null;
+            string issuer = string.IsNullOrEmpty(oidc.Issuer) ? oidc.TokenEndpoint : oidc.Issuer;
+            return new OidcClientIdentity(clientName, oidc.ProviderName, issuer);
         }
 
         /// <summary>
