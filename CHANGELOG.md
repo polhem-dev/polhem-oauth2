@@ -12,7 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 > from 2.0.0. Reference the packages with a range that stays within one minor version, for example `[1.4,1.5)`, rather
 > than `1.*`. The policy and its reasons are in [ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.md).
 
-## [Unreleased]
+## [1.4.0] - 2026-10-21
 
 Details and migration steps: [docs/en/changelogs/1.4.0.md](docs/en/changelogs/1.4.0.md)
 
@@ -66,7 +66,7 @@ Details and migration steps: [docs/en/changelogs/1.0.0.md](docs/en/changelogs/1.
 - **Breaking:** A JSON null field of the user information is `null`, and the Microsoft Entra ID user identifier is read from `sub`.
 - `LoopbackOAuth2Client` signs in from desktop and console applications through the system browser, and every client returns its tokens and can refresh them.
 
-[Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
+[1.4.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.4.0
 [1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0
 [1.2.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.2.0
 [1.1.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.1.0
