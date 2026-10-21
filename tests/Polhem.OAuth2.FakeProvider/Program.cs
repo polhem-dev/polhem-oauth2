@@ -36,7 +36,8 @@ builder.Services.AddOAuth2Client(FakeProviderValues.AppleRelayClientName, new Ap
     AuthorizationEndpoint = origin + FakeProviderValues.ApplePath + "/auth/authorize",
     TokenEndpoint = origin + FakeProviderValues.ApplePath + "/auth/token"
 }, httpClient);
-// The GitHub mode needs the client secret for every code exchange, so an application signs in to it through the relay.
+// An application signs in to GitHub only through the relay, because GitHub needs the client secret for every code exchange.
+// The fake provider accepts the PKCE verifier of the relay instead, so this path does not test that requirement.
 builder.Services.AddOAuth2Client(FakeProviderValues.GitHubRelayClientName, new GitHubOAuth2Options
 {
     ClientId = WebClientId,

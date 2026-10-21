@@ -88,8 +88,8 @@ namespace Polhem.OAuth2
 
         /// <summary>
         /// Gets a value indicating whether <see cref="AppOAuth2Client"/> can sign in with the provider directly. A provider
-        /// that requires the client secret for every code exchange returns false, because a mobile application cannot keep
-        /// the secret, while a desktop application may choose to. When <see cref="SupportsPublicClient"/> is false, the
+        /// whose code exchange fails without the client secret for every client type, such as GitHub, returns false, because
+        /// a mobile application cannot keep the secret, while a desktop application may choose to. When <see cref="SupportsPublicClient"/> is false, the
         /// application client is refused before this value is read.
         /// </summary>
         public virtual bool SupportsAppClient => SupportsPublicClient;

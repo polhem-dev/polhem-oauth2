@@ -114,8 +114,10 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         /// <remarks>
-        /// The email address is left out when <c>email_verified</c> is false, so that an address the provider has not
-        /// verified cannot link the sign-in to an account of its owner. An address without <c>email_verified</c> is kept.
+        /// The email address is not returned in <see cref="UserInfo.Email"/> when <c>email_verified</c> is false, so that an
+        /// address the provider has not verified is not mistaken for one it has. The claim is read from the same JSON as the
+        /// address, the user information or the ID token, and an address without it is kept. <see cref="UserInfo.RawJson"/>
+        /// still holds the address.
         /// </remarks>
         protected sealed override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token)
         {
