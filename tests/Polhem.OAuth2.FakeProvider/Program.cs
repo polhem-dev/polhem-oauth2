@@ -6,6 +6,7 @@ using Polhem.OAuth2.FakeProvider;
 // The CA certificate is written once the server listens, so a script can wait for the file before it starts the tests.
 const string WebClientId = "fake-web";
 const string WebClientSecret = "fake-web-secret";
+const string CallbackPath = "/auth/callback";
 
 var builder = WebApplication.CreateBuilder(args);
 int port = builder.Configuration.GetValue("port", 7443);
@@ -24,14 +25,14 @@ builder.Services.AddOAuth2Client(FakeProviderValues.RelayClientName, new Auth0OA
     Domain = $"localhost:{port}",
     ClientId = WebClientId,
     ClientSecret = WebClientSecret,
-    RedirectUri = origin + "/auth/callback"
+    RedirectUri = origin + CallbackPath
 }, httpClient);
 // The Sign in with Apple mode keeps the issuer of Apple's ID tokens and only moves the endpoints to this process.
 builder.Services.AddOAuth2Client(FakeProviderValues.AppleRelayClientName, new AppleOAuth2Options
 {
     ClientId = WebClientId,
     ClientSecret = WebClientSecret,
-    RedirectUri = origin + "/auth/callback",
+    RedirectUri = origin + CallbackPath,
     AuthorizationEndpoint = origin + FakeProviderValues.ApplePath + "/auth/authorize",
     TokenEndpoint = origin + FakeProviderValues.ApplePath + "/auth/token"
 }, httpClient);
@@ -40,7 +41,7 @@ builder.Services.AddOAuth2Client(FakeProviderValues.GitHubRelayClientName, new G
 {
     ClientId = WebClientId,
     ClientSecret = WebClientSecret,
-    RedirectUri = origin + "/auth/callback",
+    RedirectUri = origin + CallbackPath,
     AuthorizationEndpoint = origin + "/github/login/oauth/authorize",
     TokenEndpoint = origin + "/github/login/oauth/access_token",
     UserInfoEndpoint = origin + "/github/user"
@@ -67,7 +68,7 @@ app.MapGet("/auth/app/{clientName}", (HttpContext context, OAuth2Manager manager
 });
 
 // GET for the providers that redirect back, and POST for the Sign in with Apple mode, which returns with a form POST.
-app.MapMethods("/auth/callback", [HttpMethods.Get, HttpMethods.Post], async (HttpContext context, OAuth2Manager manager) =>
+app.MapMethods(CallbackPath, [HttpMethods.Get, HttpMethods.Post], async (HttpContext context, OAuth2Manager manager) =>
 {
     var result = await manager.CompleteAuthorizationAsync(context, context.RequestAborted);
     return await manager.RedirectToAppAsync(context, result, context.RequestAborted)
