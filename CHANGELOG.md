@@ -21,6 +21,7 @@ Details and migration steps: [docs/en/changelogs/1.4.0.md](docs/en/changelogs/1.
 - `OidcOAuth2Options` signs in with any other OpenID Connect provider, with endpoints set by hand or read from its discovery document.
 - `AppleOAuth2Options` signs a web application in with Apple, and the web managers accept the form POST callback it returns with.
 - **Breaking:** Google, Auth0, Okta and Microsoft Entra ID check the ID token of a sign-in against the client and the user information.
+- **Breaking:** An OpenID Connect provider leaves `UserInfo.Email` null when its `email_verified` claim is false.
 - Requests to providers name the library in `User-Agent` and ask the token endpoint for JSON, and a token error sent with status 200 carries the provider's error code.
 
 ## [1.3.0] - 2026-09-26

@@ -19,6 +19,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - `OidcOAuth2Options` 可以登入其他任何 OpenID Connect provider，端點可以手動設定，也可以從 discovery 文件讀取。
 - `AppleOAuth2Options` 讓網頁應用程式以 Apple 登入，網頁套件的 manager 也接受它以 form POST 送回的回呼。
 - **破壞性：** Google、Auth0、Okta 與 Microsoft Entra ID 會以 client 與使用者資訊檢查登入取得的 ID token。
+- **破壞性：** OpenID Connect provider 的 `email_verified` claim 為 false 時，`UserInfo.Email` 是 null。
 - 送往 provider 的請求會在 `User-Agent` 標明函式庫、向 token 端點要求 JSON，以狀態碼 200 回傳的 token 錯誤也會帶著 provider 的錯誤代碼。
 
 ## [1.3.0] - 2026-09-26
