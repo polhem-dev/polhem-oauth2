@@ -5,7 +5,8 @@
 Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變更，每個版本只列幾項重點。每個版本都連到
 [`docs/zh-TW/changelogs/`](docs/zh-TW/changelogs/) 下的發佈說明，那裡完整描述每一項變更，並說明每項破壞性變更影響誰、
 如何遷移。破壞性變更在這裡以 **破壞性：** 標示。格式依循 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.1.0/)，
-版號依循[語意化版本](https://semver.org/lang/zh-TW/)。
+版號依循[語意化版本](https://semver.org/lang/zh-TW/)。1.2.0 與 1.3.0 以 minor 版發佈，卻含有破壞性變更，
+這是改寫本紀錄時才辨識出來的；自 1.4.0 起，破壞性變更會提升主版號。
 
 ## [Unreleased]
 
@@ -58,7 +59,7 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 - **破壞性：** 網頁套件把每次登入保存在受保護的 cookie，不再使用 session state，方法也改名。
 - **破壞性：** PKCE 預設開啟，建立 client 時會檢查 options，端點必須使用 https，非預期的例外會往外拋。
 - **破壞性：** 使用者資訊裡值為 JSON null 的欄位是 `null`，Microsoft Entra ID 的使用者識別碼改讀 `sub`。
-- `LoopbackOAuth2Client` 讓桌面與主控台應用程式透過系統瀏覽器登入，每個 client 都會回傳並更新 token。
+- `LoopbackOAuth2Client` 讓桌面與主控台應用程式透過系統瀏覽器登入，每個 client 都會回傳 token，也可以更新 token。
 
 [Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0

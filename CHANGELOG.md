@@ -6,7 +6,8 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 version links to its release notes under [`docs/en/changelogs/`](docs/en/changelogs/), which describe every change in
 full and, for each breaking change, who it affects and how to migrate. Breaking changes are marked **Breaking:** here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
-[Semantic Versioning](https://semver.org/).
+[Semantic Versioning](https://semver.org/). 1.2.0 and 1.3.0 were released as minor versions and contain breaking changes,
+which were identified when this changelog was rewritten; from 1.4.0 on, a breaking change raises the major version.
 
 ## [Unreleased]
 
@@ -59,7 +60,7 @@ Details and migration steps: [docs/en/changelogs/1.0.0.md](docs/en/changelogs/1.
 - **Breaking:** The web packages keep each sign-in in a protected cookie instead of session state, and their methods are renamed.
 - **Breaking:** PKCE is on by default, options are checked when a client is created, endpoints must use https, and unexpected exceptions are thrown.
 - **Breaking:** A JSON null field of the user information is `null`, and the Microsoft Entra ID user identifier is read from `sub`.
-- `LoopbackOAuth2Client` signs in from desktop and console applications through the system browser, and every client returns its tokens and refreshes them.
+- `LoopbackOAuth2Client` signs in from desktop and console applications through the system browser, and every client returns its tokens and can refresh them.
 
 [Unreleased]: https://github.com/polhem-dev/polhem-oauth2/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/polhem-dev/polhem-oauth2/releases/tag/v1.3.0
