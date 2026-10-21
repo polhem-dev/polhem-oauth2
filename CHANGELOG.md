@@ -189,7 +189,7 @@ Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetC
 
 The first release under the Polhem name. It continues [Bee.OAuth2](https://github.com/jeff377/bee-oauth2); the changes
 below are relative to the last Bee.OAuth2 release. How to move an application over is described in
-[Migrating from Bee.OAuth2](README.md#migrating-from-beeoauth2).
+[Migrating from Bee.OAuth2](docs/en/guides/migrating-from-bee-oauth2.md).
 
 ### Added
 
