@@ -29,7 +29,7 @@ builder.Services.AddOAuth2Client("GitLab", gitlab);
 
 ## 桌面與主控台應用程式
 
-`LoopbackOAuth2Client` 以 public client 登入，不帶 client secret，所以 provider 必須接受搭配 PKCE 的 public client。
+`LoopbackOAuth2Client` 以公開 client 登入，不帶 client secret，所以 provider 必須接受搭配 PKCE 的公開 client。
 Google 拒絕不送 client secret 的桌面 client；登入 Google 請用 [`GoogleOAuth2Options`](google.md)。
 
 ## .NET MAUI 應用程式

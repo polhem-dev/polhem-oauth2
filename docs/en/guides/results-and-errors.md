@@ -10,7 +10,8 @@
   under "Tokens and users": [Google](../providers/google.md#tokens-and-users),
   [Facebook](../providers/facebook.md#tokens-and-users), [LINE](../providers/line.md#tokens-and-users),
   [Microsoft Entra ID](../providers/microsoft-entra-id.md#tokens-and-users), [Auth0](../providers/auth0.md#tokens-and-users),
-  [Okta](../providers/okta.md#tokens-and-users), [GitHub](../providers/github.md#tokens-and-users).
+  [Okta](../providers/okta.md#tokens-and-users), [GitHub](../providers/github.md#tokens-and-users),
+  [Sign in with Apple](../providers/apple.md#tokens-and-users).
 - `Exception` holds only the failures a sign-in is expected to produce, such as a failed HTTP request, a state that does
   not match, or an error from the provider. Configuration and programming errors, such as an unregistered client name, are
   thrown. See [ADR-003](../../adr/adr-003-exception-semantics.md).

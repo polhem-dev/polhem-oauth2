@@ -5,7 +5,7 @@
 Android、iOS 或 Mac Catalyst 上的應用程式有兩種登入方式（[ADR-006](../../adr/adr-006-app-sign-in.zh-TW.md)）：
 
 - **直連**：給沒有自己後端的應用程式。`AppOAuth2Client` 以 `WebAuthenticator` 開啟登入頁，provider 導回應用程式的 URI scheme，
-  client 再以 PKCE、不帶 client secret 換取授權碼。
+  client 再以 PKCE、不帶 client secret 用授權碼換取 token。
 - **經由後端中轉**：給要登入自己 ASP.NET Core 後端的應用程式。後端以 web client 身分登入，交給應用程式一個只能用一次的
   code，應用程式再以它兌換使用者資訊。Google 與 LINE 不接受直接導回 Android 應用程式，所以在 Android 上必須用這個方式。
   GitHub 每次換 token 都要求 client secret，Sign in with Apple 則是每個 token 請求都要求，所以應用程式只能用這個方式登入它們。

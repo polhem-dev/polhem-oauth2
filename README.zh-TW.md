@@ -127,7 +127,7 @@ google.RedirectUri = "https://localhost:7032/auth/callback";
 builder.Services.AddOAuth2Client("Google", google);
 ```
 
-上面的 controller 不用改。要登入其他 OpenID Connect provider（例如 Keycloak、GitLab 或 Okta）時，把
+上面的 controller 不用改。要登入其他 OpenID Connect provider（例如 Keycloak、GitLab 或 AWS Cognito）時，把
 `https://accounts.google.com` 換成那家 provider 的網址，並給它一個自己的 `ProviderName`。
 
 這個寫法用在網頁應用程式。桌面應用程式登入 Google 請用 `GoogleOAuth2Options`：Google 的 Desktop app client

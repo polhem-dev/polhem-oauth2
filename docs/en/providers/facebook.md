@@ -25,7 +25,7 @@ are described in [Options](../guides/options.md).
 - Applications sign in directly on iOS, Mac Catalyst and Android with the redirect URI `fb<app id>://authorize`, registered
   as an iOS platform with the bundle ID; no Android platform was needed in the tests.
 - Facebook redirects to that URI with a trailing slash, and the library adds the slash to the token request.
-- Facebook refused a plain custom scheme, such as `com.example.app:/oauth2redirect`, on every platform tested.
+- Facebook refused a plain custom scheme on every platform tested.
 
 See [.NET MAUI applications](../guides/maui.md) and the tests in [ADR-006](../../adr/adr-006-app-sign-in.md).
 
@@ -36,7 +36,7 @@ or [ASP.NET (System.Web)](../guides/aspnet-system-web.md).
 
 ## Tokens and users
 
-- Facebook never issues a refresh token.
+- Facebook issued no refresh token in the test of 2026-09-26 ([ADR-004](../../adr/adr-004-system-browser-loopback.md)).
 - `UserId` is different for each app the user signs in to.
 
 ## Errors

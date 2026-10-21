@@ -16,17 +16,16 @@ provider are described in [Options](../guides/options.md).
 | LINE Login channel, Callback URL | `http://localhost:53682/callback` | Must match |
 
 - This registration was tested on 2026-09-14 ([ADR-004](../../adr/adr-004-system-browser-loopback.md)).
-- The channel must include the Mobile app type: a channel of the Web app type alone requires the client secret, which a
-  public client does not send.
-- `LoopbackOAuth2Client` sends the client secret to LINE when it is set, because a channel that serves web apps only refused
-  a refresh without it in the test of 2026-09-26.
+- Include the Mobile app type in the channel. In the test of 2026-09-26, a channel of the Web app type alone exchanged the
+  code without the client secret but refused a refresh without it, so `LoopbackOAuth2Client` sends the secret to LINE when it
+  is set.
 
 ## .NET MAUI applications
 
 - iOS and Mac Catalyst sign in directly with the redirect URI `line3rdp.<bundle id>://auth`, registered as the iOS bundle ID of
   the channel.
 - Android signs in through the back end. LINE refused a redirect to an Android application ("Invalid redirect custom scheme").
-- LINE refused a plain custom scheme, such as `com.example.app:/oauth2redirect`, on every platform tested.
+- LINE refused a plain custom scheme on every platform tested.
 
 See [.NET MAUI applications](../guides/maui.md) and the tests in [ADR-006](../../adr/adr-006-app-sign-in.md).
 
@@ -38,7 +37,7 @@ callback URLs.
 
 ## Tokens and users
 
-- LINE always issues a refresh token.
+- LINE issued a refresh token in the test of 2026-09-26 ([ADR-004](../../adr/adr-004-system-browser-loopback.md)).
 - `UserId` is the same in every channel of one provider.
 - LINE returns the email address only in the ID token, and only when the channel may read it and the user agreed. The
   library reads it from the ID token that the token endpoint returned, and checks that the token was issued to the client,

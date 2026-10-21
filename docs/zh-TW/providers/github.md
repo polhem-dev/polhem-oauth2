@@ -6,7 +6,7 @@
 
 ## Options
 
-- `ClientId`、`ClientSecret` 與 `RedirectUri` 為必填：GitHub 每次換 token 都要求 client secret。所有 provider 共用的
+- `ClientId` 與 `RedirectUri` 為必填。`ClientSecret` 也要設定：GitHub 每次換 token 都要求 client secret。所有 provider 共用的
   options，見[所有 provider 共用的 Options](../guides/options.md)。
 - options 要求的 scope 為 `read:user user:email`。GitHub App 不看 scope，權限取自 App 的設定：請給它唯讀的
   Email addresses 權限，否則使用者不公開 email 時，使用者資訊裡就沒有 email。

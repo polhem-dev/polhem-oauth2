@@ -48,6 +48,8 @@ these options for the same reasons as the loopback client.
 - `UserId` and `Email` come from the ID token. The name comes only with the first sign-in of a user, so store it then;
   `UserName` is null afterwards.
 - `Email` can be an address of Apple's private email relay.
+- In the test of ADR-009, Apple issued a refresh token, and a refresh returned a new access token and ID token without a new
+  refresh token.
 
 ## Apps with a separate back end
 

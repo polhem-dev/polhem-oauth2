@@ -18,7 +18,7 @@ builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
 });
 ```
 
-- 套件以 `PrivateKey` 簽署 client secret，並在到期前重簽。也可以改把預先簽好的 client secret 放在 `ClientSecret`，
+- 函式庫以 `PrivateKey` 簽署 client secret，並在到期前重簽。也可以改把預先簽好的 client secret 放在 `ClientSecret`，
   這時由你自己更換。`.p8` 檔要像 secret 一樣，不放進版本控制。
 - Apple 拒絕 localhost 與 IP 的回呼網址，所以開發時回呼需要一個公開的 https 主機，例如 tunnel。
 - 所有 provider 共用的 options，見[所有 provider 共用的 Options](../guides/options.md)。
@@ -45,6 +45,7 @@ builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
 
 - `UserId` 與 `Email` 來自 ID token。姓名只在使用者第一次登入時送來，要在那時保存；之後 `UserName` 為 null。
 - `Email` 可能是 Apple 私密轉寄服務的地址。
+- ADR-009 的實測中，Apple 有發 refresh token；refresh 時回傳新的 access token 與 ID token，但沒有新的 refresh token。
 
 ## 前後端分離的應用程式
 

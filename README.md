@@ -130,7 +130,7 @@ google.RedirectUri = "https://localhost:7032/auth/callback";
 builder.Services.AddOAuth2Client("Google", google);
 ```
 
-The controller above works unchanged. To sign in with another OpenID Connect provider, such as Keycloak, GitLab or Okta,
+The controller above works unchanged. To sign in with another OpenID Connect provider, such as Keycloak, GitLab or AWS Cognito,
 pass that provider's address instead of `https://accounts.google.com`, and give it a `ProviderName` of its own.
 
 Use this in web applications. A desktop application signs in to Google with `GoogleOAuth2Options`: Google refuses the

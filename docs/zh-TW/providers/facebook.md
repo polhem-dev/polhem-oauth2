@@ -24,7 +24,7 @@
 - 應用程式在 iOS、Mac Catalyst 與 Android 上以回呼網址 `fb<app id>://authorize` 直連登入，後台登記為填了 bundle ID 的
   iOS 平台；實測時不需要登記 Android 平台。
 - Facebook 導回這個網址時多一個結尾斜線，函式庫會在 token 請求補上這個斜線。
-- Facebook 在所有測過的平台上，都拒絕一般的自訂 scheme，例如 `com.example.app:/oauth2redirect`。
+- Facebook 在所有測過的平台上，都拒絕一般的自訂 scheme。
 
 見[.NET MAUI 應用程式](../guides/maui.md)，以及 [ADR-006](../../adr/adr-006-app-sign-in.zh-TW.md) 的實測。
 
@@ -35,7 +35,7 @@
 
 ## Token 與使用者
 
-- Facebook 從不發 refresh token。
+- 2026-09-26 的實測中，Facebook 沒有發 refresh token（[ADR-004](../../adr/adr-004-system-browser-loopback.zh-TW.md)）。
 - 使用者登入的每個 app，`UserId` 都不同。
 
 ## 錯誤

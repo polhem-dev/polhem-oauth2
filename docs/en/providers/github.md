@@ -7,7 +7,7 @@
 
 ## Options
 
-- `ClientId`, `ClientSecret` and `RedirectUri` are required: GitHub requires the client secret for every code exchange. The
+- `ClientId` and `RedirectUri` are required. Set `ClientSecret` as well: GitHub requires it for every code exchange. The
   options shared by every provider are described in [Options](../guides/options.md).
 - The options ask for the scopes `read:user user:email`. A GitHub App ignores scopes and takes its permissions from its
   settings: give it the read-only Email addresses permission, or the user information has no email address when the user

@@ -9,7 +9,7 @@
   [Google](../providers/google.md#token-與使用者)、[Facebook](../providers/facebook.md#token-與使用者)、
   [LINE](../providers/line.md#token-與使用者)、[Microsoft Entra ID](../providers/microsoft-entra-id.md#token-與使用者)、
   [Auth0](../providers/auth0.md#token-與使用者)、[Okta](../providers/okta.md#token-與使用者)、
-  [GitHub](../providers/github.md#token-與使用者)。
+  [GitHub](../providers/github.md#token-與使用者)、[Sign in with Apple](../providers/apple.md#token-與使用者)。
 - `Exception` 只收納登入預期會發生的失敗，例如 HTTP 請求失敗、state 不相符、provider 回傳錯誤。
   設定或程式錯誤（例如 client 名稱沒有註冊）會往外拋。見 [ADR-003](../../adr/adr-003-exception-semantics.zh-TW.md)。
 - provider 回傳的錯誤是 `OAuth2Exception`：`Error` 是錯誤代碼，例如 `access_denied`；`ErrorDescription` 是 provider 提供的說明。
