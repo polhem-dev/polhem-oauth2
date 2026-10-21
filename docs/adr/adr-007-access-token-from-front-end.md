@@ -8,7 +8,8 @@ Accepted (2026-10-15). Implemented on 2026-10-15 in pull requests
 [#9](https://github.com/polhem-dev/polhem-oauth2/pull/9), [#10](https://github.com/polhem-dev/polhem-oauth2/pull/10),
 [#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) and [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18). The checks were tested with
 tokens that are not valid on 2026-10-15, and with real accounts and the tokens of other clients on 2026-10-16, as "Test results"
-records. ADR-008 added `OidcOAuth2Options` to the providers that are not supported on 2026-10-20.
+records. ADR-008 added `OidcOAuth2Options` to the providers that are not supported on 2026-10-20, and ADR-009 added Sign in
+with Apple the same day.
 
 ## Context
 
@@ -63,6 +64,8 @@ Connect sign-in for users.
     each token.
 - `OidcOAuth2Options`, which ADR-008 added for any other OpenID Connect provider, is not supported either, for the reason of
   Okta.
+- Sign in with Apple, which ADR-009 added, is not supported either: Apple has no endpoint that names the client of an access
+  token, and the ID token of the sign-in names it.
 - Facebook and GitHub need `ClientSecret`; without one, `GetUserInfoAsync` throws `InvalidOperationException`. Both check
   only tokens issued to the application whose credentials authenticate the check, so `AcceptedClientIds` accepts nothing more
   there, and the front end and the back end use the same Facebook app or GitHub application. Facebook refuses the token of

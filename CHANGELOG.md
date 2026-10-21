@@ -5,9 +5,12 @@
 Notable changes to Polhem.OAuth2, Polhem.OAuth2.AspNet and Polhem.OAuth2.AspNetCore, a few lines per version. Each
 version links to its release notes under [`docs/en/changelogs/`](docs/en/changelogs/), which describe every change in
 full and, for each breaking change, who it affects and how to migrate. Breaking changes are marked **Breaking:** here.
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
-[Semantic Versioning](https://semver.org/). 1.2.0 and 1.3.0 were released as minor versions and contain breaking changes,
-which were identified when this changelog was rewritten; from 1.4.0 on, a breaking change raises the major version.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+> **1.x minor versions may contain breaking changes**, marked **Breaking:** here and described with their migration
+> steps in the version's release notes. Patch versions do not. Versions follow [Semantic Versioning](https://semver.org/)
+> from 2.0.0. Reference the packages with a range that stays within one minor version, for example `[1.4,1.5)`, rather
+> than `1.*`. The policy and its reasons are in [ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.md).
 
 ## [Unreleased]
 
@@ -17,7 +20,8 @@ Details and migration steps: [docs/en/changelogs/1.4.0.md](docs/en/changelogs/1.
 - `OAuth2Client.GetUserInfoAsync(accessToken)` returns the user of an access token from a front end, after the provider confirms which client it was issued to.
 - `OidcOAuth2Options` signs in with any other OpenID Connect provider, with endpoints set by hand or read from its discovery document.
 - `AppleOAuth2Options` signs a web application in with Apple, and the web managers accept the form POST callback it returns with.
-- Google, Auth0, Okta and Microsoft Entra ID check the ID token of a sign-in against the client and the user information.
+- **Breaking:** Google, Auth0, Okta and Microsoft Entra ID check the ID token of a sign-in against the client and the user information.
+- **Breaking:** An OpenID Connect provider leaves `UserInfo.Email` null when its `email_verified` claim is false.
 - Requests to providers name the library in `User-Agent` and ask the token endpoint for JSON, and a token error sent with status 200 carries the provider's error code.
 
 ## [1.3.0] - 2026-09-26

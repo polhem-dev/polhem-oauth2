@@ -48,6 +48,9 @@ dotnet add package Polhem.OAuth2
 
 網頁套件相依於 Polhem.OAuth2，所以網頁應用程式只要加入自己的套件，例如 `dotnet add package Polhem.OAuth2.AspNetCore`。
 
+1.x 的 minor 版本可能含有破壞性變更，會在[變更紀錄](CHANGELOG.zh-TW.md)中標示。參照這些套件時，請使用限制在一個 minor
+版本內的範圍，例如 `[1.4,1.5)`，而不是 `1.*`（[ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.zh-TW.md)）。
+
 ## 以 Google 快速上手
 
 ### 桌面應用程式的 OAuth2

@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`；2026-10-20 修訂，涵蓋 ADR-008 的 ID token 檢查與 discovery，以及 Sign in with Apple（ADR-009）。
+已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`；2026-10-20 修訂，涵蓋 ADR-008 的 ID token 檢查與 discovery，以及 Sign in with Apple（ADR-009）。2026-10-21 修訂：ID token 的失敗適用於每一個 OpenID Connect provider，自專用 provider 開始檢查 ID token 起即是如此。
 
 ## 背景
 
@@ -21,7 +21,8 @@
     GitHub 的 token 端點就是這樣回報失敗，而 RFC 6749 的成功回應本來就沒有錯誤欄位；
   - state 不存在或不相符，以及缺少授權碼或 PKCE code verifier；
   - token 回應裡沒有 access token，以及使用者資訊回應為空；
-  - `OidcOAuth2Options` 讀不了登入取得的 ID token、ID token 發給其他 client 或由其他 issuer 簽發、其 subject 與使用者資訊不同，
+  - OpenID Connect provider（Google、Auth0、Okta、Microsoft Entra ID、Sign in with Apple 或 `OidcOAuth2Options`）讀不了登入取得的
+    ID token、ID token 發給其他 client 或由其他 issuer 簽發、其 subject 與使用者資訊不同，
     以及 discovery 文件描述的 provider 無法使用（ADR-008）；
   - `AppleOAuth2Options` 的 token 回應沒有 ID token，以及建立 client 時已通過檢查的私鑰，平台卻無法用它簽署 client secret（ADR-009）。
 - 完成登入時，只把登入預期會發生的失敗轉成失敗結果：

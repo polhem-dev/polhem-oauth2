@@ -7,7 +7,7 @@
 已採納（2026-10-15）。2026-10-15 於 pull request
 [#9](https://github.com/polhem-dev/polhem-oauth2/pull/9)、[#10](https://github.com/polhem-dev/polhem-oauth2/pull/10)、
 [#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) 與 [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18) 實作。
-各項查證於 2026-10-15 以無效的 token 實測，2026-10-16 以真實帳號與其他 client 的 token 實測，記錄在「測試結果」。2026-10-20 ADR-008 把 `OidcOAuth2Options` 加入不支援的 provider。
+各項查證於 2026-10-15 以無效的 token 實測，2026-10-16 以真實帳號與其他 client 的 token 實測，記錄在「測試結果」。2026-10-20 ADR-008 把 `OidcOAuth2Options` 加入不支援的 provider，同日 ADR-009 也把 Sign in with Apple 加入。
 
 ## 背景
 
@@ -50,6 +50,7 @@ token 是發給哪個 client 的，只有 provider 知道。
   - Okta：introspection（RFC 7662）可以用後端的憑證說出 client，但一個 client 能否 introspect 另一個 client 的 token，
     官方文件寫得模糊；而且 ID token 不必為每個 token 發請求就能回答這個問題。
 - ADR-008 為其他 OpenID Connect provider 新增的 `OidcOAuth2Options` 同樣不支援，理由與 Okta 相同。
+- ADR-009 新增的 Sign in with Apple 同樣不支援：Apple 沒有能說出 access token 發給哪個 client 的端點，而登入取得的 ID token 會說出。
 - Facebook 與 GitHub 需要 `ClientSecret`，沒有設定時 `GetUserInfoAsync` 擲出 `InvalidOperationException`。
   兩者都只能查證發給「以其憑證發出查證請求的那個應用程式」的 token，所以 `AcceptedClientIds` 在這兩家不會多接受任何 client，
   前端與後端要用同一個 Facebook app 或 GitHub 應用程式。Facebook 對其他 app 的 token 回錯誤 100，GitHub 則找不到它。

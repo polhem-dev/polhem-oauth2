@@ -50,6 +50,10 @@ dotnet add package Polhem.OAuth2
 The web packages depend on Polhem.OAuth2, so a web application adds only its own package, such as
 `dotnet add package Polhem.OAuth2.AspNetCore`.
 
+1.x minor versions may contain breaking changes, which the [changelog](https://github.com/polhem-dev/polhem-oauth2/blob/main/CHANGELOG.md)
+marks. Reference the packages with a range that stays within one minor version, for example `[1.4,1.5)`, rather than `1.*`
+([ADR-010](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/adr/adr-010-breaking-changes-in-1-x-minors.md)).
+
 ## Getting started with Google
 
 ### OAuth2 in a desktop application
