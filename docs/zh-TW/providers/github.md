@@ -22,7 +22,7 @@
 
 ## .NET MAUI 應用程式
 
-應用程式只能經由後端中轉登入 GitHub。GitHub 有導回應用程式的自訂 scheme，但不帶 client secret 換 token 被拒，
+應用程式只能經由後端中轉登入 GitHub，`AppOAuth2Client` 收到 `GitHubOAuth2Options` 時會擲出 `ArgumentException`。GitHub 有導回應用程式的自訂 scheme，但不帶 client secret 換 token 被拒，
 而應用程式無法保密 client secret。見[.NET MAUI 應用程式](../guides/maui.md#經由後端中轉登入)，以及
 [ADR-006](../../adr/adr-006-app-sign-in.zh-TW.md) 的實測。
 

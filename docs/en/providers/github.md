@@ -25,7 +25,8 @@
 
 ## .NET MAUI applications
 
-Applications sign in to GitHub through the back end only. GitHub redirected to a custom scheme of the application, but refused
+Applications sign in to GitHub through the back end only, and `AppOAuth2Client` refuses `GitHubOAuth2Options` with an
+`ArgumentException`. GitHub redirected to a custom scheme of the application, but refused
 the code exchange without the client secret, which an application cannot keep. See
 [.NET MAUI applications](../guides/maui.md#signing-in-through-the-back-end) and the tests in
 [ADR-006](../../adr/adr-006-app-sign-in.md).

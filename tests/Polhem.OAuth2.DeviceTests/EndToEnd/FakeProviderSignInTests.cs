@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -38,15 +39,14 @@ public class FakeProviderSignInTests
     }
 
     [AppSignInFact]
-    [DisplayName("A direct sign-in to the GitHub mode of the fake provider returns the numeric ID and the primary email address")]
-    public async Task AppSignIn_FakeGitHub_ReturnsUserWithPrimaryEmail()
+    [DisplayName("A relayed sign-in to the GitHub mode of the fake provider returns the numeric ID and the primary email address")]
+    public async Task RelaySignIn_FakeGitHub_RedeemsUserWithPrimaryEmail()
     {
-        var client = new AppOAuth2Client(FakeProvider.CreateGitHubOptions(FakeProviderValues.ClientId, FakeProviderValues.AppRedirectUri), AuthenticateAsync);
+        using var user = await RelaySignInAsync(FakeProviderValues.GitHubRelayClientName);
 
-        var result = await client.SignInAsync().WithTimeout();
-
-        Assert.True(result.IsSuccess, result.Exception?.ToString());
-        Assert.True(FakeProvider.IsKnownGitHubUser(result.UserInfo));
+        Assert.Equal(FakeProviderValues.GitHubUserId.ToString(CultureInfo.InvariantCulture), user.RootElement.GetProperty("userId").GetString());
+        Assert.Equal(FakeProviderValues.UserName, user.RootElement.GetProperty("userName").GetString());
+        Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
     }
 
     [AppSignInFact]

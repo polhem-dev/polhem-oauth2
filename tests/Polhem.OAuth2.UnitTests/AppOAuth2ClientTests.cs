@@ -313,7 +313,6 @@ namespace Polhem.OAuth2.UnitTests
         [InlineData("Auth0")]
         [InlineData("Okta")]
         [InlineData("OpenID Connect")]
-        [InlineData("GitHub")]
         public async Task SignInAsync_EachProvider_BuildsAuthorizationUrl(string providerName)
         {
             var browser = new FakeAuthenticator("?state=forged");
@@ -326,6 +325,21 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("code", LoopbackTestHttp.GetQueryValue(url, "response_type"));
             Assert.NotNull(LoopbackTestHttp.GetQueryValue(url, "state"));
             Assert.Equal("S256", LoopbackTestHttp.GetQueryValue(url, "code_challenge_method"));
+        }
+
+        [Fact]
+        [DisplayName("The application client refuses the GitHub options, which need the client secret, and points to the back end")]
+        public void Constructor_GitHubOptions_ThrowsArgumentException()
+        {
+            foreach (string clientSecret in new[] { "", "secret" })
+            {
+                var exception = Assert.Throws<ArgumentException>(
+                    () => new AppOAuth2Client(CreateOptions("GitHub", clientSecret), new FakeAuthenticator("?state=forged").AuthenticateAsync));
+
+                Assert.Equal("options", exception.ParamName);
+                Assert.Contains("client secret", exception.Message, StringComparison.Ordinal);
+                Assert.Contains("back end", exception.Message, StringComparison.Ordinal);
+            }
         }
 
         private static OAuth2Options CreateOptions(string providerName, string clientSecret = "", string redirectUri = RedirectUri)

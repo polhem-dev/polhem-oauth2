@@ -91,8 +91,18 @@ public sealed class MainPage : ContentPage
 
     private async Task SignInDirectlyAsync(OAuthClientEntry client)
     {
-        var appClient = new AppOAuth2Client(client.Options, async (url, redirectUri, cancellationToken) =>
-            (await WebAuthenticator.Default.AuthenticateAsync(url, redirectUri)).CallbackUri);
+        AppOAuth2Client appClient;
+        try
+        {
+            appClient = new AppOAuth2Client(client.Options, async (url, redirectUri, cancellationToken) =>
+                (await WebAuthenticator.Default.AuthenticateAsync(url, redirectUri)).CallbackUri);
+        }
+        catch (ArgumentException ex)
+        {
+            // GitHub and Apple refuse a direct sign-in from an application; their settings belong under Web, for the relay.
+            _result.Text = ex.Message;
+            return;
+        }
 
         ShowResult(await appClient.SignInAsync());
     }

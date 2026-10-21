@@ -29,6 +29,13 @@ namespace Polhem.OAuth2
 
         /// <inheritdoc/>
         /// <remarks>
+        /// The client ID is a GUID, which Entra ID accepts in any case and writes in lower case in its tokens, so it is compared
+        /// as a GUID.
+        /// </remarks>
+        protected override IEqualityComparer<string> ClientIdComparer => EntraClientIdComparer.Instance;
+
+        /// <inheritdoc/>
+        /// <remarks>
         /// Microsoft asks applications to treat an access token for Microsoft Graph as opaque, and offers no endpoint that
         /// tells another application which client it was issued to, so the check is not supported.
         /// </remarks>

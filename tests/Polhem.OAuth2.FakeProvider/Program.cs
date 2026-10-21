@@ -35,6 +35,16 @@ builder.Services.AddOAuth2Client(FakeProviderValues.AppleRelayClientName, new Ap
     AuthorizationEndpoint = origin + FakeProviderValues.ApplePath + "/auth/authorize",
     TokenEndpoint = origin + FakeProviderValues.ApplePath + "/auth/token"
 }, httpClient);
+// The GitHub mode needs the client secret for every code exchange, so an application signs in to it through the relay.
+builder.Services.AddOAuth2Client(FakeProviderValues.GitHubRelayClientName, new GitHubOAuth2Options
+{
+    ClientId = WebClientId,
+    ClientSecret = WebClientSecret,
+    RedirectUri = origin + "/auth/callback",
+    AuthorizationEndpoint = origin + "/github/login/oauth/authorize",
+    TokenEndpoint = origin + "/github/login/oauth/access_token",
+    UserInfoEndpoint = origin + "/github/user"
+}, httpClient);
 builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(FakeProviderValues.RelayRedirectUri));
 
 var app = builder.Build();

@@ -8,7 +8,7 @@ Connect. The provider name of its results is `Azure`.
 ## Options
 
 - `ClientId` and `RedirectUri` are required. The options shared by every provider are described in
-  [Options](../guides/options.md).
+  [Options](../guides/options.md). The client ID is compared with the ID token as a GUID, so its case does not matter.
 - Microsoft Entra ID uses the `common` tenant. An application registered for a single tenant sets `Tenant` to the tenant
   ID or domain name.
 

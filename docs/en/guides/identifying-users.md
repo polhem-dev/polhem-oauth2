@@ -4,6 +4,9 @@
 
 - Identify a user by the provider name together with `UserInfo.UserId`, not by `Email`: an address can change, and
   providers differ in whether they verify it.
+- An OpenID Connect provider (Google, Auth0, Okta, Microsoft Entra ID, Sign in with Apple and `OidcOAuth2Options`) leaves
+  `Email` null when its `email_verified` claim is false. A provider that does not send the claim, such as Microsoft Entra ID,
+  returns the address unmarked, so do not link a sign-in to an existing account by its address alone.
 - The provider name is `AuthorizationResult.ProviderName`: `Google`, `Facebook`, `LINE`, `Azure` (Microsoft Entra ID),
   `Auth0`, `Okta`, `GitHub`, `Apple`, or the `ProviderName` of `OidcOAuth2Options`. It does not depend on the name a client is
   registered under.
