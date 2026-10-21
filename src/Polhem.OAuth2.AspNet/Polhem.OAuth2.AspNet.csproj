@@ -3,8 +3,8 @@
   <PropertyGroup>
     <!-- .NET Framework 4.7.2 is the first version with HttpCookie.SameSite. -->
     <TargetFramework>net472</TargetFramework>
-    <Description>OAuth2 sign-in for ASP.NET Web Forms and MVC applications on System.Web, with Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta and GitHub.</Description>
-    <PackageTags>oauth2 pkce aspnet webforms mvc google facebook line entra-id azure-ad auth0 okta github</PackageTags>
+    <Description>OAuth2 sign-in for ASP.NET Web Forms and MVC applications on System.Web, with Google, Facebook, LINE, Microsoft Entra ID, Auth0, Okta, GitHub, Sign in with Apple and any OpenID Connect provider.</Description>
+    <PackageTags>oauth2 pkce aspnet webforms mvc google facebook line entra-id azure-ad auth0 okta github apple sign-in-with-apple openid-connect oidc</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

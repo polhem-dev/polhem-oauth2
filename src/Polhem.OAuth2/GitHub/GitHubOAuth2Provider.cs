@@ -43,8 +43,8 @@ namespace Polhem.OAuth2
         /// <inheritdoc/>
         /// <remarks>
         /// <para>
-        /// <c>/user</c> has an email address only when the user made one public, which GitHub allows only for a verified
-        /// address. Otherwise the primary address is read from <c>/user/emails</c>, if it is verified. That request needs
+        /// <c>/user</c> has an email address only when the user made one public, which GitHub's settings offer only for a
+        /// verified address; the library does not check it again. Otherwise the primary address is read from <c>/user/emails</c>, if it is verified. That request needs
         /// the <c>user:email</c> scope. When it returns an unsuccessful status, fails, times out, or returns a body that is
         /// not JSON, the user information has no email address rather than the sign-in failing.
         /// </para>
@@ -92,29 +92,27 @@ namespace Polhem.OAuth2
                 request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials)));
                 PrepareUserInfoRequest(request);
 
-                using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
-                {
-                    // GitHub answers 404 both for a token of another application and for a token that is not valid.
-                    if (response.StatusCode == HttpStatusCode.NotFound)
-                        throw new OAuth2Exception("GitHub reports that the access token is not valid, or was not issued to this application.");
-                    if (response.StatusCode == HttpStatusCode.Unauthorized)
-                        throw new InvalidOperationException("GitHub refused the client ID and client secret of the application.");
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException($"The token verification endpoint returned status code {(int)response.StatusCode}.");
+                var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+                // GitHub answers 404 both for a token of another application and for a token that is not valid.
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                    throw new OAuth2Exception("GitHub reports that the access token is not valid, or was not issued to this application.");
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                    throw new InvalidOperationException("GitHub refused the client ID and client secret of the application.");
+                if (!response.IsSuccessStatusCode)
+                    throw new HttpRequestException($"The token verification endpoint returned status code {(int)response.StatusCode}.");
 
-                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    using (var document = OAuth2Json.ParseObject(json))
+                string json = response.Body;
+                using (var document = OAuth2Json.ParseObject(json))
+                {
+                    if (!document.RootElement.TryGetProperty("app", out var app) || app.ValueKind != JsonValueKind.Object
+                        || OAuth2Json.GetProtocolString(app, "client_id") is not { } clientId)
                     {
-                        if (!document.RootElement.TryGetProperty("app", out var app) || app.ValueKind != JsonValueKind.Object
-                            || OAuth2Json.GetProtocolString(app, "client_id") is not { } clientId)
-                        {
-                            return Array.Empty<string>();
-                        }
-                        // The request named ClientId, so a response for any other client, even an accepted one, is refused.
-                        if (!string.Equals(clientId, Options.ClientId, StringComparison.Ordinal))
-                            throw new OAuth2Exception("GitHub reported a client other than the one the check was made for.");
-                        return new[] { clientId };
+                        return Array.Empty<string>();
                     }
+                    // The request named ClientId, so a response for any other client, even an accepted one, is refused.
+                    if (!string.Equals(clientId, Options.ClientId, StringComparison.Ordinal))
+                        throw new OAuth2Exception("GitHub reported a client other than the one the check was made for.");
+                    return new[] { clientId };
                 }
             }
         }
@@ -187,16 +185,17 @@ namespace Polhem.OAuth2
         {
             try
             {
+                ProviderResponse response;
                 using (var request = CreateUserInfoRequest(GetEmailsUrl(), accessToken))
-                using (var response = await SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
-                    // 403 or 404 when the user did not grant the user:email scope.
-                    if (!response.IsSuccessStatusCode)
-                        return null;
-
-                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                    return ReadPrimaryEmail(json);
+                    response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
                 }
+                // 403 or 404 when the user did not grant the user:email scope.
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                string json = response.Body;
+                return ReadPrimaryEmail(json);
             }
             catch (HttpRequestException)
             {

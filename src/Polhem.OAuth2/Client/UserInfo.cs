@@ -34,7 +34,9 @@ namespace Polhem.OAuth2
         /// Gets the user's display name, or null if the response does not include one: the name the provider returns, or
         /// the given and family names joined when it returns those but no name. Auth0 falls back to the nickname and Okta
         /// to the preferred user name after that, and <see cref="OidcOAuth2Options"/> to the preferred user name and then
-        /// the nickname.
+        /// the nickname. GitHub falls back to the login, and Sign in with Apple takes the name from
+        /// <see cref="AuthorizationCallback.UserJson"/>, which Apple sends only the first time the user authorizes the
+        /// application.
         /// </summary>
         public string? UserName { get; }
 
@@ -49,9 +51,12 @@ namespace Polhem.OAuth2
         public string? Email { get; }
 
         /// <summary>
-        /// Gets the raw JSON returned by the user information endpoint, or the payload of the ID token when
-        /// <see cref="OidcOAuth2Options"/> reads the user from the ID token.
+        /// Gets the raw JSON returned by the user information endpoint, or the payload of the ID token when the user is
+        /// read from it, as by Sign in with Apple and by <see cref="OidcOAuth2Options"/> without a user information endpoint.
         /// </summary>
+        /// <remarks>
+        /// For GitHub it is the response of <c>/user</c>, which does not contain an address read from <c>/user/emails</c>.
+        /// </remarks>
         public string RawJson { get; }
     }
 }

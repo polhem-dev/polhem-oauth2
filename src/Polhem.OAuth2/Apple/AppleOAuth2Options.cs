@@ -24,7 +24,7 @@ namespace Polhem.OAuth2
     /// </para>
     /// <para>
     /// Apple has no user information endpoint. The user ID and the email address come from the ID token, and the name only
-    /// from <see cref="AuthorizationCallback.User"/>, which Apple sends the first time a user authorizes the application.
+    /// from <see cref="AuthorizationCallback.UserJson"/>, which Apple sends the first time a user authorizes the application.
     /// </para>
     /// </remarks>
     public sealed class AppleOAuth2Options : OAuth2Options

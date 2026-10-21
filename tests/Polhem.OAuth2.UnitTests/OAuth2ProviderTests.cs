@@ -740,6 +740,50 @@ namespace Polhem.OAuth2.UnitTests
             await Assert.ThrowsAsync<OAuth2Exception>(() => provider.GetUserInfoAsync(new TokenResponse("access"), CancellationToken.None));
         }
 
+        [Fact]
+        [DisplayName("A client secret that cannot be produced fails the token request as a faulted task, not when it is called")]
+        public async Task TokenRequests_SecretCannotBeProduced_ReturnFaultedTask()
+        {
+            var provider = new UnsignableSecretProvider(CreateOptions("Google"));
+
+            var refresh = provider.RefreshTokenAsync("refresh", publicClient: false, CancellationToken.None);
+            var exchange = provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            await Assert.ThrowsAsync<OAuth2Exception>(() => refresh);
+            await Assert.ThrowsAsync<OAuth2Exception>(() => exchange);
+        }
+
+        [Fact]
+        [DisplayName("A token or user information response larger than 1 MiB throws HttpRequestException")]
+        public async Task Responses_LargerThanLimit_ThrowHttpRequestException()
+        {
+            string huge = $$"""{"access_token":"access","padding":"{{new string('x', ProviderResponse.MaxBodyBytes)}}"}""";
+            var tokenProvider = CreateProvider("Google", new StubHttpMessageHandler().Respond(HttpStatusCode.OK, huge));
+            var userProvider = CreateProvider("Facebook", new StubHttpMessageHandler().Respond(HttpStatusCode.OK, huge));
+
+            var token = await Assert.ThrowsAsync<HttpRequestException>(
+                () => tokenProvider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None));
+            var user = await Assert.ThrowsAsync<HttpRequestException>(
+                () => userProvider.GetUserInfoAsync(new TokenResponse("access"), CancellationToken.None));
+
+            Assert.Contains("1 MiB", token.Message, StringComparison.Ordinal);
+            Assert.Contains("1 MiB", user.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("A User-Agent that the application added without validation is kept before the library's product")]
+        public async Task ExchangeCodeAsync_UnparsableDefaultUserAgent_KeepsIt()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, """{"access_token":"access"}""");
+            using var httpClient = handler.CreateClient();
+            httpClient.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Contoso Billing Service v2 [prod]");
+            var provider = OAuth2Provider.Create(CreateOptions("GitHub"), httpClient);
+
+            await provider.ExchangeCodeAsync("code", RedirectUri, codeVerifier: null, publicClient: false, CancellationToken.None);
+
+            Assert.StartsWith("Contoso Billing Service v2 [prod] Polhem.OAuth2/", Assert.Single(handler.Requests).Header("User-Agent"), StringComparison.Ordinal);
+        }
+
         private static OAuth2Options CreateOptions(string providerName, string clientSecret = "")
         {
             return TestOptions.Create(providerName, RedirectUri, clientSecret);
@@ -748,6 +792,21 @@ namespace Polhem.OAuth2.UnitTests
         private static OAuth2Provider CreateProvider(string providerName, StubHttpMessageHandler handler, string clientSecret = "")
         {
             return OAuth2Provider.Create(CreateOptions(providerName, clientSecret), handler.CreateClient());
+        }
+
+        // A provider whose client secret cannot be produced, as when the platform cannot sign the one of Apple.
+        private sealed class UnsignableSecretProvider : OAuth2Provider
+        {
+            public UnsignableSecretProvider(OAuth2Options options)
+                : base(options, httpClientFactory: null)
+            {
+            }
+
+            public override string ProviderName => "Unsignable";
+
+            protected override string GetClientSecret() => throw new OAuth2Exception("The client secret cannot be signed.");
+
+            protected override UserInfo CreateUserInfo(JsonElement user, string json, TokenResponse? token) => throw new NotSupportedException();
         }
     }
 }

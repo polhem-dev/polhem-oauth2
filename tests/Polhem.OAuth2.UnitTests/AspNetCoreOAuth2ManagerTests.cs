@@ -456,6 +456,81 @@ namespace Polhem.OAuth2.UnitTests
             Assert.IsType<InvalidDataException>(exception.InnerException);
         }
 
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync turns a POST body that cannot be read into a failed result")]
+        public async Task CompleteAuthorizationAsync_BodyReadFails_ReturnsFailedResult()
+        {
+            var manager = CreateManager(new StubHttpMessageHandler(), "Apple");
+            var callback = AspNetCoreTestContext.CreatePost("state=s&code=abc");
+            callback.Request.Body = new FailingStream();
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.False(result.IsSuccess);
+            var exception = Assert.IsType<OAuth2Exception>(result.Exception);
+            Assert.IsType<IOException>(exception.InnerException);
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync throws OperationCanceledException when the request is aborted while its body is read")]
+        public async Task CompleteAuthorizationAsync_RequestAbortedDuringBody_ThrowsOperationCanceledException()
+        {
+            var manager = CreateManager(new StubHttpMessageHandler(), "Apple");
+            var callback = AspNetCoreTestContext.CreatePost("state=s&code=abc");
+            using var aborted = new CancellationTokenSource();
+            aborted.Cancel();
+            callback.RequestAborted = aborted.Token;
+            callback.Request.Body = new FailingStream();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => manager.CompleteAuthorizationAsync(callback));
+        }
+
+        [Fact]
+        [DisplayName("CompleteAuthorizationAsync reads a POST callback whose charset is quoted")]
+        public async Task CompleteAuthorizationAsync_QuotedCharset_ReadsForm()
+        {
+            var handler = new StubHttpMessageHandler().Respond(HttpStatusCode.OK, AppleTokenJson());
+            var manager = CreateManager(handler, "Apple");
+            var signIn = StartSignIn(manager, "Apple");
+            var callback = AspNetCoreTestContext.CreatePost(
+                $"state={signIn.State}&code=abc", "application/x-www-form-urlencoded; charset=\"utf-8\"", cookies: signIn.Cookie);
+
+            var result = await manager.CompleteAuthorizationAsync(callback);
+
+            Assert.True(result.IsSuccess, result.Exception?.ToString());
+        }
+
+        [Fact]
+        [DisplayName("AddOAuth2Client refuses an OpenID Connect client with the provider name of another one but another issuer")]
+        public void AddOAuth2Client_OidcNameOfAnotherIssuer_ThrowsInvalidOperationException()
+        {
+            var services = new ServiceCollection();
+            services.AddOAuth2Client("first", CreateOidcOptions("Keycloak", "https://idp.example.com"));
+            services.AddOAuth2Client("same issuer", CreateOidcOptions("Keycloak", "https://idp.example.com"));
+            services.AddOAuth2Client("other name", CreateOidcOptions("GitLab", "https://gitlab.example.com"));
+
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => services.AddOAuth2Client("second", CreateOidcOptions("Keycloak", "https://other.example.com")));
+
+            Assert.Contains("'first'", exception.Message, StringComparison.Ordinal);
+            Assert.Throws<InvalidOperationException>(
+                () => services.AddOAuth2ClientWithHttpClientFactory("third", CreateOidcOptions("Keycloak", "https://other.example.com"), _ => new HttpClient()));
+        }
+
+        private static OidcOAuth2Options CreateOidcOptions(string providerName, string issuer)
+        {
+            return new OidcOAuth2Options
+            {
+                ProviderName = providerName,
+                Issuer = issuer,
+                ClientId = "client-id",
+                RedirectUri = RedirectUri,
+                AuthorizationEndpoint = issuer + "/authorize",
+                TokenEndpoint = issuer + "/token",
+                UserInfoEndpoint = issuer + "/userinfo"
+            };
+        }
+
         private static OAuth2Manager CreateManager(StubHttpMessageHandler handler, params string[] clientNames)
         {
             return CreateManager(handler, new EphemeralDataProtectionProvider(), clientNames);
@@ -524,6 +599,42 @@ namespace Polhem.OAuth2.UnitTests
             {
                 return Task.FromResult(_result);
             }
+        }
+
+        // Fails every read, as a body does when the connection breaks while it is read.
+        private sealed class FailingStream : Stream
+        {
+            public override bool CanRead => true;
+
+            public override bool CanSeek => false;
+
+            public override bool CanWrite => false;
+
+            public override long Length => throw new NotSupportedException();
+
+            public override long Position
+            {
+                get => throw new NotSupportedException();
+                set => throw new NotSupportedException();
+            }
+
+            public override void Flush()
+            {
+            }
+
+            public override int Read(byte[] buffer, int offset, int count) => throw new IOException("The connection was reset.");
+
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+                => throw new IOException("The connection was reset.");
+
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+                => throw new IOException("The connection was reset.");
+
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+            public override void SetLength(long value) => throw new NotSupportedException();
+
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
         }
     }
 }

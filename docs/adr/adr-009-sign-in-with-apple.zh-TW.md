@@ -40,7 +40,7 @@ Apple 和既有的 provider 不同的地方，正好落在套件原本的假設�
 - 使用者是 token 端點回傳的 ID token 的 payload，以 ADR-008 的檢查讀取：audience 必須是 client ID、issuer 必須是
   `https://appleid.apple.com`，且必須有 `sub`。`UserInfo.RawJson` 就是這份 payload。
 - 姓名由 `user` 參數的字串 `name.firstName` 與 `name.lastName` 組成。這個參數由瀏覽器 POST，所以忽略其中的 email、改用 ID token 的；
-  不是這種 JSON 物件或長度超過 4096 字元的值一律忽略，也只採用字串。`AuthorizationCallback` 新增 `User` 屬性與接受它的建構式。
+  不是這種 JSON 物件或長度超過 4096 字元的值一律忽略，也只採用字串。`AuthorizationCallback` 新增 `UserJson` 屬性與接受它的建構式。
 - Apple 只在使用者第一次授權應用程式時送出姓名，之後 `UserName` 為 null，應用程式要在第一次登入時自行保存。
 - `OAuth2Client.GetUserInfoAsync(accessToken)` 與其他 OpenID Connect provider 一樣丟出 `NotSupportedException`：前端以 ID token
   證明登入者身分（ADR-007）。

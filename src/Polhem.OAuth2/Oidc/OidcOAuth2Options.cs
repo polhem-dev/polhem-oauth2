@@ -19,6 +19,9 @@ namespace Polhem.OAuth2
     {
         private const string OpenIdScope = "openid";
 
+        // The provider names of the dedicated providers. A test checks that the name of every dedicated provider is listed.
+        private static readonly string[] s_dedicatedProviderNames = { "Google", "Facebook", "LINE", "Azure", "Auth0", "Okta", "GitHub", "Apple" };
+
         /// <summary>
         /// Initializes a new instance of the <see cref="OidcOAuth2Options"/> class.
         /// </summary>
@@ -35,7 +38,9 @@ namespace Polhem.OAuth2
         /// <remarks>
         /// A user is identified by <see cref="UserInfo.UserId"/> together with the provider name, and the user IDs of two
         /// providers can be the same value for different people. Give each OpenID Connect provider of an application a name
-        /// of its own, and keep the name once users have signed in with it.
+        /// of its own, and keep the name once users have signed in with it. The name of a provider that the library supports
+        /// with options of its own, such as <c>Google</c>, is refused whatever its case, and the web packages refuse two clients
+        /// with the same name and different issuers.
         /// </remarks>
         public string ProviderName { get; set; } = string.Empty;
 
@@ -98,9 +103,9 @@ namespace Polhem.OAuth2
         /// </exception>
         /// <exception cref="System.Text.Json.JsonException">The response is not a JSON object.</exception>
         /// <exception cref="OAuth2Exception">
-        /// The issuer of the document does not match <paramref name="authority"/>, a required endpoint is missing or is not an
-        /// absolute https URI without a fragment, or the provider supports neither the authorization code flow nor the
-        /// S256 code challenge method.
+        /// The document has no issuer or one that does not match <paramref name="authority"/>, a required endpoint is missing
+        /// or is not an absolute https URI without a fragment, a list of supported values is not an array of strings, or the
+        /// provider lists the response types without the authorization code flow, or the code challenge methods without S256.
         /// </exception>
         /// <exception cref="OperationCanceledException">The request was canceled or timed out.</exception>
         public static Task<OidcOAuth2Options> FromDiscoveryAsync(
@@ -133,9 +138,11 @@ namespace Polhem.OAuth2
         // endpoints of options that the caller names afterwards.
         internal string? GetProviderNameError()
         {
-            return string.IsNullOrWhiteSpace(ProviderName)
-                ? $"{nameof(ProviderName)} is required. Give each OpenID Connect provider a name of its own, such as Keycloak, because a user is identified by the provider name together with the user ID."
-                : null;
+            if (string.IsNullOrWhiteSpace(ProviderName))
+                return $"{nameof(ProviderName)} is required. Give each OpenID Connect provider a name of its own, such as Keycloak, because a user is identified by the provider name together with the user ID.";
+            if (s_dedicatedProviderNames.Contains(ProviderName, StringComparer.OrdinalIgnoreCase))
+                return $"{nameof(ProviderName)} cannot be '{ProviderName}', the name of a provider that the library supports with options of its own. A user is identified by the provider name together with the user ID, so give this provider a name of its own.";
+            return null;
         }
 
         // OpenID Connect Discovery 1.0, section 2: an issuer is a case-sensitive https URL without a query or a fragment.

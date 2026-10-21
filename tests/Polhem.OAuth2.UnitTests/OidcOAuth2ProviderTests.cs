@@ -6,6 +6,52 @@ namespace Polhem.OAuth2.UnitTests
 {
     public class OidcOAuth2ProviderTests
     {
+        [Theory]
+        [DisplayName("The provider name of a dedicated provider is refused in any case")]
+        [InlineData("Google")]
+        [InlineData("github")]
+        [InlineData("AZURE")]
+        [InlineData("Line")]
+        public void Constructor_DedicatedProviderName_ThrowsArgumentException(string providerName)
+        {
+            var options = (OidcOAuth2Options)TestOptions.Create("OpenID Connect", "https://app.example.com/auth/callback");
+            options.ProviderName = providerName;
+
+            var exception = Assert.Throws<ArgumentException>(() => new OAuth2Client(options));
+
+            Assert.Contains("a name of its own", exception.Message, StringComparison.Ordinal);
+        }
+
+        [Fact]
+        [DisplayName("The provider name of every dedicated provider is refused, so the list of refused names is complete")]
+        public void Constructor_NameOfEachDedicatedProvider_ThrowsArgumentException()
+        {
+            var dedicated = new List<OAuth2Options>
+            {
+                new AppleOAuth2Options { ClientId = "client-id", RedirectUri = "https://app.example.com/auth/callback", ClientSecret = "signed" }
+            };
+            foreach (string name in new[] { "Google", "Facebook", "LINE", "Azure", "Auth0", "Okta", "GitHub" })
+                dedicated.Add(TestOptions.Create(name, "https://app.example.com/auth/callback"));
+
+            foreach (var options in dedicated)
+            {
+                var oidc = (OidcOAuth2Options)TestOptions.Create("OpenID Connect", "https://app.example.com/auth/callback");
+                oidc.ProviderName = new OAuth2Client(options).ProviderName;
+
+                Assert.Throws<ArgumentException>(() => new OAuth2Client(oidc));
+            }
+        }
+
+        [Fact]
+        [DisplayName("Options without an issuer but with a user information endpoint are accepted, even when Issuer is null")]
+        public void Constructor_NullIssuerWithUserInfoEndpoint_Succeeds()
+        {
+            var options = (OidcOAuth2Options)TestOptions.Create("OpenID Connect", "https://app.example.com/auth/callback");
+            options.Issuer = null!;
+
+            Assert.Null(Record.Exception(() => new OAuth2Client(options)));
+        }
+
         private static readonly string[] s_defaultScopes = ["openid", "profile", "email"];
 
         private const string Issuer = "https://idp.example.com/realms/demo";
