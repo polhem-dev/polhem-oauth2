@@ -104,7 +104,7 @@ namespace Polhem.OAuth2
                         throw new HttpRequestException(TooLargeMessage);
                     await body.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
                 }
-                return new UTF8Encoding(false).GetString(body.GetBuffer(), 0, (int)body.Length).TrimStart('﻿');
+                return new UTF8Encoding(false).GetString(body.GetBuffer(), 0, (int)body.Length).TrimStart('\uFEFF');
             }
         }
     }

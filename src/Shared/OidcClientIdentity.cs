@@ -7,7 +7,8 @@ namespace Polhem.OAuth2
     /// <remarks>
     /// A user is identified by the provider name together with the user ID, so two OpenID Connect providers that share a name
     /// share their users' identities. Both web packages compile this file and refuse such a pair when it is registered.
-    /// The issuer stands for the provider, or the token endpoint when the options name no issuer.
+    /// The issuer stands for the provider, or the token endpoint when the options name no issuer, so two clients of the same
+    /// provider, one with its issuer and one without, are refused as well; set the issuer on both.
     /// </remarks>
     internal sealed class OidcClientIdentity
     {
@@ -53,8 +54,10 @@ namespace Polhem.OAuth2
         /// <returns>The error, or null when the two clients do not conflict.</returns>
         public string? GetConflictError(OidcClientIdentity other)
         {
-            if (!string.Equals(ProviderName, other.ProviderName, StringComparison.Ordinal)
-                || string.Equals(Issuer, other.Issuer, StringComparison.Ordinal))
+            // The names are compared ignoring case, as a database that stores them may do. A trailing slash of the issuer does
+            // not count, as discovery does not count it.
+            if (!string.Equals(ProviderName, other.ProviderName, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Issuer.TrimEnd('/'), other.Issuer.TrimEnd('/'), StringComparison.Ordinal))
             {
                 return null;
             }

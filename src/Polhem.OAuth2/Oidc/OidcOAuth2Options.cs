@@ -19,7 +19,8 @@ namespace Polhem.OAuth2
     {
         private const string OpenIdScope = "openid";
 
-        // The provider names of the dedicated providers. A test checks that the name of every dedicated provider is listed.
+        // The provider names of the dedicated providers. Constructor_NameOfEachDedicatedProvider_ThrowsArgumentException in
+        // OidcOAuth2ProviderTests creates options of every other options type of the library and checks that its name is refused.
         private static readonly string[] s_dedicatedProviderNames = { "Google", "Facebook", "LINE", "Azure", "Auth0", "Okta", "GitHub", "Apple" };
 
         /// <summary>

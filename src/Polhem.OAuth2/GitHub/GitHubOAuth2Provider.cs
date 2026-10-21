@@ -44,8 +44,8 @@ namespace Polhem.OAuth2
         /// <remarks>
         /// <para>
         /// <c>/user</c> has an email address only when the user made one public, which GitHub's settings offer only for a
-        /// verified address; the library does not check it again. Otherwise the primary address is read from <c>/user/emails</c>, if it is verified. That request needs
-        /// the <c>user:email</c> scope. When it returns an unsuccessful status, fails, times out, or returns a body that is
+        /// verified address; the library does not check it again. Otherwise the primary address is read from
+        /// <c>/user/emails</c>, if it is verified. That request needs the <c>user:email</c> scope. When it returns an unsuccessful status, fails, times out, or returns a body that is
         /// not JSON, the user information has no email address rather than the sign-in failing.
         /// </para>
         /// <para>

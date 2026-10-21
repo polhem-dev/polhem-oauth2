@@ -507,12 +507,15 @@ namespace Polhem.OAuth2.UnitTests
             var services = new ServiceCollection();
             services.AddOAuth2Client("first", CreateOidcOptions("Keycloak", "https://idp.example.com"));
             services.AddOAuth2Client("same issuer", CreateOidcOptions("Keycloak", "https://idp.example.com"));
+            services.AddOAuth2Client("trailing slash", CreateOidcOptions("Keycloak", "https://idp.example.com/"));
             services.AddOAuth2Client("other name", CreateOidcOptions("GitLab", "https://gitlab.example.com"));
 
             var exception = Assert.Throws<InvalidOperationException>(
                 () => services.AddOAuth2Client("second", CreateOidcOptions("Keycloak", "https://other.example.com")));
 
             Assert.Contains("'first'", exception.Message, StringComparison.Ordinal);
+            Assert.Throws<InvalidOperationException>(
+                () => services.AddOAuth2Client("other case", CreateOidcOptions("keycloak", "https://other.example.com")));
             Assert.Throws<InvalidOperationException>(
                 () => services.AddOAuth2ClientWithHttpClientFactory("third", CreateOidcOptions("Keycloak", "https://other.example.com"), _ => new HttpClient()));
         }

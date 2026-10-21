@@ -32,6 +32,12 @@ namespace Polhem.OAuth2.UnitTests
             };
             foreach (string name in new[] { "Google", "Facebook", "LINE", "Azure", "Auth0", "Okta", "GitHub" })
                 dedicated.Add(TestOptions.Create(name, "https://app.example.com/auth/callback"));
+            // Every options type of the library other than the generic one is a dedicated provider, so a new one fails here
+            // until it is added above.
+            var optionTypes = typeof(OAuth2Options).Assembly.GetTypes()
+                .Where(type => type.IsSubclassOf(typeof(OAuth2Options)) && !type.IsAbstract && type != typeof(OidcOAuth2Options))
+                .OrderBy(type => type.FullName, StringComparer.Ordinal);
+            Assert.Equal(optionTypes, dedicated.Select(options => options.GetType()).OrderBy(type => type.FullName, StringComparer.Ordinal));
 
             foreach (var options in dedicated)
             {
