@@ -65,12 +65,6 @@ namespace Polhem.OAuth2
         }
 
         /// <inheritdoc/>
-        protected override Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
-        {
-            return Task.FromException<IReadOnlyCollection<string>>(CreateIdTokenFrontEndException());
-        }
-
-        /// <inheritdoc/>
         protected override string? GetFallbackUserName(JsonElement user)
         {
             return OAuth2Json.GetString(user, "preferred_username") ?? OAuth2Json.GetString(user, "nickname");

@@ -11,3 +11,6 @@ Polhem.OAuth2.RelaySignInResult.Code.get -> string?
 Polhem.OAuth2.RelaySignInResult.CodeVerifier.get -> string?
 Polhem.OAuth2.RelaySignInResult.Exception.get -> System.Exception?
 Polhem.OAuth2.RelaySignInResult.IsSuccess.get -> bool
+*REMOVED*Polhem.OAuth2.OAuth2Client.GetUserInfoAsync(string! accessToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+*REMOVED*Polhem.OAuth2.OAuth2Options.AcceptedClientIds.get -> string![]!
+*REMOVED*Polhem.OAuth2.OAuth2Options.AcceptedClientIds.set -> void
