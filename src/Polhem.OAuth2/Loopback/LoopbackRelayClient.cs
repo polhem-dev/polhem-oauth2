@@ -162,12 +162,12 @@ namespace Polhem.OAuth2
                             : RelaySignInResult.Failure(new TimeoutException("No redirect arrived before the timeout."));
                     }
 
-                    if (!string.IsNullOrEmpty(callback.Error))
-                        return RelaySignInResult.Failure(new OAuth2Exception("The back end returned an error.", callback.Error!, callback.ErrorDescription));
-                    if (string.IsNullOrEmpty(callback.Code))
+                    if (callback.Error is { Length: > 0 } error)
+                        return RelaySignInResult.Failure(new OAuth2Exception("The back end returned an error.", error, callback.ErrorDescription));
+                    if (callback.Code is not { Length: > 0 } code)
                         return RelaySignInResult.Failure(new OAuth2Exception("The back end returned no code."));
 
-                    return RelaySignInResult.Success(callback.Code!, codeVerifier);
+                    return RelaySignInResult.Success(code, codeVerifier);
                 }
             }
             finally
