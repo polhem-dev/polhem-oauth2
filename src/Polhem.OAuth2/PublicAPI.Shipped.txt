@@ -55,10 +55,16 @@ Polhem.OAuth2.LoopbackOAuth2Client.RefreshTokenAsync(string! refreshToken, Syste
 Polhem.OAuth2.LoopbackOAuth2Client.SignInAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
 Polhem.OAuth2.LoopbackOAuth2Client.Timeout.get -> System.TimeSpan
 Polhem.OAuth2.LoopbackOAuth2Client.Timeout.set -> void
+Polhem.OAuth2.LoopbackRelayClient
+Polhem.OAuth2.LoopbackRelayClient.LoopbackRelayClient(string! redirectUri) -> void
+Polhem.OAuth2.LoopbackRelayClient.OpenBrowser.get -> System.Func<System.Uri!, System.Threading.Tasks.Task!>?
+Polhem.OAuth2.LoopbackRelayClient.OpenBrowser.set -> void
+Polhem.OAuth2.LoopbackRelayClient.SignInAsync(System.Func<System.Uri!, string!, System.Uri!>! createSignInUrl, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.RelaySignInResult!>!
+Polhem.OAuth2.LoopbackRelayClient.Timeout.get -> System.TimeSpan
+Polhem.OAuth2.LoopbackRelayClient.Timeout.set -> void
 Polhem.OAuth2.OAuth2Client
 Polhem.OAuth2.OAuth2Client.CompleteAuthorizationAsync(Polhem.OAuth2.AuthorizationCallback! callback, Polhem.OAuth2.PendingAuthorization! pending, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
 Polhem.OAuth2.OAuth2Client.CreateAuthorizationRequest() -> Polhem.OAuth2.AuthorizationRequest!
-Polhem.OAuth2.OAuth2Client.GetUserInfoAsync(string! accessToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
 Polhem.OAuth2.OAuth2Client.OAuth2Client(Polhem.OAuth2.OAuth2Options! options, System.Net.Http.HttpClient? httpClient = null) -> void
 Polhem.OAuth2.OAuth2Client.ProviderName.get -> string!
 Polhem.OAuth2.OAuth2Client.RefreshTokenAsync(string! refreshToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.TokenResponse!>!
@@ -71,8 +77,6 @@ Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string! message, string! error, st
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message) -> void
 Polhem.OAuth2.OAuth2Exception.OAuth2Exception(string? message, System.Exception? innerException) -> void
 Polhem.OAuth2.OAuth2Options
-Polhem.OAuth2.OAuth2Options.AcceptedClientIds.get -> string![]!
-Polhem.OAuth2.OAuth2Options.AcceptedClientIds.set -> void
 Polhem.OAuth2.OAuth2Options.AuthorizationEndpoint.get -> string!
 Polhem.OAuth2.OAuth2Options.AuthorizationEndpoint.set -> void
 Polhem.OAuth2.OAuth2Options.ClientAuthentication.get -> Polhem.OAuth2.ClientAuthenticationMethod
@@ -108,6 +112,11 @@ Polhem.OAuth2.PendingAuthorization.CodeVerifier.get -> string?
 Polhem.OAuth2.PendingAuthorization.PendingAuthorization(string! state, string? codeVerifier, string! redirectUri) -> void
 Polhem.OAuth2.PendingAuthorization.RedirectUri.get -> string!
 Polhem.OAuth2.PendingAuthorization.State.get -> string!
+Polhem.OAuth2.RelaySignInResult
+Polhem.OAuth2.RelaySignInResult.Code.get -> string?
+Polhem.OAuth2.RelaySignInResult.CodeVerifier.get -> string?
+Polhem.OAuth2.RelaySignInResult.Exception.get -> System.Exception?
+Polhem.OAuth2.RelaySignInResult.IsSuccess.get -> bool
 Polhem.OAuth2.TokenResponse
 Polhem.OAuth2.TokenResponse.AccessToken.get -> string!
 Polhem.OAuth2.TokenResponse.ExpiresIn.get -> System.TimeSpan?
