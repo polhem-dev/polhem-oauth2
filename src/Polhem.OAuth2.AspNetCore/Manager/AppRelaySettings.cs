@@ -110,14 +110,16 @@ namespace Polhem.OAuth2.AspNetCore
             }
 
             // Comparing with the canonical form below leaves only these two addresses, and no other spelling of them.
-            string authority = parsed.HostNameType == UriHostNameType.IPv6 ? "[::1]" : "127.0.0.1";
-            bool hasPort = !parsed.IsDefaultPort || uri.StartsWith($"http://{authority}:", StringComparison.Ordinal);
+            // NOTE: Plain http is what RFC 8252, section 7.3, prescribes for a loopback redirect: the request never leaves the
+            // computer, and a desktop application has no certificate for 127.0.0.1.
+            string origin = Uri.UriSchemeHttp + Uri.SchemeDelimiter + (parsed.HostNameType == UriHostNameType.IPv6 ? "[::1]" : "127.0.0.1");
+            bool hasPort = !parsed.IsDefaultPort || uri.StartsWith(origin + ":", StringComparison.Ordinal);
             if (hasPort && parsed.Port is < 1 or > 65535)
                 return false;
 
-            string anyPortForm = $"http://{authority}{parsed.AbsolutePath}";
+            string anyPortForm = origin + parsed.AbsolutePath;
             string withoutQuery = hasPort
-                ? $"http://{authority}:{parsed.Port.ToString(CultureInfo.InvariantCulture)}{parsed.AbsolutePath}"
+                ? origin + ":" + parsed.Port.ToString(CultureInfo.InvariantCulture) + parsed.AbsolutePath
                 : anyPortForm;
             if (!string.Equals(uri, withoutQuery + parsed.Query, StringComparison.Ordinal))
                 return false;
