@@ -8,7 +8,7 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace Polhem.OAuth2.AspNetCore
 {
-    // The back-end relay of ADR-006: a sign-in started by a mobile application, returned to it with a single-use code,
+    // The back-end relay of ADR-006: a sign-in started by a mobile or desktop application, returned to it with a single-use code,
     // and redeemed with the application's code verifier.
     public partial class OAuth2Manager
     {
@@ -35,7 +35,7 @@ namespace Polhem.OAuth2.AspNetCore
         private static readonly object s_appSignInKey = new();
 
         /// <summary>
-        /// Starts a sign-in relayed to a mobile application (ADR-006) and redirects the response to the authorization URL.
+        /// Starts a sign-in relayed to a mobile or desktop application (ADR-006) and redirects the response to the authorization URL.
         /// The provider returns to the client's web redirect URI, so no other redirect URI is registered with the provider.
         /// </summary>
         /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
@@ -69,7 +69,7 @@ namespace Polhem.OAuth2.AspNetCore
         }
 
         /// <summary>
-        /// Starts a sign-in relayed to a mobile application, as <see cref="RedirectToAppAuthorization"/> does, and returns the
+        /// Starts a sign-in relayed to a mobile or desktop application, as <see cref="RedirectToAppAuthorization"/> does, and returns the
         /// authorization URL instead of redirecting the response, for a caller that redirects in its own way.
         /// </summary>
         /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
@@ -100,7 +100,7 @@ namespace Polhem.OAuth2.AspNetCore
         }
 
         /// <summary>
-        /// Starts a sign-in relayed to a mobile application, as <see cref="RedirectToAppAuthorization"/> does, with values that
+        /// Starts a sign-in relayed to a mobile or desktop application, as <see cref="RedirectToAppAuthorization"/> does, with values that
         /// come from the request: it returns false for a value that is not valid, instead of throwing.
         /// </summary>
         /// <param name="context">The HTTP context of the request that the application opened to start the sign-in.</param>
@@ -129,7 +129,7 @@ namespace Polhem.OAuth2.AspNetCore
         }
 
         /// <summary>
-        /// Starts a sign-in relayed to a mobile application with values that come from the request, as
+        /// Starts a sign-in relayed to a mobile or desktop application with values that come from the request, as
         /// <see cref="TryRedirectToAppAuthorization"/> does, and returns the authorization URL instead of redirecting the
         /// response.
         /// </summary>
