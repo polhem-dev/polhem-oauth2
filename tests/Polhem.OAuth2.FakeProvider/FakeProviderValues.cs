@@ -56,7 +56,7 @@ namespace Polhem.OAuth2.FakeProvider
         /// The loopback redirect URI through which the relay returns to a desktop application, registered without a port so
         /// that any port is accepted.
         /// </summary>
-        public const string DesktopRelayRedirectUri = "http://127.0.0.1/callback";
+        public static readonly string DesktopRelayRedirectUri = new UriBuilder(Uri.UriSchemeHttp, "127.0.0.1") { Path = "callback" }.Uri.AbsoluteUri;
 
         /// <summary>
         /// The client name of the relay's web client for the OpenID Connect mode, which <c>OidcOAuth2Options</c> signs in with.
