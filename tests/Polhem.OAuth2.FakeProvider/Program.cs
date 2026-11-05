@@ -47,7 +47,24 @@ builder.Services.AddOAuth2Client(FakeProviderValues.GitHubRelayClientName, new G
     TokenEndpoint = origin + "/github/login/oauth/access_token",
     UserInfoEndpoint = origin + "/github/user"
 }, httpClient);
-builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(FakeProviderValues.RelayRedirectUri));
+// The OpenID Connect mode has no user information endpoint, so the relay reads the user from the ID token. The endpoints are
+// set by hand, because the discovery document cannot be read before this process listens.
+builder.Services.AddOAuth2Client(FakeProviderValues.OidcRelayClientName, new OidcOAuth2Options
+{
+    ProviderName = "Fake OpenID Connect",
+    ClientId = WebClientId,
+    ClientSecret = WebClientSecret,
+    RedirectUri = origin + CallbackPath,
+    AuthorizationEndpoint = origin + "/authorize",
+    TokenEndpoint = origin + FakeProviderValues.OidcPath + "/token",
+    Issuer = origin + FakeProviderValues.OidcPath,
+    ClientAuthentication = ClientAuthenticationMethod.ClientSecretPost
+}, httpClient);
+builder.Services.AddOAuth2AppRelay(options =>
+{
+    options.AppRedirectUris.Add(FakeProviderValues.RelayRedirectUri);
+    options.AppRedirectUris.Add(FakeProviderValues.DesktopRelayRedirectUri);
+});
 
 var app = builder.Build();
 

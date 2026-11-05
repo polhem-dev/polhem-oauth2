@@ -133,6 +133,7 @@
   },
   "AppRelay": {
     "BackendUrl": "https://localhost:7032",
-    "RedirectUri": "dev.polhem.oauthmaui:/relay"
+    "RedirectUri": "dev.polhem.oauthmaui:/relay",
+    "DesktopRedirectUri": "http://127.0.0.1/callback"
   }
 }
