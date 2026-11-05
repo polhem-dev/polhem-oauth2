@@ -28,6 +28,12 @@ namespace Polhem.OAuth2.AspNetCore
         /// path on any port, as RFC 8252, section 7.3, describes. A requested loopback URI may also end with a <c>state</c>
         /// query of 43 to 128 base64url characters, which the relay returns ahead of the code.
         /// </para>
+        /// <para>
+        /// Any program on the user's computer can listen on a loopback port, so with a registration without a port, such a
+        /// program can start a relayed sign-in to its own port and redeem the code with its own verifier, as RFC 8252,
+        /// section 8.3, accepts for loopback redirects. Register the URI with a port when the application can always listen
+        /// on the same one.
+        /// </para>
         /// </remarks>
         public IList<string> AppRedirectUris { get; } = [];
 

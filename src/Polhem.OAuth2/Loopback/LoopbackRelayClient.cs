@@ -93,7 +93,8 @@ namespace Polhem.OAuth2
         /// <param name="createSignInUrl">
         /// Returns the sign-in URL of the back end for the application redirect URI and the S256 code challenge that it
         /// receives, for example <c>https://api.example.com/auth/app/GitHub?redirect_uri=...&amp;code_challenge=...</c>. Escape
-        /// the redirect URI as a query value.
+        /// <see cref="Uri.AbsoluteUri"/> of the redirect URI as a query value, for example with <see cref="Uri.EscapeDataString(string)"/>:
+        /// <see cref="Uri.ToString"/> unescapes the path, which the back end then does not match.
         /// </param>
         /// <param name="cancellationToken">Cancels the sign-in.</param>
         /// <returns>
