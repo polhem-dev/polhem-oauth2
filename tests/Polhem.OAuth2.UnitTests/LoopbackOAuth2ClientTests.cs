@@ -212,13 +212,16 @@ namespace Polhem.OAuth2.UnitTests
             var client = new LoopbackOAuth2Client(CreateOptions(), new StubHttpMessageHandler().CreateClient())
             {
                 OpenBrowser = browser.Open,
-                Timeout = TimeSpan.FromSeconds(1)
+                // Long enough for the forged request to arrive while the listener is still open. With one second, a slow
+                // runner reached the timeout first, and the request was refused instead of answered.
+                Timeout = TimeSpan.FromSeconds(5)
             };
 
             var result = await client.SignInAsync().WithTimeout();
             await browser.Completed.WithTimeout();
 
             Assert.IsType<TimeoutException>(result.Exception);
+            Assert.StartsWith("HTTP/1.1 400", Assert.Single(browser.Responses), StringComparison.Ordinal);
         }
 
         [Fact]

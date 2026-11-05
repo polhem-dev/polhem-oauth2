@@ -40,6 +40,8 @@
        secrets included, which an application must not carry. OAuthApp.targets packages the allowed part instead. -->
   <ItemGroup>
     <Compile Include="..\Shared\OAuthAppRelay.cs" Link="Shared\OAuthAppRelay.cs" />
+    <Compile Include="..\Shared\OAuthBackEnd.cs" Link="Shared\OAuthBackEnd.cs" />
+    <Compile Include="..\Shared\OAuthBackEndUser.cs" Link="Shared\OAuthBackEndUser.cs" />
     <Compile Include="..\Shared\OAuthClientEntry.cs" Link="Shared\OAuthClientEntry.cs" />
     <Compile Include="..\Shared\OAuthClientType.cs" Link="Shared\OAuthClientType.cs" />
     <Compile Include="..\Shared\OAuthConfig.cs" Link="Shared\OAuthConfig.cs" />

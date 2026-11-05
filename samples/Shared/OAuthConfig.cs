@@ -311,22 +311,26 @@ namespace OAuthSamples
 
             string? backendUrl = null;
             string? redirectUri = null;
+            string? desktopRedirectUri = null;
             foreach (var field in section)
             {
                 if (string.Equals(field.Key, "BackendUrl", StringComparison.OrdinalIgnoreCase))
                     backendUrl = field.Value?.GetValue<string>();
                 else if (string.Equals(field.Key, "RedirectUri", StringComparison.OrdinalIgnoreCase))
                     redirectUri = field.Value?.GetValue<string>();
+                else if (string.Equals(field.Key, "DesktopRedirectUri", StringComparison.OrdinalIgnoreCase))
+                    desktopRedirectUri = field.Value?.GetValue<string>();
                 else
-                    throw new InvalidDataException($"'{_filePath}' has an unknown field '{AppRelayName}.{field.Key}'. The fields are BackendUrl and RedirectUri.");
+                    throw new InvalidDataException($"'{_filePath}' has an unknown field '{AppRelayName}.{field.Key}'. The fields are BackendUrl, RedirectUri and DesktopRedirectUri.");
             }
 
             if (!Uri.TryCreate(backendUrl, UriKind.Absolute, out var backend) || backend.Scheme != Uri.UriSchemeHttps)
                 throw new InvalidDataException($"'{_filePath}' needs an absolute https URL in '{AppRelayName}.BackendUrl'.");
-            if (string.IsNullOrWhiteSpace(redirectUri))
+            // The null test comes first because .NET Framework does not annotate string.IsNullOrWhiteSpace for the compiler.
+            if (redirectUri is null || string.IsNullOrWhiteSpace(redirectUri))
                 throw new InvalidDataException($"'{_filePath}' needs a RedirectUri in '{AppRelayName}'.");
 
-            return new OAuthAppRelay(backend, redirectUri);
+            return new OAuthAppRelay(backend, redirectUri, string.IsNullOrWhiteSpace(desktopRedirectUri) ? null : desktopRedirectUri);
         }
 
         /// <summary>

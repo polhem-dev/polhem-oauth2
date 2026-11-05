@@ -85,6 +85,17 @@ public class FakeProviderSignInTests
         Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
     }
 
+    [AppSignInFact]
+    [DisplayName("A relayed sign-in to an OpenID Connect provider without a user information endpoint returns the user of the ID token")]
+    public async Task RelaySignIn_FakeOidc_RedeemsUserOfIdToken()
+    {
+        using var user = await RelaySignInAsync(FakeProviderValues.OidcRelayClientName);
+
+        Assert.Equal(FakeProviderValues.UserId, user.RootElement.GetProperty("userId").GetString());
+        Assert.Equal(FakeProviderValues.UserName, user.RootElement.GetProperty("userName").GetString());
+        Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
+    }
+
     private static async Task<JsonDocument> RelaySignInAsync(string clientName)
     {
         string verifier = Base64Url.Encode(RandomNumberGenerator.GetBytes(32));
@@ -96,11 +107,16 @@ public class FakeProviderSignInTests
         string? code = CallbackQuery.FromUri(callback).Code;
         Assert.False(string.IsNullOrEmpty(code), callback.ToString());
 
+        return await RedeemAsync(clientName, code!, verifier);
+    }
+
+    private static async Task<JsonDocument> RedeemAsync(string clientName, string code, string verifier)
+    {
         using var http = new HttpClient();
         using var response = await http.PostAsync(FakeProvider.GetUri("auth/app/redeem"), new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["client"] = clientName,
-            ["code"] = code!,
+            ["code"] = code,
             ["code_verifier"] = verifier
         })).WithTimeout();
         string body = await response.Content.ReadAsStringAsync();
@@ -130,6 +146,22 @@ public class FakeProviderSignInTests
 
         Assert.True(result.IsSuccess, result.Exception?.ToString());
         Assert.True(FakeProvider.IsKnownUser(result.UserInfo));
+    }
+
+    [LoopbackSignInFact]
+    [DisplayName("A desktop sign-in through the back-end relay returns the user after the application redeems its code")]
+    public async Task LoopbackRelaySignIn_FakeProvider_RedeemsUser()
+    {
+        var client = new LoopbackRelayClient("http://127.0.0.1:0/callback");
+
+        var result = await client.SignInAsync((redirectUri, codeChallenge) => FakeProvider.GetUri(
+            $"auth/app/{FakeProviderValues.RelayClientName}?redirect_uri={Uri.EscapeDataString(redirectUri.AbsoluteUri)}&code_challenge={codeChallenge}"))
+            .WithTimeout();
+
+        Assert.True(result.IsSuccess, result.Exception?.ToString());
+        using var user = await RedeemAsync(FakeProviderValues.RelayClientName, result.Code, result.CodeVerifier);
+        Assert.Equal(FakeProviderValues.UserId, user.RootElement.GetProperty("userId").GetString());
+        Assert.Equal(FakeProviderValues.Email, user.RootElement.GetProperty("email").GetString());
     }
 
     // An ephemeral session shares no cookies with the browser, so iOS and Mac Catalyst skip the prompt that asks the user

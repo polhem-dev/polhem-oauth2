@@ -34,6 +34,23 @@ namespace Polhem.OAuth2.UnitTests
             Assert.Equal("line-id", client.Options.ClientId);
         }
 
+        [Theory]
+        [DisplayName("The sample settings read the loopback redirect URI of desktop applications in AppRelay, and leave it null when it is missing or empty")]
+        [InlineData(",\"DesktopRedirectUri\":\"http://127.0.0.1/callback\"", "http://127.0.0.1/callback")]
+        [InlineData(",\"DesktopRedirectUri\":\"\"", null)]
+        [InlineData(",\"DesktopRedirectUri\":null", null)]
+        [InlineData("", null)]
+        public void Parse_AppRelayDesktopRedirectUri_IsRead(string field, string? expected)
+        {
+            string json = "{\"AppRelay\":{\"BackendUrl\":\"https://localhost:7032\",\"RedirectUri\":\"com.example.app:/relay\"" + field + "}}";
+
+            var relay = OAuthConfig.Parse(json, "test.json").AppRelay;
+
+            Assert.NotNull(relay);
+            Assert.Equal("com.example.app:/relay", relay.RedirectUri);
+            Assert.Equal(expected, relay.DesktopRedirectUri);
+        }
+
         [Fact]
         [DisplayName("The sample settings read a client authentication method written by name")]
         public void Parse_ClientAuthenticationByName_ReadsEnumValue()
