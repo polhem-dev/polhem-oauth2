@@ -36,7 +36,7 @@ Register the callback URL as an allowed callback URL of a Regular Web Applicatio
 - Auth0 issues a refresh token when `Scopes` includes `offline_access` and the application is allowed it.
 - When Auth0 returns `name` as JSON null, the user name falls back to `nickname`.
 
-## Apps with a separate back end
+## Applications with a back end
 
-`GetUserInfoAsync` throws `NotSupportedException`: the front end sends its ID token, which the back end validates. See
-[Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

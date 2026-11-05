@@ -25,8 +25,9 @@ builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
 
 ## Desktop and console applications
 
-Not supported. `LoopbackOAuth2Client` refuses these options, because Apple accepts only an https return URL on a domain name
-and requires the client secret for every token request.
+A desktop application signs in to Apple only through its own back end, with `LoopbackRelayClient`: see
+[Signing in through the back end](../guides/desktop.md#signing-in-through-the-back-end). `LoopbackOAuth2Client` refuses these
+options, because Apple accepts only an https return URL on a domain name and requires the client secret for every token request.
 
 ## .NET MAUI applications
 
@@ -51,7 +52,7 @@ these options for the same reasons as the loopback client.
 - In the test of ADR-009, Apple issued a refresh token, and a refresh returned a new access token and ID token without a new
   refresh token.
 
-## Apps with a separate back end
+## Applications with a back end
 
-`GetUserInfoAsync` throws `NotSupportedException`: the front end sends its ID token, which the back end validates. See
-[Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

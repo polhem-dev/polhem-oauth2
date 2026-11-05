@@ -4,11 +4,11 @@
 
 | Sample | Shows |
 |--------|-------|
-| [OAuthConsole](../../../samples/OAuthConsole) | Desktop sign-in from a console application, on any operating system |
+| [OAuthConsole](../../../samples/OAuthConsole) | Desktop sign-in from a console application, on any operating system: directly, or through OAuthAspNetCore with `--back-end`, as in `dotnet run -- GitHub --back-end` |
 | [OAuthDesktop](../../../samples/OAuthDesktop) | Desktop sign-in from Windows Forms on .NET |
 | [OAuthWinForms](../../../samples/OAuthWinForms) | Desktop sign-in from Windows Forms on .NET Framework 4.8 |
-| [OAuthAspNetCore](../../../samples/OAuthAspNetCore) | ASP.NET Core, including the relay endpoints for OAuthMaui |
-| [OAuthMaui](../../../samples/OAuthMaui) | .NET MAUI: direct and back-end relay sign-in on Android, iOS and Mac Catalyst, loopback sign-in on Windows. It needs the MAUI workload and is not part of the solution. |
+| [OAuthAspNetCore](../../../samples/OAuthAspNetCore) | ASP.NET Core, including the relay endpoints for OAuthMaui and OAuthConsole |
+| [OAuthMaui](../../../samples/OAuthMaui) | .NET MAUI: direct and back-end relay sign-in on Android, iOS and Mac Catalyst, direct loopback and back-end relay sign-in on Windows. It needs the MAUI workload and is not part of the solution. |
 
 [LoopbackRedirectProbe](../../../tools/LoopbackRedirectProbe/README.md) checks whether a provider accepts a loopback
 redirect URI before you build on it.
@@ -57,5 +57,7 @@ separately:
   public https host that forwards to the ASP.NET Core sample, such as a tunnel.
 - The top-level `AppRelay` section configures the back-end relay: `BackendUrl` is where the ASP.NET Core sample runs, and
   `RedirectUri` is the relay callback of the application, which the ASP.NET Core sample registers with
-  `AddOAuth2AppRelay`. The relay runs over HTTPS, so the simulator or emulator must trust the ASP.NET Core development
+  `AddOAuth2AppRelay`. The optional `DesktopRedirectUri`, such as `http://127.0.0.1/callback`, is the loopback redirect URI of
+  OAuthConsole with `--back-end` and of OAuthMaui on Windows; the ASP.NET Core sample registers it as well, without a port,
+  so any port is accepted. The relay runs over HTTPS, so the simulator or emulator must trust the ASP.NET Core development
   certificate. On the Android emulator, run `adb reverse tcp:7032 tcp:7032` so that `localhost` reaches the host.

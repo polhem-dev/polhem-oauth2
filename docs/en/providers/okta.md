@@ -40,7 +40,7 @@ Register the callback URL as a sign-in redirect URI of a Web application, and fo
 
 Okta issues a refresh token when `Scopes` includes `offline_access` and the application is allowed the Refresh Token grant.
 
-## Apps with a separate back end
+## Applications with a back end
 
-`GetUserInfoAsync` throws `NotSupportedException`: the front end sends its ID token, which the back end validates. See
-[Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

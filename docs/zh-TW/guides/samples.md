@@ -4,11 +4,11 @@
 
 | Sample | 示範 |
 |--------|------|
-| [OAuthConsole](../../../samples/OAuthConsole) | 主控台應用程式的桌面登入，任何作業系統都能執行 |
+| [OAuthConsole](../../../samples/OAuthConsole) | 主控台應用程式的桌面登入，任何作業系統都能執行：直接登入，或加上 `--back-end` 經由 OAuthAspNetCore 登入，例如 `dotnet run -- GitHub --back-end` |
 | [OAuthDesktop](../../../samples/OAuthDesktop) | .NET 上的 Windows Forms 桌面登入 |
 | [OAuthWinForms](../../../samples/OAuthWinForms) | .NET Framework 4.8 上的 Windows Forms 桌面登入 |
-| [OAuthAspNetCore](../../../samples/OAuthAspNetCore) | ASP.NET Core，包括給 OAuthMaui 用的中轉端點 |
-| [OAuthMaui](../../../samples/OAuthMaui) | .NET MAUI：Android、iOS 與 Mac Catalyst 的直連與後端中轉登入，Windows 的 loopback 登入。需要 MAUI workload，不在 solution 裡。 |
+| [OAuthAspNetCore](../../../samples/OAuthAspNetCore) | ASP.NET Core，包括給 OAuthMaui 與 OAuthConsole 用的中轉端點 |
+| [OAuthMaui](../../../samples/OAuthMaui) | .NET MAUI：Android、iOS 與 Mac Catalyst 的直連與後端中轉登入，Windows 的 loopback 直接登入與後端中轉登入。需要 MAUI workload，不在 solution 裡。 |
 
 [LoopbackRedirectProbe](../../../tools/LoopbackRedirectProbe/README.zh-TW.md) 可以在動工前先確認 provider 接不接受某個
 loopback 回呼網址。
@@ -50,5 +50,7 @@ provider 在後台是桌面、Web 與行動 App 的 client 分開登記的，所
   直接把 `PrivateKey` 寫進設定檔會報錯。Apple 拒絕 localhost 的回呼網址，所以 `RedirectUri`（以及中轉用的 `AppRelay.BackendUrl`）
   要指向轉送到 ASP.NET Core sample 的公開 https 主機，例如 tunnel。
 - 最上層的 `AppRelay` 區段設定後端中轉：`BackendUrl` 是 ASP.NET Core sample 的網址，`RedirectUri` 是 App 的中轉回呼網址，
-  ASP.NET Core sample 會用它呼叫 `AddOAuth2AppRelay` 登記。中轉走 HTTPS，所以模擬器必須信任 ASP.NET Core 的開發憑證。
+  ASP.NET Core sample 會用它呼叫 `AddOAuth2AppRelay` 登記。選填的 `DesktopRedirectUri`（例如 `http://127.0.0.1/callback`）是
+  OAuthConsole 加上 `--back-end`、以及 OAuthMaui 在 Windows 上的 loopback 回呼網址；ASP.NET Core sample 也會不帶 port 登記它，
+  所以任何 port 都會被接受。中轉走 HTTPS，所以模擬器必須信任 ASP.NET Core 的開發憑證。
   Android 模擬器上先執行 `adb reverse tcp:7032 tcp:7032`，讓 `localhost` 連到主機。

@@ -34,7 +34,7 @@ else
 - 這段範例使用最上層陳述式。在 .NET Framework 的 Windows Forms 應用程式裡怎麼登入，見 [OAuthWinForms](../../../samples/OAuthWinForms) sample。
 - 目標框架為 .NET Framework 4.7.2、並在開啟 FIPS 模式的機器上執行的應用程式，需要
   [ASP.NET（System.Web）](aspnet-system-web.md#部署前確認)「部署前確認」裡的設定。
-- 要再登入另一個後端時，見[前後端分離的應用程式](separate-back-end.md)。
+- 這是沒有自家後端的應用程式的登入方式。有後端的應用程式經由後端登入，見下方說明。
 
 這個設計的理由，以及各 provider 對 loopback 回呼的實測結果，記錄在
 [ADR-004](../../adr/adr-004-system-browser-loopback.zh-TW.md)。
@@ -53,9 +53,39 @@ else
 - [GitHub](../providers/github.md#桌面與主控台應用程式)
 - [其他任何 OpenID Connect provider](../providers/openid-connect.md#桌面與主控台應用程式)
 
-Sign in with Apple 沒有桌面登入：`LoopbackOAuth2Client` 會拒絕 `AppleOAuth2Options`。
+Sign in with Apple 沒有直接的桌面登入：`LoopbackOAuth2Client` 會拒絕 `AppleOAuth2Options`。有後端的桌面應用程式經由後端登入 Apple。
 
 沒寫 port 的回呼網址等於 port 80，監聽它通常需要管理員權限，所以請寫出 port。
 
 [LoopbackRedirectProbe](../../../tools/LoopbackRedirectProbe/README.zh-TW.md) 可以在動工前先確認 provider 接不接受某個
 loopback 回呼網址。
+
+## 經由後端登入
+
+有自家 ASP.NET Core 後端的應用程式經由後端登入，理由見[有後端的應用程式](separate-back-end.md)。`LoopbackRelayClient`
+用預設瀏覽器開啟後端的登入網址，後端以網頁 client 登入，再帶著一次性代碼導回 loopback 位址：
+
+```csharp
+using Polhem.OAuth2;
+
+var client = new LoopbackRelayClient("http://127.0.0.1:0/callback");
+RelaySignInResult result = await client.SignInAsync((redirectUri, codeChallenge) => new Uri(
+    $"https://api.example.com/auth/app/GitHub?redirect_uri={Uri.EscapeDataString(redirectUri.AbsoluteUri)}&code_challenge={codeChallenge}"));
+
+if (result.IsSuccess)
+{
+    // 把 result.Code 與 result.CodeVerifier POST 給後端，後端以 RedeemAppCodeAsync 兌換，並發出應用程式自己的 session。
+}
+```
+
+- 後端的設定見 .NET MAUI 指南的[經由後端中轉登入](maui.md#經由後端中轉登入)，loopback 網址登記時不帶 port，任何 port 都會被接受：
+  `options.AppRedirectUris.Add("http://127.0.0.1/callback")`。只接受 `127.0.0.1` 與 `[::1]`，不接受 `localhost`。
+- client 會在回呼網址加上實際監聽的 port 與 `state` 參數，例如 `http://127.0.0.1:53682/callback?state=...`，並且只等帶著這個
+  state 的導回：瀏覽器裡任何網頁都能對 loopback 位址送出請求。
+- client 回傳代碼，以及當初產生 challenge 的 PKCE code verifier。應用程式怎麼把它們交給後端、後端回傳什麼，由兩者自行約定。
+- 逾時、取消、後端回傳錯誤，都會成為失敗結果，與 `LoopbackOAuth2Client` 相同。
+- 電腦上任何程式都能監聽 loopback port，所以不帶 port 登記的後端，也會中轉給這樣的程式，RFC 8252 對 loopback 回呼接受這一點。
+  應用程式若能固定監聽同一個 port，請帶 port 登記。
+- provider 只看得到後端，所以沒有桌面登入的 provider 也能用這個方式：Sign in with Apple，以及不必隨程式附上 client secret 的 GitHub。
+- [OAuthConsole](../../../samples/OAuthConsole) sample 加上 `--back-end` 就會用這個方式，向 [OAuthAspNetCore](../../../samples/OAuthAspNetCore)
+  sample 登入。

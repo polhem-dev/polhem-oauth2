@@ -59,7 +59,7 @@ allows one, keep `UsePkce` on, as it is by default, and add only providers you t
 `UserId` is the `sub` claim. The library checks the ID token of each sign-in: its audience, and its issuer when `Issuer`
 is set. See [Identifying users](../guides/identifying-users.md).
 
-## Apps with a separate back end
+## Applications with a back end
 
-`GetUserInfoAsync` throws `NotSupportedException`: the front end sends its ID token, which the back end validates. See
-[Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

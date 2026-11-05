@@ -58,7 +58,7 @@ Apple differs from the providers before it exactly where the library made assump
 - Apple sends the name only the first time a user authorizes the application. `UserName` is null afterwards, and the
   application keeps the name from the first sign-in itself.
 - `OAuth2Client.GetUserInfoAsync(accessToken)` throws `NotSupportedException`, as for the other OpenID Connect providers: a front
-  end proves who signed in with the ID token (ADR-007).
+  end proves who signed in with the ID token (ADR-007). The method was removed in 1.5.0 (ADR-011).
 
 ### Callback and cookie
 

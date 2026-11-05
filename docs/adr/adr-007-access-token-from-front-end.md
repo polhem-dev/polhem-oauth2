@@ -9,7 +9,7 @@ Accepted (2026-10-15). Implemented on 2026-10-15 in pull requests
 [#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) and [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18). The checks were tested with
 tokens that are not valid on 2026-10-15, and with real accounts and the tokens of other clients on 2026-10-16, as "Test results"
 records. ADR-008 added `OidcOAuth2Options` to the providers that are not supported on 2026-10-20, and ADR-009 added Sign in
-with Apple the same day.
+with Apple the same day. **Superseded by ADR-011 on 2026-11-05**: an application with a back end has the back end sign in, and `GetUserInfoAsync(accessToken)` and `AcceptedClientIds` were removed in 1.5.0. This record is kept for its reasons and test results.
 
 ## Context
 

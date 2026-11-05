@@ -37,7 +37,6 @@
 
 `Scopes` 含 `offline_access`、且應用程式允許 Refresh Token grant 時，Okta 會發 refresh token。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-`GetUserInfoAsync` 擲出 `NotSupportedException`：由前端送出 ID token，後端驗證。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

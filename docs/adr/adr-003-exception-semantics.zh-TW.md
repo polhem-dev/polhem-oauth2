@@ -4,7 +4,7 @@
 
 ## 狀態
 
-已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`；2026-10-20 修訂，涵蓋 ADR-008 的 ID token 檢查與 discovery，以及 Sign in with Apple（ADR-009）。2026-10-21 修訂：ID token 的失敗適用於每一個 OpenID Connect provider，自專用 provider 開始檢查 ID token 起即是如此。同日再修訂，涵蓋 ASP.NET Core 讀不了 body 的 POST 回呼。
+已採納（2026-09-13）。2026-09-14 首發前修訂，涵蓋 `OAuth2Client` 與網頁登入的 cookie；2026-09-21 修訂，涵蓋 Facebook 的錯誤物件，以及 ADR-006 新增的 `AppOAuth2Client`；2026-10-15 修訂，涵蓋 GitHub 以狀態碼 200 回傳的 token 錯誤；同日再次修訂，涵蓋 ADR-007 新增的 `OAuth2Client.GetUserInfoAsync`；2026-10-20 修訂，涵蓋 ADR-008 的 ID token 檢查與 discovery，以及 Sign in with Apple（ADR-009）。2026-10-21 修訂：ID token 的失敗適用於每一個 OpenID Connect provider，自專用 provider 開始檢查 ID token 起即是如此。同日再修訂，涵蓋 ASP.NET Core 讀不了 body 的 POST 回呼。2026-11-05 依 ADR-011 修訂：移除 `OAuth2Client.GetUserInfoAsync(accessToken)`，新增 `LoopbackRelayClient`。
 
 ## 背景
 
@@ -31,8 +31,8 @@
     以及 cookie 無法解密時的 `CryptographicException`。讀 body 時請求被中止，則與其他地方被中止的請求一樣擲出 `OperationCanceledException`。
   - `LoopbackOAuth2Client.SignInAsync` 另外還有：ADR-004 描述的失敗。
   - `AppOAuth2Client.SignInAsync` 另外還有：ADR-006 描述的失敗。
-  - `OAuth2Client.GetUserInfoAsync`（取得前端送來的 access token 的使用者）：與 `CompleteAuthorizationAsync` 相同的例外，
-    其中包括 provider 拒絕 token、或說出的 client 不被接受時的 `OAuth2Exception`。改為擲出例外的檢查，見 ADR-007。
+  - `LoopbackRelayClient.SignInAsync`：後端以錯誤導回或導回時沒有代碼時的 `OAuth2Exception`、逾時未收到導回時的
+    `TimeoutException`，以及呼叫端取消時的 `OperationCanceledException`（ADR-011）。
 - 呼叫端的取消，會從 `OAuth2Client` 與網頁 manager 以 `OperationCanceledException` 往外拋；ASP.NET Core 在請求中斷時也一樣。
   取消代表沒有人在等這個結果，而不是登入失敗。loopback client 與應用程式 client 則如 ADR-004 與 ADR-006 所述，把取消轉成失敗結果。
 - 其他例外一律往外拋。設定或程式錯誤擲出 `InvalidOperationException`：client 名稱沒有註冊、登入 cookie 裡的 client 已不再註冊、

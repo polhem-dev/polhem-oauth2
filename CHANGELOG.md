@@ -12,6 +12,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 > from 2.0.0. Reference the packages with a range that stays within one minor version, for example `[1.4,1.5)`, rather
 > than `1.*`. The policy and its reasons are in [ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.md).
 
+## [Unreleased]
+
+Details and migration steps: [docs/en/changelogs/1.5.0.md](docs/en/changelogs/1.5.0.md)
+
+- When an application has a back end, the back end signs in, desktop applications included (ADR-011).
+- `LoopbackRelayClient` signs a desktop or console application in through the back-end relay of its own ASP.NET Core back end.
+- The ASP.NET Core relay accepts loopback application redirect URIs of `127.0.0.1` and `[::1]`, on any port when registered without one.
+- **Breaking:** `OAuth2Client.GetUserInfoAsync(accessToken)` and `OAuth2Options.AcceptedClientIds` are removed; the back end signs in instead.
+
 ## [1.4.0] - 2026-10-21
 
 Details and migration steps: [docs/en/changelogs/1.4.0.md](docs/en/changelogs/1.4.0.md)

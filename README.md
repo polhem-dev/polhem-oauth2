@@ -10,7 +10,7 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=polhem-dev_polhem-oauth2&metric=coverage)](https://sonarcloud.io/project/overview?id=polhem-dev_polhem-oauth2)
 
 Lightweight sign-in for .NET with OAuth2 and OpenID Connect (OIDC). Desktop and console applications sign in through the system
-browser with a loopback redirect and PKCE, on Windows, macOS and Linux. .NET MAUI applications on Android, iOS and Mac
+browser with a loopback redirect and PKCE, directly or through their own back end, on Windows, macOS and Linux. .NET MAUI applications on Android, iOS and Mac
 Catalyst sign in through `WebAuthenticator`, directly or through their own back end. ASP.NET Core and ASP.NET (System.Web)
 applications use the authorization code flow with PKCE, and keep each sign-in in a protected cookie.
 
@@ -21,18 +21,19 @@ OIDC ID token, which the library checks or reads the user from; "OAuth2" means t
 
 | Account | Protocol | Desktop and console | .NET MAUI | ASP.NET Core and System.Web |
 |---------|----------|---------------------|-----------|-----------------------------|
-| [Google](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/google.md) | OAuth2 + OIDC | Yes | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
-| [Facebook](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/facebook.md) | OAuth2 | Yes | Directly or through the back end | Yes |
-| [LINE](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/line.md) | OAuth2, with the email address from the OIDC ID token | Yes | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
-| [Microsoft Entra ID](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/microsoft-entra-id.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
-| [Auth0](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/auth0.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
-| [Okta](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/okta.md) | OAuth2 + OIDC | Yes | Directly or through the back end | Yes |
-| [GitHub](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/github.md) | OAuth2 | Yes | Through the back end only | Yes |
-| [Apple](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/apple.md) | OAuth2 + OIDC | No | Through the back end only | Yes |
-| [Any other OIDC provider](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/openid-connect.md), such as Keycloak or GitLab | OAuth2 + OIDC | Yes, when the provider accepts a public client | Directly or through the back end | Yes |
+| [Google](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/google.md) | OAuth2 + OIDC | Directly or through the back end | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
+| [Facebook](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/facebook.md) | OAuth2 | Directly or through the back end | Directly or through the back end | Yes |
+| [LINE](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/line.md) | OAuth2, with the email address from the OIDC ID token | Directly or through the back end | Directly on iOS and Mac Catalyst; through the back end on Android | Yes |
+| [Microsoft Entra ID](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/microsoft-entra-id.md) | OAuth2 + OIDC | Directly or through the back end | Directly or through the back end | Yes |
+| [Auth0](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/auth0.md) | OAuth2 + OIDC | Directly or through the back end | Directly or through the back end | Yes |
+| [Okta](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/okta.md) | OAuth2 + OIDC | Directly or through the back end | Directly or through the back end | Yes |
+| [GitHub](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/github.md) | OAuth2 | Directly or through the back end | Through the back end only | Yes |
+| [Apple](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/apple.md) | OAuth2 + OIDC | Through the back end only | Through the back end only | Yes |
+| [Any other OIDC provider](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/providers/openid-connect.md), such as Keycloak or GitLab | OAuth2 + OIDC | Directly when the provider accepts a public client, or through the back end | Directly or through the back end | Yes |
 
-"Through the back end" means that the application signs in through its own ASP.NET Core back end, as the
-[.NET MAUI guide](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/maui.md) describes. Each account's
+"Through the back end" means that the application signs in through its own ASP.NET Core back end, which an application
+with a back end always does: see
+[Applications with a back end](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/separate-back-end.md). Each account's
 document says what to register with the provider and what it was tested with.
 
 ## Packages
@@ -153,7 +154,7 @@ the topics they share:
 - [ASP.NET (System.Web)](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/aspnet-system-web.md)
 - [Web applications: how a sign-in is kept](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/web-sign-in-state.md)
 - [Other server frameworks](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/other-server-frameworks.md)
-- [Apps with a separate back end](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/separate-back-end.md)
+- [Applications with a back end](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/separate-back-end.md)
 - [Results, tokens and errors](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/results-and-errors.md)
 - [Identifying users](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/identifying-users.md)
 - [Migrating from Bee.OAuth2](https://github.com/polhem-dev/polhem-oauth2/blob/main/docs/en/guides/migrating-from-bee-oauth2.md)

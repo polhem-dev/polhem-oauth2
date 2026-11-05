@@ -40,7 +40,6 @@
 - LINE 只在 ID token 裡提供 email，而且要 channel 有權限讀取、使用者也同意才會有。函式庫從 token 端點回傳的 ID token
   讀出 email，會檢查這個 token 是發給這個 client 的，但不檢查簽章。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-由前端送出 ID token，後端驗證。`GetUserInfoAsync` 也接受 LINE 的 access token；查證時 token 放在請求的 query 裡。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

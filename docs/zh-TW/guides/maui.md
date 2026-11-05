@@ -10,8 +10,8 @@ Android、iOS 或 Mac Catalyst 上的應用程式有兩種登入方式（[ADR-00
   code，應用程式再以它兌換使用者資訊。Google 與 LINE 不接受直接導回 Android 應用程式，所以在 Android 上必須用這個方式。
   GitHub 每次換 token 都要求 client secret，Sign in with Apple 則是每個 token 請求都要求，所以應用程式只能用這個方式登入它們。
 
-`WebAuthenticator` 在 Windows 上無法使用，所以 MAUI 應用程式的 Windows 平台跟[桌面應用程式](desktop.md)一樣，以
-`LoopbackOAuth2Client` 登入。
+`WebAuthenticator` 在 Windows 上無法使用，所以 MAUI 應用程式的 Windows 平台跟[桌面應用程式](desktop.md)一樣登入：
+直接登入用 `LoopbackOAuth2Client`，經由後端登入用 `LoopbackRelayClient`。
 
 ## 直連登入
 
@@ -70,7 +70,12 @@ public class CallbackActivity : WebAuthenticatorCallbackActivity
 後端照 [ASP.NET Core](aspnetcore.md) 指南登記 web client，再登記應用程式的回呼網址：
 
 ```csharp
-builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.example.app:/relay"));
+builder.Services.AddOAuth2AppRelay(options =>
+{
+    options.AppRedirectUris.Add("com.example.app:/relay");
+    // 給桌面應用程式與 Windows 平台，它們以任意 port 導回 loopback 位址。
+    options.AppRedirectUris.Add("http://127.0.0.1/callback");
+});
 ```
 
 - 也可以改用 `AddOAuth2AppRelay(builder.Configuration.GetSection("AppRelay"))` 從組態讀取同樣的設定：`AppRedirectUris` 可以是陣列或單一值，
@@ -87,4 +92,7 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
   接著由後端發給應用程式自己的 session；provider 的 token 留在後端。
 - code 存在 `IDistributedCache`。有多台伺服器時，改用分散式快取並共用 data protection 金鑰，跟網頁登入一樣。
   code 兌換之前，快取裡的使用者資訊也由這組金鑰保護。
-- [OAuthAspNetCore](../../../samples/OAuthAspNetCore) 與 [OAuthMaui](../../../samples/OAuthMaui) 兩個 sample 示範了兩端的寫法。
+- loopback 網址，也就是帶 path 的 `http://127.0.0.1` 或 `http://[::1]`，不帶 port 登記時接受任意 port，並可帶著
+  `LoopbackRelayClient` 加上的 `state` 參數。見桌面指南的[經由後端登入](desktop.md#經由後端登入)。
+- [OAuthAspNetCore](../../../samples/OAuthAspNetCore) 與 [OAuthMaui](../../../samples/OAuthMaui) 兩個 sample 示範了兩端的寫法，
+  Windows 也包括在內。

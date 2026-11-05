@@ -25,8 +25,8 @@ builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
 
 ## 桌面與主控台應用程式
 
-不支援。`LoopbackOAuth2Client` 會拒絕這組 options，因為 Apple 只接受有網域名稱的 https 回呼網址，
-而且每個 token 請求都要 client secret。
+桌面應用程式只能經由自家後端、以 `LoopbackRelayClient` 登入 Apple，見[經由後端登入](../guides/desktop.md#經由後端登入)。
+`LoopbackOAuth2Client` 會拒絕這組 options，因為 Apple 只接受有網域名稱的 https 回呼網址，而且每個 token 請求都要 client secret。
 
 ## .NET MAUI 應用程式
 
@@ -47,7 +47,6 @@ builder.Services.AddOAuth2Client("Apple", new AppleOAuth2Options
 - `Email` 可能是 Apple 私密轉寄服務的地址。
 - ADR-009 的實測中，Apple 有發 refresh token；refresh 時回傳新的 access token 與 ID token，但沒有新的 refresh token。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-`GetUserInfoAsync` 擲出 `NotSupportedException`：由前端送出 ID token，後端驗證。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

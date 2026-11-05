@@ -58,7 +58,7 @@ OpenID Connect 也允許 provider 不提供使用者資訊端點（OpenID Connec
 
   四家都檢查 audience。通用與專用的 provider 共用一個基底類別處理這項檢查與標準 claim 的對應；各家只提供名稱沒有值時改用的欄位。
 - 對這個 options，`OAuth2Client.GetUserInfoAsync(accessToken)` 擲出 `NotSupportedException`，與 Okta 相同：OpenID Connect 的前端
-  以 ID token 證明是誰登入（ADR-007）。
+  以 ID token 證明是誰登入（ADR-007）。這個方法已在 1.5.0 移除（ADR-011）。
 
 ## 範圍外
 
