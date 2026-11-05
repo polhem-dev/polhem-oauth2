@@ -74,7 +74,9 @@ if (File.Exists(configFile))
         relayOut = new JsonObject
         {
             ["BackendUrl"] = relay["BackendUrl"]?.DeepClone(),
-            ["RedirectUri"] = relay["RedirectUri"]?.DeepClone()
+            ["RedirectUri"] = relay["RedirectUri"]?.DeepClone(),
+            // The Windows platform signs in through the relay with this loopback URI (ADR-006).
+            ["DesktopRedirectUri"] = relay["DesktopRedirectUri"]?.DeepClone()
         };
         if (Uri.TryCreate(relay["RedirectUri"]?.GetValue<string>(), UriKind.Absolute, out var relayRedirect))
         {

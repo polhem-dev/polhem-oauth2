@@ -72,7 +72,7 @@ has none. The user is then only in the ID token of the token response.
   The audience is checked for all of them. The generic and the dedicated providers share one base class for the check and for
   the mapping of the standard claims; each provider adds only the field it falls back to for the user name.
 - `OAuth2Client.GetUserInfoAsync(accessToken)` throws `NotSupportedException` for these options, as for Okta: an OpenID Connect
-  front end proves who signed in with its ID token (ADR-007).
+  front end proves who signed in with its ID token (ADR-007). The method was removed in 1.5.0 (ADR-011).
 
 ## Out of scope
 

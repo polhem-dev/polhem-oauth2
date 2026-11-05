@@ -18,7 +18,8 @@
 | GitHub App 或 OAuth App 的 callback URL，登記為 `http://127.0.0.1/callback` | `http://127.0.0.1:0/callback` | 任意 port 都被接受。host 必須一致：`localhost` 沒有導回 |
 
 - 這個登記方式已於 2026-10-15 實測（[ADR-004](../../adr/adr-004-system-browser-loopback.zh-TW.md)）。
-- `LoopbackOAuth2Client` 會把 client secret 送給 GitHub；不送的話，token 端點回應 `incorrect_client_credentials`。
+- `LoopbackOAuth2Client` 會把 client secret 送給 GitHub；不送的話，token 端點回應 `incorrect_client_credentials`。這個 secret
+  會隨應用程式散布，所以有自家後端的桌面應用程式改為經由後端登入，見[經由後端登入](../guides/desktop.md#經由後端登入)。
 
 ## .NET MAUI 應用程式
 
@@ -43,8 +44,6 @@
 GitHub 的 token 端點有些錯誤以狀態碼 200 回傳，例如 `bad_verification_code`，一樣會成為 `OAuth2Exception`。
 見[結果、token 與錯誤](../guides/results-and-errors.md)。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-GitHub 不發標準 ID token，所以由前端送出 access token，後端呼叫 `GetUserInfoAsync`。options 需要 `ClientSecret`，
-前端也要和後端用同一個 GitHub 應用程式。GitHub 拒絕 client 憑證時會往外拋。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

@@ -27,7 +27,7 @@ namespace Polhem.OAuth2.AspNetCore
     /// </para>
     /// <para>
     /// With <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(Microsoft.Extensions.DependencyInjection.IServiceCollection, Action{OAuth2AppRelayOptions})"/>, the
-    /// same clients also sign in mobile applications through the back-end relay of ADR-006:
+    /// same clients also sign in mobile and desktop applications through the back-end relay of ADR-006:
     /// <see cref="RedirectToAppAuthorization"/>, <see cref="RedirectToAppAsync"/> and <see cref="RedeemAppCodeAsync"/>.
     /// </para>
     /// <para>

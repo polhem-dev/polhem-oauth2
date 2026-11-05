@@ -342,15 +342,6 @@ namespace Polhem.OAuth2.UnitTests
             Assert.All(secrets, secret => AssertSignature(secret!, key.Key));
         }
 
-        [Fact]
-        [DisplayName("The user information of an access token from a front end is not supported")]
-        public async Task GetUserInfoAsync_AccessToken_ThrowsNotSupportedException()
-        {
-            var client = new OAuth2Client(CreateOptions(privateKey: null, clientSecret: "signed"));
-
-            await Assert.ThrowsAsync<NotSupportedException>(() => client.GetUserInfoAsync("access"));
-        }
-
         private static AppleOAuth2Options CreateOptions(TestAppleKey? privateKey, string clientSecret = "")
         {
             var options = new AppleOAuth2Options { ClientId = ClientId, RedirectUri = RedirectUri, ClientSecret = clientSecret };

@@ -4,8 +4,8 @@ using Microsoft.Extensions.Configuration;
 namespace Polhem.OAuth2.AspNetCore
 {
     /// <summary>
-    /// Settings of the back-end relay, through which a mobile application signs in with this ASP.NET Core application
-    /// (ADR-006). Register them with
+    /// Settings of the back-end relay, through which a mobile or desktop application signs in with this ASP.NET Core
+    /// application (ADR-006). Register them with
     /// <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(Microsoft.Extensions.DependencyInjection.IServiceCollection, Action{OAuth2AppRelayOptions})"/>,
     /// or read them from a configuration section with
     /// <see cref="Microsoft.Extensions.DependencyInjection.OAuth2ServiceCollectionExtensions.AddOAuth2AppRelay(Microsoft.Extensions.DependencyInjection.IServiceCollection, IConfiguration)"/>.
@@ -13,12 +13,27 @@ namespace Polhem.OAuth2.AspNetCore
     public sealed class OAuth2AppRelayOptions
     {
         /// <summary>
-        /// Gets the application redirect URIs that a relayed sign-in may return to, such as
-        /// <c>com.example.app:/signin</c>. A requested URI must equal one of them exactly.
+        /// Gets the application redirect URIs that a relayed sign-in may return to, such as <c>com.example.app:/signin</c>
+        /// for a mobile application or <c>http://127.0.0.1/callback</c> for a desktop application.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Each URI must pass <see cref="OAuth2Options.IsAppRedirectUri"/>, the rule that <see cref="AppOAuth2Client"/> applies
-        /// to its redirect URI.
+        /// to its redirect URI, or be a loopback URI: <c>http</c>, the address <c>127.0.0.1</c> or <c>[::1]</c>, a path, and no
+        /// query. <c>localhost</c> is not accepted.
+        /// </para>
+        /// <para>
+        /// A requested URI must equal one of them exactly, with two exceptions for loopback URIs, which
+        /// <see cref="LoopbackRelayClient"/> relies on. A loopback URI registered without a port matches the same address and
+        /// path on any port, as RFC 8252, section 7.3, describes. A requested loopback URI may also end with a <c>state</c>
+        /// query of 43 to 128 base64url characters, which the relay returns ahead of the code.
+        /// </para>
+        /// <para>
+        /// Any program on the user's computer can listen on a loopback port, so with a registration without a port, such a
+        /// program can start a relayed sign-in to its own port and redeem the code with its own verifier, as RFC 8252,
+        /// section 8.3, accepts for loopback redirects. Register the URI with a port when the application can always listen
+        /// on the same one.
+        /// </para>
         /// </remarks>
         public IList<string> AppRedirectUris { get; } = [];
 

@@ -5,8 +5,8 @@ namespace OAuthMaui;
 
 /// <summary>
 /// Lists a sign-in button for every provider in the packaged settings: a direct sign-in with <see cref="AppOAuth2Client"/>
-/// on Android, iOS and Mac Catalyst, a sign-in through the back-end relay of the ASP.NET Core sample, and a loopback
-/// sign-in with <see cref="LoopbackOAuth2Client"/> on Windows (ADR-006).
+/// on Android, iOS and Mac Catalyst and with <see cref="LoopbackOAuth2Client"/> on Windows, and a sign-in through the
+/// back-end relay of the ASP.NET Core sample, which Windows reaches with <see cref="LoopbackRelayClient"/> (ADR-006).
 /// </summary>
 public sealed class MainPage : ContentPage
 {
@@ -50,6 +50,15 @@ public sealed class MainPage : ContentPage
         {
             foreach (var client in config.GetClients(OAuthClientType.Desktop))
                 AddButton($"Sign in with {client.ProviderName} (loopback)", () => SignInWithLoopbackAsync(client));
+
+            if (config.AppRelay is { DesktopRedirectUri: { } desktopRedirectUri } desktopRelay)
+            {
+                foreach (var client in config.GetClients(OAuthClientType.Web))
+                {
+                    AddButton($"Sign in with {client.ProviderName} through the back end",
+                        () => SignInThroughBackEndAsync(client.ProviderName, () => BackEndSignIn.SignInOnDesktopAsync(desktopRelay, desktopRedirectUri, client.ProviderName)));
+                }
+            }
         }
         else
         {
@@ -60,7 +69,8 @@ public sealed class MainPage : ContentPage
             if (config.AppRelay is { } relay)
             {
                 foreach (var client in config.GetClients(OAuthClientType.Web))
-                    AddButton($"Sign in with {client.ProviderName} through the back end", () => SignInThroughBackEndAsync(relay, client.ProviderName));
+                    AddButton($"Sign in with {client.ProviderName} through the back end",
+                        () => SignInThroughBackEndAsync(client.ProviderName, () => BackEndSignIn.SignInAsync(relay, client.ProviderName)));
             }
         }
 
@@ -117,11 +127,11 @@ public sealed class MainPage : ContentPage
         ShowResult(await loopbackClient.SignInAsync());
     }
 
-    private async Task SignInThroughBackEndAsync(OAuthAppRelay relay, string providerName)
+    private async Task SignInThroughBackEndAsync(string providerName, Func<Task<OAuthBackEndUser?>> signIn)
     {
         try
         {
-            var user = await BackEndSignIn.SignInAsync(relay, providerName);
+            var user = await signIn();
             _result.Text = user is null
                 ? "The back end did not return a user."
                 : $"Signed in with {providerName} through the back end\nUser ID: {user.UserId}\nName: {user.UserName}\nEmail: {user.Email}";

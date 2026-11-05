@@ -22,8 +22,6 @@
 - 所有端點都必須是絕對的 `https` URI，而且不能有 fragment。端點自帶的 query 會被保留，所以可以在端點上加 provider 的參數，
   例如 `https://tenant.auth0.com/authorize?audience=...`。
 - `UsePkce` 預設為 `true`。
-- `AcceptedClientIds` 列出後端除了 `ClientId` 之外，還接受哪些前端 client ID 的 access token；見
-  [前後端分離的應用程式](separate-back-end.md)。
 - `ClientAuthentication` 決定 client secret 怎麼送到 token 端點：放在請求本文（`ClientSecretPost`，預設值），或放在 HTTP Basic
   標頭（`ClientSecretBasic`）。provider 把應用程式登記為 `client_secret_basic`、且不接受本文裡的 secret 時，請設為
   `ClientSecretBasic`。[Okta](../providers/okta.md) 的網頁應用程式預設就是這樣登記。

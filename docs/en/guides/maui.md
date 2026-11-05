@@ -14,8 +14,9 @@ An application on Android, iOS or Mac Catalyst signs in in one of two ways
   secret for every code exchange, and Sign in with Apple for every token request, so an application signs in to them only
   this way.
 
-`WebAuthenticator` does not work on Windows, so the Windows platform of a MAUI application signs in with
-`LoopbackOAuth2Client`, as a [desktop application](desktop.md) does.
+`WebAuthenticator` does not work on Windows, so the Windows platform of a MAUI application signs in as a
+[desktop application](desktop.md) does: with `LoopbackOAuth2Client` directly, and with `LoopbackRelayClient` through the
+back end.
 
 ## Signing in directly
 
@@ -77,7 +78,12 @@ The back end registers its web clients as in the [ASP.NET Core](aspnetcore.md) g
 applications:
 
 ```csharp
-builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.example.app:/relay"));
+builder.Services.AddOAuth2AppRelay(options =>
+{
+    options.AppRedirectUris.Add("com.example.app:/relay");
+    // For desktop applications and the Windows platform, which return to a loopback address on any port.
+    options.AppRedirectUris.Add("http://127.0.0.1/callback");
+});
 ```
 
 - `AddOAuth2AppRelay(builder.Configuration.GetSection("AppRelay"))` reads the same settings from configuration instead:
@@ -98,4 +104,8 @@ builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add("com.e
   back end.
 - The codes are kept in `IDistributedCache`. With several servers, use a distributed cache and share the data protection
   keys, as for web sign-ins. The keys also protect the user information that the cache holds until the code is redeemed.
-- The [OAuthAspNetCore](../../../samples/OAuthAspNetCore) and [OAuthMaui](../../../samples/OAuthMaui) samples show both sides.
+- A loopback URI, `http://127.0.0.1` or `http://[::1]` with a path, is accepted on any port when it is registered without
+  one, and may carry the `state` query that `LoopbackRelayClient` adds. See
+  [Signing in through the back end](desktop.md#signing-in-through-the-back-end) of the desktop guide.
+- The [OAuthAspNetCore](../../../samples/OAuthAspNetCore) and [OAuthMaui](../../../samples/OAuthMaui) samples show both sides,
+  on Windows too.

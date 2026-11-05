@@ -35,20 +35,6 @@ namespace Polhem.OAuth2
         protected override IEqualityComparer<string> ClientIdComparer => EntraClientIdComparer.Instance;
 
         /// <inheritdoc/>
-        /// <remarks>
-        /// Microsoft asks applications to treat an access token for Microsoft Graph as opaque, and offers no endpoint that
-        /// tells another application which client it was issued to, so the check is not supported.
-        /// </remarks>
-        protected override Task<IReadOnlyCollection<string>> GetTokenClientIdsAsync(string accessToken, CancellationToken cancellationToken)
-        {
-            return Task.FromException<IReadOnlyCollection<string>>(new NotSupportedException(
-                "Microsoft Entra ID offers no way to check which client an access token, such as one for Microsoft Graph, "
-                + "was issued to. Validate the ID token of the sign-in in the back end instead, whose audience is the client ID "
-                + "of the front end, or have the front end request an access token for an API of your own and validate it as "
-                + "a JSON Web Token whose audience is that API, for example with JwtBearer authentication."));
-        }
-
-        /// <inheritdoc/>
         protected override string? GetFallbackUserName(JsonElement user)
         {
             // A personal Microsoft account returns no name claim, and its name parts as givenname and familyname, without the

@@ -15,13 +15,10 @@ namespace Polhem.OAuth2
         /// </summary>
         /// <param name="options">The OAuth2 options.</param>
         /// <param name="httpClientFactory">Returns the HTTP client for a request to the provider, or null to use a shared instance.</param>
-        /// <param name="tokenVerificationEndpoint">
-        /// The endpoint that tells which client an access token was issued to, or null when the provider has none.
-        /// </param>
         /// <exception cref="ArgumentNullException"><paramref name="options"/> is null.</exception>
         /// <exception cref="ArgumentException">An endpoint of <paramref name="options"/> is not an absolute https URI without a fragment.</exception>
-        protected OpenIdConnectProvider(OAuth2Options options, Func<HttpClient>? httpClientFactory, string? tokenVerificationEndpoint = null)
-            : base(options, httpClientFactory, tokenVerificationEndpoint)
+        protected OpenIdConnectProvider(OAuth2Options options, Func<HttpClient>? httpClientFactory)
+            : base(options, httpClientFactory)
         {
         }
 
@@ -89,20 +86,6 @@ namespace Polhem.OAuth2
             return OAuth2Json.GetProtocolString(claims, SubjectClaim) is { Length: > 0 } subject
                 ? subject
                 : throw new OAuth2Exception("The ID token has no subject.");
-        }
-
-        /// <summary>
-        /// Creates the exception for <see cref="OAuth2Provider.GetTokenClientIdsAsync"/> of a provider whose front end proves
-        /// who signed in with the ID token of the sign-in rather than with an access token.
-        /// </summary>
-        /// <returns>The exception.</returns>
-        protected NotSupportedException CreateIdTokenFrontEndException()
-        {
-            return new NotSupportedException(
-                $"{ProviderName} is an OpenID Connect provider, so a front end proves who signed in with the ID token of the sign-in, "
-                + "whose audience is its client ID, rather than with an access token. Validate the ID token in the back end, "
-                + "checking its signature, issuer, expiry and audience, for example with JwtBearer authentication, instead of "
-                + "passing an access token to this method.");
         }
 
         /// <summary>

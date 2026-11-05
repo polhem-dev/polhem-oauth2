@@ -1,42 +1,27 @@
-# Apps with a separate back end
+# Applications with a back end
 
 **English** | [繁體中文](../../zh-TW/guides/separate-back-end.md)
 
-For brevity, the desktop example signs in and reads the user information in one call, which suits an application that
-uses the result itself. When the front end signs in and then signs in to a separate back end, do not send the user
-information from the front end to the back end as proof of identity: the back end cannot tell whether it was forged.
-Sending a token is not enough either: another application that the same user signed in to holds a valid token for that user,
-and the user information endpoint answers it with the same user. In order of preference:
+An application without a back end of its own signs in directly and uses the result itself: `LoopbackOAuth2Client` in a
+[desktop or console application](desktop.md), and `AppOAuth2Client` in a [.NET MAUI application](maui.md).
 
-1. Let the back end run the sign-in, so that no token leaves it: [ASP.NET Core](aspnetcore.md) for a web front end, and
-   [Signing in through the back end](maui.md#signing-in-through-the-back-end) for a .NET MAUI application.
-2. Send the ID token of an OpenID Connect sign-in, and validate it in the back end, for example with JwtBearer
-   authentication: its signature with the provider's published keys, its issuer and expiry, and an audience that is the
-   client ID of the front end. A validator that skips the audience can accept the tokens of other applications. The library
-   does not validate an ID token that a front end sends.
-3. Send the access token, and have the back end call `GetUserInfoAsync`: for Facebook and GitHub, which issue no standard ID
-   token. Google and LINE are supported as well, but their ID token is the better choice.
+An application with a back end has the back end sign in, with every provider, OpenID Connect providers included. The back
+end learns who signed in from the provider itself, the provider's tokens and the client secret stay on the back end, and
+the back end issues its own session:
 
-```csharp
-OAuth2Client client = oauth2Manager.GetClient("Facebook")!;
-var result = await client.GetUserInfoAsync(accessToken, cancellationToken);
-if (!result.IsSuccess)
-    return Unauthorized();
-// result.UserInfo is the user; issue the back end's own session.
-```
+| Front end | How it signs in |
+|-----------|-----------------|
+| Web pages, including single-page applications | The back end runs the web sign-in: [ASP.NET Core](aspnetcore.md) or [ASP.NET (System.Web)](aspnet-system-web.md) |
+| .NET MAUI on Android, iOS and Mac Catalyst | Through the back-end relay, with `WebAuthenticator`: [Signing in through the back end](maui.md#signing-in-through-the-back-end) |
+| Desktop and console applications, and .NET MAUI on Windows | Through the back-end relay, with `LoopbackRelayClient`: [Signing in through the back end](desktop.md#signing-in-through-the-back-end) |
 
-- Before it asks for the user information, `GetUserInfoAsync` checks with the provider that the token was issued to
-  `ClientId` or one of `AcceptedClientIds`, such as the iOS and Android clients of a Google Cloud project. The check cannot be
-  turned off.
-- It supports Google, LINE, Facebook and GitHub. Facebook and GitHub check the token with the client secret, so their options
-  need `ClientSecret`. They also check only tokens issued to `ClientId`, so the front end that obtains the token, such as a
-  desktop or mobile application, uses the same Facebook or GitHub application as the back end.
-- Microsoft Entra ID, Auth0, Okta, Sign in with Apple and `OidcOAuth2Options` throw `NotSupportedException`: they are OpenID
-  Connect providers, so use the ID token instead.
-- A token that the provider refuses, has expired, or was issued to another client is a failed result, as are network failures
-  and timeouts. A missing client secret, and client credentials that GitHub refuses, are thrown.
-- LINE and Facebook take the token only in the query of the check, so an HTTP client that logs request URIs writes it to the
-  log. Every check is a request to the provider, which limits how many it answers, so limit how often the back end's endpoint
-  can be called.
+Do not send the back end anything the front end obtained itself as proof of who signed in: the back end cannot tell user
+information that was forged, and a token is not enough either. Another application that the same user signed in to holds a
+valid token for that user, which the provider's user information endpoint answers with the same user.
 
-[ADR-007](../../adr/adr-007-access-token-from-front-end.md) records the reasons and how each provider is checked.
+The relay is part of Polhem.OAuth2.AspNetCore. A back end on another framework can follow the same steps with
+`OAuth2Client`, as [Other server frameworks](other-server-frameworks.md) describes for the web sign-in.
+
+Version 1.5.0 removed `OAuth2Client.GetUserInfoAsync(accessToken)` and `OAuth2Options.AcceptedClientIds`, which returned
+the user of an access token that a front end sent. Move that sign-in to the back end as the table shows.
+[ADR-011](../../adr/adr-011-back-end-signs-in.md) records the reasons.

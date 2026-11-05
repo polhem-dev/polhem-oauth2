@@ -1,1 +1,16 @@
 #nullable enable
+Polhem.OAuth2.LoopbackRelayClient
+Polhem.OAuth2.LoopbackRelayClient.LoopbackRelayClient(string! redirectUri) -> void
+Polhem.OAuth2.LoopbackRelayClient.OpenBrowser.get -> System.Func<System.Uri!, System.Threading.Tasks.Task!>?
+Polhem.OAuth2.LoopbackRelayClient.OpenBrowser.set -> void
+Polhem.OAuth2.LoopbackRelayClient.SignInAsync(System.Func<System.Uri!, string!, System.Uri!>! createSignInUrl, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.RelaySignInResult!>!
+Polhem.OAuth2.LoopbackRelayClient.Timeout.get -> System.TimeSpan
+Polhem.OAuth2.LoopbackRelayClient.Timeout.set -> void
+Polhem.OAuth2.RelaySignInResult
+Polhem.OAuth2.RelaySignInResult.Code.get -> string?
+Polhem.OAuth2.RelaySignInResult.CodeVerifier.get -> string?
+Polhem.OAuth2.RelaySignInResult.Exception.get -> System.Exception?
+Polhem.OAuth2.RelaySignInResult.IsSuccess.get -> bool
+*REMOVED*Polhem.OAuth2.OAuth2Client.GetUserInfoAsync(string! accessToken, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Polhem.OAuth2.AuthorizationResult!>!
+*REMOVED*Polhem.OAuth2.OAuth2Options.AcceptedClientIds.get -> string![]!
+*REMOVED*Polhem.OAuth2.OAuth2Options.AcceptedClientIds.set -> void

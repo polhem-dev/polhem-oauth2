@@ -48,8 +48,7 @@ sign in to Google with [`OidcOAuth2Options`](openid-connect.md) read from `https
   carries `?access_type=offline&prompt=consent`.
 - `UserId` is the `sub` claim, a number written as a string.
 
-## Apps with a separate back end
+## Applications with a back end
 
-The front end sends its ID token, which the back end validates. `GetUserInfoAsync` also accepts a Google access token, and
-`AcceptedClientIds` can list the iOS and Android clients of the same Google Cloud project. See
-[Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

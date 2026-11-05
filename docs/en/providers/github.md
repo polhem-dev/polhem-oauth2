@@ -21,7 +21,8 @@
 
 - This registration was tested on 2026-10-15 ([ADR-004](../../adr/adr-004-system-browser-loopback.md)).
 - `LoopbackOAuth2Client` sends the client secret to GitHub; without it the token endpoint answered
-  `incorrect_client_credentials`.
+  `incorrect_client_credentials`. The secret ships with the application, so a desktop application with a back end of its own
+  signs in through it instead: see [Signing in through the back end](../guides/desktop.md#signing-in-through-the-back-end).
 
 ## .NET MAUI applications
 
@@ -50,8 +51,7 @@ Register the callback URL in the settings of the GitHub App or OAuth App, and fo
 GitHub reports some errors of its token endpoint, such as `bad_verification_code`, with status 200; they become an
 `OAuth2Exception` all the same. See [Results, tokens and errors](../guides/results-and-errors.md).
 
-## Apps with a separate back end
+## Applications with a back end
 
-GitHub issues no standard ID token, so the front end sends its access token and the back end calls `GetUserInfoAsync`. The
-options need `ClientSecret`, and the front end uses the same GitHub application as the back end. Client credentials that
-GitHub refuses are thrown. See [Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

@@ -10,9 +10,17 @@ var oauthConfig = OAuthConfig.Load();
 foreach (var client in oauthConfig.GetClients(OAuthClientType.Web))
     builder.Services.AddOAuth2Client(client.ProviderName, client.Options);
 
-// The OAuthMaui sample signs in through these web clients as well, when the settings file has an AppRelay section (ADR-006).
+// The OAuthMaui and OAuthConsole samples sign in through these web clients as well, when the settings file has an AppRelay
+// section (ADR-006).
 if (oauthConfig.AppRelay is { } relay)
-    builder.Services.AddOAuth2AppRelay(options => options.AppRedirectUris.Add(relay.RedirectUri));
+{
+    builder.Services.AddOAuth2AppRelay(options =>
+    {
+        options.AppRedirectUris.Add(relay.RedirectUri);
+        if (relay.DesktopRedirectUri is { } desktopRedirectUri)
+            options.AppRedirectUris.Add(desktopRedirectUri);
+    });
+}
 
 var app = builder.Build();
 

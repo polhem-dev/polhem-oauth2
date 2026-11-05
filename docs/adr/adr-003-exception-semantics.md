@@ -9,7 +9,7 @@ Accepted (2026-09-13). Revised on 2026-09-14, before the first release, for `OAu
 errors that GitHub reports with status 200. Revised again on 2026-10-15 for `OAuth2Client.GetUserInfoAsync`, which
 ADR-007 added, and on 2026-10-20 for the ID token checks and the discovery of ADR-008, and for Sign in with Apple (ADR-009). Revised on 2026-10-21: the ID token failures apply to every OpenID Connect
 provider, as they have since the dedicated providers began to check the ID token. Revised the same day for a POST
-callback whose body cannot be read in ASP.NET Core.
+callback whose body cannot be read in ASP.NET Core. Revised on 2026-11-05 by ADR-011: `OAuth2Client.GetUserInfoAsync(accessToken)` was removed, and `LoopbackRelayClient` was added.
 
 ## Context
 
@@ -41,9 +41,8 @@ looked the same as a routine sign-in failure, and problems that needed a fix wer
     A request aborted while its body is read throws `OperationCanceledException`, as an aborted request does elsewhere.
   - `LoopbackOAuth2Client.SignInAsync` also: the failures described in ADR-004.
   - `AppOAuth2Client.SignInAsync` also: the failures described in ADR-006.
-  - `OAuth2Client.GetUserInfoAsync`, which returns the user of an access token from a front end: the same exceptions as
-    `CompleteAuthorizationAsync`, among them an `OAuth2Exception` when the provider refuses the token or names a client that is
-    not accepted. The checks that throw instead are described in ADR-007.
+  - `LoopbackRelayClient.SignInAsync`: an `OAuth2Exception` when the back end redirects with an error or without a code, a
+    `TimeoutException` when no redirect arrives in time, and an `OperationCanceledException` when the caller cancels (ADR-011).
 - Cancellation by the caller propagates from `OAuth2Client` and the web managers as `OperationCanceledException`, and in
   ASP.NET Core also when the request is aborted. Cancellation means that nobody waits for the result, not that the sign-in
   failed. The loopback client and the application client turn it into a failed result instead, as ADR-004 and ADR-006 describe.

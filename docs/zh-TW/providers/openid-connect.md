@@ -52,7 +52,6 @@ verifier。所以 provider 允許時，每個網頁 client 都要設定 client s
 `UserId` 是 `sub` claim。函式庫會檢查每次登入取得的 ID token：檢查 audience，設定了 `Issuer` 時也檢查 issuer。
 見[識別使用者](../guides/identifying-users.md)。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-`GetUserInfoAsync` 擲出 `NotSupportedException`：由前端送出 ID token，後端驗證。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

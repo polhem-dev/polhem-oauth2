@@ -35,7 +35,6 @@ Auth0 把自訂 scheme 標為無法驗證的回呼網址（non-verifiable callba
 - `Scopes` 含 `offline_access`、且應用程式設定允許時，Auth0 會發 refresh token。
 - Auth0 的 `name` 為 JSON null 時，使用者名稱改用 `nickname`。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-`GetUserInfoAsync` 擲出 `NotSupportedException`：由前端送出 ID token，後端驗證。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

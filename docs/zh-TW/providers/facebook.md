@@ -43,8 +43,6 @@
 Facebook 的 token 端點回傳的是 Graph API 的錯誤，而不是 OAuth2 錯誤：`OAuth2Exception.Error` 是它的數字代碼，
 例如 `100`；`ErrorDescription` 是它的訊息。見[結果、token 與錯誤](../guides/results-and-errors.md)。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-Facebook 不發標準 ID token，所以由前端送出 access token，後端呼叫 `GetUserInfoAsync`。options 需要 `ClientSecret`，
-前端也要和後端用同一個 Facebook app。查證時 token 放在請求的 query 裡。
-見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。
