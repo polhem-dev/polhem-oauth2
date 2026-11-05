@@ -100,3 +100,14 @@ On 2026-11-05:
 - An adversarial review of the loopback rules tried other spellings of the addresses (`127.1`, `127.0.0.2`,
   `[0:0:0:0:0:0:0:1]`, `[::ffff:127.0.0.1]`, a trailing dot), uppercase schemes, leading zeros in the port, ports 0 and
   65536, backslashes, encoded slashes, and a second `code` in the state query. The relay refused each of them.
+- [Run 42029623202](https://github.com/polhem-dev/polhem-oauth2/actions/runs/42029623202) of the device tests passed on
+  Windows, iOS, Mac Catalyst and Android. On Windows, `LoopbackRelayClient` signed in to the fake provider through the relay;
+  on Mac Catalyst, an application signed in to the OpenID Connect mode through the relay.
+- On macOS, the OAuthConsole sample with `--back-end` signed in through the OAuthAspNetCore sample with real accounts, the
+  back end registering `http://127.0.0.1/callback` without a port:
+  - GitHub, with the back end's web client: the redeemed user had the numeric account ID, the name and the email
+    address. The client secret stayed on the back end.
+  - Facebook: the redeemed user had the numeric ID, the name and the email address.
+
+  These are the two providers without an ID token, for which a front end with a back end could only use the access token
+  check that this decision removes.

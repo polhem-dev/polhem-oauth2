@@ -80,3 +80,12 @@ frontend，讓 token 留在伺服器。微軟 .NET MAUI 的 `WebAuthenticator` �
   兩者都回傳 `?state=...&code=...`，代碼都兌換出 fake 使用者。在此之前，中轉沒有以 `OidcOAuth2Options` 測試過。
 - loopback 規則的對抗式審查試過位址的其他寫法（`127.1`、`127.0.0.2`、`[0:0:0:0:0:0:0:1]`、`[::ffff:127.0.0.1]`、結尾的點）、
   大寫的 scheme、port 的前導零、port 0 與 65536、反斜線、編碼過的斜線，以及在 state query 裡夾帶第二個 `code`。中轉全部拒絕。
+- device tests 的 [run 42029623202](https://github.com/polhem-dev/polhem-oauth2/actions/runs/42029623202) 在 Windows、iOS、
+  Mac Catalyst 與 Android 上通過。Windows 以 `LoopbackRelayClient` 經中轉登入 fake provider；Mac Catalyst 由應用程式經中轉登入
+  OpenID Connect 模式。
+- 在 macOS 上，OAuthConsole sample 加上 `--back-end`，經 OAuthAspNetCore sample 以真實帳號登入，後端以不帶 port 的
+  `http://127.0.0.1/callback` 登記：
+  - GitHub，使用後端的網頁 client：兌換出的使用者有數字帳號 ID、名稱與 email。client secret 留在後端。
+  - Facebook：兌換出的使用者有數字 ID、名稱與 email。
+
+  這兩家都不發 ID token，有後端的前端原本只能用本決策移除的 access token 查證。
