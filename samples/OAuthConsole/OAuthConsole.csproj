@@ -13,4 +13,10 @@
     <ProjectReference Include="..\..\src\Polhem.OAuth2\Polhem.OAuth2.csproj" />
   </ItemGroup>
 
+  <!-- The requests to the ASP.NET Core sample for a sign-in through its relay, which the MAUI sample shares. -->
+  <ItemGroup>
+    <Compile Include="..\Shared\OAuthBackEnd.cs" Link="Shared\OAuthBackEnd.cs" />
+    <Compile Include="..\Shared\OAuthBackEndUser.cs" Link="Shared\OAuthBackEndUser.cs" />
+  </ItemGroup>
+
 </Project>

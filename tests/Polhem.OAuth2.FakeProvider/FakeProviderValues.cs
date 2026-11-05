@@ -53,6 +53,17 @@ namespace Polhem.OAuth2.FakeProvider
         public const string RelayRedirectUri = AppScheme + ":/relay";
 
         /// <summary>
+        /// The loopback redirect URI through which the relay returns to a desktop application, registered without a port so
+        /// that any port is accepted.
+        /// </summary>
+        public const string DesktopRelayRedirectUri = "http://127.0.0.1/callback";
+
+        /// <summary>
+        /// The client name of the relay's web client for the OpenID Connect mode, which <c>OidcOAuth2Options</c> signs in with.
+        /// </summary>
+        public const string OidcRelayClientName = "FakeOidc";
+
+        /// <summary>
         /// The path under which the fake provider is an OpenID Connect provider with a discovery document. The issuer is
         /// the origin followed by this path.
         /// </summary>
