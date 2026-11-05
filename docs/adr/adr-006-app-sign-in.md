@@ -9,7 +9,7 @@ Revised on 2026-09-21: the redirect URI rule became public, and the back-end rel
 protects its cache entries, checks the application redirect URI again when it returns the sign-in, can start a sign-in
 from the values of a request without throwing, and bounds the lifetime of a code. Revised on 2026-10-15 for GitHub, which
 an application signs in to only through the back end, and on 2026-10-20 for Sign in with Apple, which an application also
-signs in to only through the back end (ADR-009).
+signs in to only through the back end (ADR-009). Revised on 2026-11-05 by ADR-011: the relay also accepts loopback redirect URIs, so desktop applications and the Windows platform of a MAUI application sign in through it as well.
 
 ## Context
 

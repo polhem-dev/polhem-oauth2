@@ -43,7 +43,7 @@ callback URLs.
   library reads it from the ID token that the token endpoint returned, and checks that the token was issued to the client,
   but does not check its signature.
 
-## Apps with a separate back end
+## Applications with a back end
 
-The front end sends its ID token, which the back end validates. `GetUserInfoAsync` also accepts a LINE access token; the check
-sends the token in the query of the request. See [Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

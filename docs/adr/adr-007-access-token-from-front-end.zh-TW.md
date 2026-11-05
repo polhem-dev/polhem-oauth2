@@ -7,7 +7,7 @@
 已採納（2026-10-15）。2026-10-15 於 pull request
 [#9](https://github.com/polhem-dev/polhem-oauth2/pull/9)、[#10](https://github.com/polhem-dev/polhem-oauth2/pull/10)、
 [#11](https://github.com/polhem-dev/polhem-oauth2/pull/11) 與 [#18](https://github.com/polhem-dev/polhem-oauth2/pull/18) 實作。
-各項查證於 2026-10-15 以無效的 token 實測，2026-10-16 以真實帳號與其他 client 的 token 實測，記錄在「測試結果」。2026-10-20 ADR-008 把 `OidcOAuth2Options` 加入不支援的 provider，同日 ADR-009 也把 Sign in with Apple 加入。
+各項查證於 2026-10-15 以無效的 token 實測，2026-10-16 以真實帳號與其他 client 的 token 實測，記錄在「測試結果」。2026-10-20 ADR-008 把 `OidcOAuth2Options` 加入不支援的 provider，同日 ADR-009 也把 Sign in with Apple 加入。 **2026-11-05 已由 ADR-011 取代**：有後端的應用程式由後端登入，`GetUserInfoAsync(accessToken)` 與 `AcceptedClientIds` 已在 1.5.0 移除。本文保留其理由與測試結果。
 
 ## 背景
 

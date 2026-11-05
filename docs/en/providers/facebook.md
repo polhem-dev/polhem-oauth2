@@ -44,8 +44,7 @@ or [ASP.NET (System.Web)](../guides/aspnet-system-web.md).
 The token endpoint of Facebook reports a Graph API error instead of an OAuth2 error: `OAuth2Exception.Error` holds its
 numeric code, such as `100`, and `ErrorDescription` its message. See [Results, tokens and errors](../guides/results-and-errors.md).
 
-## Apps with a separate back end
+## Applications with a back end
 
-Facebook issues no standard ID token, so the front end sends its access token and the back end calls `GetUserInfoAsync`.
-The options need `ClientSecret`, and the front end uses the same Facebook app as the back end. The check sends the token in
-the query of the request. See [Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

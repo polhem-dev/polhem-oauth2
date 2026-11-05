@@ -12,7 +12,8 @@ Each record explains a design decision in Polhem.OAuth2 and the reasons behind i
 | [ADR-004](adr-004-system-browser-loopback.md) | Sign in from desktop applications through the system browser and a loopback redirect |
 | [ADR-005](adr-005-web-sign-in-cookie.md) | Keep each web sign-in in its own protected cookie |
 | [ADR-006](adr-006-app-sign-in.md) | Sign in from mobile applications directly or through the application's own back end |
-| [ADR-007](adr-007-access-token-from-front-end.md) | Return the user of an access token from a front end only after the provider names its client |
+| [ADR-007](adr-007-access-token-from-front-end.md) | Return the user of an access token from a front end only after the provider names its client (superseded by ADR-011) |
 | [ADR-008](adr-008-generic-openid-connect-provider.md) | Sign in with any OpenID Connect provider through one options type |
 | [ADR-009](adr-009-sign-in-with-apple.md) | Sign in with Apple through the web flow, with a client secret the library signs |
 | [ADR-010](adr-010-breaking-changes-in-1-x-minors.md) | Allow breaking changes in 1.x minor versions, and start strict semantic versioning at 2.0 |
+| [ADR-011](adr-011-back-end-signs-in.md) | When an application has a back end, the back end signs in, desktop applications included |

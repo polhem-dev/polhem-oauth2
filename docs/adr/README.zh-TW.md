@@ -12,7 +12,8 @@
 | [ADR-004](adr-004-system-browser-loopback.zh-TW.md) | 桌面應用程式改由系統瀏覽器加 loopback 回呼登入 |
 | [ADR-005](adr-005-web-sign-in-cookie.zh-TW.md) | 每次網頁登入各自保存在一個加密的 cookie |
 | [ADR-006](adr-006-app-sign-in.zh-TW.md) | 行動應用程式直連 provider 登入，或透過自家後端中轉 |
-| [ADR-007](adr-007-access-token-from-front-end.zh-TW.md) | 前端送來的 access token，要等 provider 說出它的 client 才回傳使用者 |
+| [ADR-007](adr-007-access-token-from-front-end.zh-TW.md) | 前端送來的 access token，要等 provider 說出它的 client 才回傳使用者（已由 ADR-011 取代） |
 | [ADR-008](adr-008-generic-openid-connect-provider.zh-TW.md) | 以一個 options 型別登入任何 OpenID Connect provider |
 | [ADR-009](adr-009-sign-in-with-apple.zh-TW.md) | Sign in with Apple 走網頁流程，client secret 由套件簽署 |
 | [ADR-010](adr-010-breaking-changes-in-1-x-minors.zh-TW.md) | 1.x 的 minor 版本可以含破壞性變更，嚴格的語意化版本從 2.0 開始 |
+| [ADR-011](adr-011-back-end-signs-in.zh-TW.md) | 應用程式有後端時由後端登入，桌面應用程式也一樣 |

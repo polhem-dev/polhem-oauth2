@@ -45,7 +45,7 @@ Register the callback URL as a redirect URI of the web platform, and follow the 
 - `UserId` is the `sub` claim, which is different for each application the user signs in to. The `oid` claim of
   `Token.IdToken` is the same in every application, for an application that needs that; validate the token first.
 
-## Apps with a separate back end
+## Applications with a back end
 
-`GetUserInfoAsync` throws `NotSupportedException`: the front end sends its ID token, which the back end validates. See
-[Apps with a separate back end](../guides/separate-back-end.md).
+An application with a back end of its own has the back end sign in: a web front end through the web sign-in, and a desktop or
+mobile application through the back-end relay. See [Applications with a back end](../guides/separate-back-end.md).

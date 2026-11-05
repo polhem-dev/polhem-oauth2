@@ -47,7 +47,6 @@ Google 的桌面、Web、iOS 與 Android client 分開登記，各自是 Google 
   帶著 `?access_type=offline&prompt=consent` 時發。
 - `UserId` 是 `sub` claim，一個以字串表示的數字。
 
-## 前後端分離的應用程式
+## 有後端的應用程式
 
-由前端送出 ID token，後端驗證。`GetUserInfoAsync` 也接受 Google 的 access token，`AcceptedClientIds` 可以列出同一個
-Google Cloud 專案的 iOS 與 Android client。見[前後端分離的應用程式](../guides/separate-back-end.md)。
+有自家後端的應用程式由後端登入：網頁前端走網頁登入，桌面與行動應用程式經由後端中轉。見[有後端的應用程式](../guides/separate-back-end.md)。

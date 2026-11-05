@@ -43,7 +43,7 @@ Apple 和既有的 provider 不同的地方，正好落在套件原本的假設�
   不是這種 JSON 物件或長度超過 4096 字元的值一律忽略，也只採用字串。`AuthorizationCallback` 新增 `UserJson` 屬性與接受它的建構式。
 - Apple 只在使用者第一次授權應用程式時送出姓名，之後 `UserName` 為 null，應用程式要在第一次登入時自行保存。
 - `OAuth2Client.GetUserInfoAsync(accessToken)` 與其他 OpenID Connect provider 一樣丟出 `NotSupportedException`：前端以 ID token
-  證明登入者身分（ADR-007）。
+  證明登入者身分（ADR-007）。這個方法已在 1.5.0 移除（ADR-011）。
 
 ### 回呼與 cookie
 

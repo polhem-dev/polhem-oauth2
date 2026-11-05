@@ -10,6 +10,15 @@ Polhem.OAuth2、Polhem.OAuth2.AspNet 與 Polhem.OAuth2.AspNetCore 的重要變�
 > 從 2.0.0 起，版號依循[語意化版本](https://semver.org/lang/zh-TW/)。參照這些套件時，請使用限制在一個 minor 版本內的範圍，
 > 例如 `[1.4,1.5)`，而不是 `1.*`。這項政策與它的理由見 [ADR-010](docs/adr/adr-010-breaking-changes-in-1-x-minors.zh-TW.md)。
 
+## [Unreleased]
+
+詳細內容與遷移步驟：[docs/zh-TW/changelogs/1.5.0.md](docs/zh-TW/changelogs/1.5.0.md)
+
+- 應用程式有後端時由後端登入，桌面應用程式也一樣（ADR-011）。
+- `LoopbackRelayClient` 讓桌面與主控台應用程式經由自家 ASP.NET Core 後端的中轉登入。
+- ASP.NET Core 的中轉接受 `127.0.0.1` 與 `[::1]` 的 loopback 應用程式回呼網址，不帶 port 登記時接受任意 port。
+- **破壞性：** 移除 `OAuth2Client.GetUserInfoAsync(accessToken)` 與 `OAuth2Options.AcceptedClientIds`，改由後端登入。
+
 ## [1.4.0] - 2026-10-21
 
 詳細內容與遷移步驟：[docs/zh-TW/changelogs/1.4.0.md](docs/zh-TW/changelogs/1.4.0.md)
