@@ -115,7 +115,7 @@ namespace Microsoft.Extensions.DependencyInjection
         }
 
         /// <summary>
-        /// Registers the back-end relay, through which mobile applications sign in with the clients registered by
+        /// Registers the back-end relay, through which mobile and desktop applications sign in with the clients registered by
         /// <see cref="AddOAuth2Client"/> (ADR-006), and the in-memory <see cref="IDistributedCache"/> unless another
         /// distributed cache is already registered.
         /// </summary>

@@ -1,5 +1,3 @@
-using System.Net.Sockets;
-
 namespace Polhem.OAuth2
 {
     /// <summary>
@@ -21,18 +19,6 @@ namespace Polhem.OAuth2
     /// </remarks>
     public sealed class LoopbackOAuth2Client
     {
-        private const string ReceivedMessage = "The sign-in response was received. You can close this tab and return to the application.";
-        private const string RejectedMessage = "The sign-in did not complete. You can close this tab and return to the application.";
-        private const string NotFoundMessage = "Not found.";
-
-        // A browser opens a few connections in advance and may leave them idle, so requests are read side by side and the
-        // redirect does not wait behind them. Further connections wait until one of these is answered or times out.
-        private const int MaxConcurrentRequests = 8;
-
-        // A browser sends its request as soon as it connects, so a connection that stays silent this long is one it opened
-        // in advance and is not waited for.
-        private static readonly TimeSpan s_requestReadTimeout = TimeSpan.FromSeconds(5);
-
         private readonly PublicSignIn _signIn;
         private readonly string _configuredRedirectUri;
         private readonly Uri _redirectUri;
@@ -79,12 +65,7 @@ namespace Polhem.OAuth2
         public TimeSpan Timeout
         {
             get => _timeout;
-            set
-            {
-                if (value <= TimeSpan.Zero || value.TotalMilliseconds > int.MaxValue)
-                    throw new ArgumentOutOfRangeException(nameof(value), "The timeout must be positive and at most int.MaxValue milliseconds.");
-                _timeout = value;
-            }
+            set => _timeout = LoopbackCallbackReceiver.ValidateTimeout(value);
         }
 
         /// <summary>
@@ -116,7 +97,7 @@ namespace Polhem.OAuth2
         /// </para>
         /// </remarks>
         /// <exception cref="InvalidOperationException">A sign-in is already in progress on this client.</exception>
-        /// <exception cref="SocketException">The port of the redirect URI cannot be listened on, for example because it is in use.</exception>
+        /// <exception cref="System.Net.Sockets.SocketException">The port of the redirect URI cannot be listened on, for example because it is in use.</exception>
         /// <exception cref="System.ComponentModel.Win32Exception"><see cref="OpenBrowser"/> is null and no browser can be started.</exception>
         /// <exception cref="PlatformNotSupportedException"><see cref="OpenBrowser"/> is null and the platform cannot start a process, as on iOS.</exception>
         public async Task<AuthorizationResult> SignInAsync(CancellationToken cancellationToken = default)
@@ -138,12 +119,12 @@ namespace Polhem.OAuth2
                     AuthorizationRequest authorization = _signIn.Client.CreateAuthorizationRequest(redirectUri);
 
                     timeout.CancelAfter(timeoutValue);
-                    await OpenAuthorizationUrlAsync(openBrowser, new Uri(authorization.Url)).ConfigureAwait(false);
+                    await LoopbackCallbackReceiver.OpenAsync(openBrowser, new Uri(authorization.Url)).ConfigureAwait(false);
 
                     AuthorizationCallback callback;
                     try
                     {
-                        callback = await ReceiveCallbackAsync(listener, authorization.Pending.State, timeout.Token).ConfigureAwait(false);
+                        callback = await LoopbackCallbackReceiver.ReceiveAsync(listener, authorization.Pending.State, timeout.Token).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException ex)
                     {
@@ -176,90 +157,6 @@ namespace Polhem.OAuth2
         public Task<TokenResponse> RefreshTokenAsync(string refreshToken, CancellationToken cancellationToken = default)
         {
             return _signIn.Client.RefreshTokenAsync(refreshToken, cancellationToken);
-        }
-
-        private static Task OpenAuthorizationUrlAsync(Func<Uri, Task>? openBrowser, Uri url)
-        {
-            if (openBrowser is not null)
-                return openBrowser(url);
-
-            SystemBrowser.Open(url);
-            return Task.CompletedTask;
-        }
-
-        private static async Task<AuthorizationCallback> ReceiveCallbackAsync(LoopbackListener listener, string state, CancellationToken cancellationToken)
-        {
-            using (var reading = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
-            {
-                var pendingReads = new List<Task<LoopbackRequest>>();
-                Task<TcpClient>? pendingAccept = null;
-                try
-                {
-                    while (true)
-                    {
-                        if (pendingAccept is null && pendingReads.Count < MaxConcurrentRequests)
-                            pendingAccept = listener.AcceptClientAsync(reading.Token);
-
-                        var waiting = new List<Task>(pendingReads);
-                        if (pendingAccept is not null)
-                            waiting.Add(pendingAccept);
-
-                        Task completed = await Task.WhenAny(waiting).ConfigureAwait(false);
-                        if (completed == pendingAccept)
-                        {
-                            pendingAccept = null;
-                            TcpClient client = await ((Task<TcpClient>)completed).ConfigureAwait(false);
-                            pendingReads.Add(LoopbackRequest.ReadAsync(client, s_requestReadTimeout, reading.Token));
-                            continue;
-                        }
-
-                        var read = (Task<LoopbackRequest>)completed;
-                        pendingReads.Remove(read);
-                        using (var request = await read.ConfigureAwait(false))
-                        {
-                            if (await AnswerAsync(listener, request, state).ConfigureAwait(false) is { } callback)
-                                return callback;
-                        }
-                    }
-                }
-                finally
-                {
-                    // Reads still in progress end promptly once the token is canceled, and their connections are closed.
-                    await reading.CancelAsync().ConfigureAwait(false);
-                    foreach (var read in pendingReads)
-                        LoopbackListener.ReleaseWhenAbandoned(read);
-                    if (pendingAccept is not null)
-                        LoopbackListener.ReleaseWhenAbandoned(pendingAccept);
-                }
-            }
-        }
-
-        // Answers one request, and returns its callback parameters when it is the redirect of this sign-in, or null otherwise.
-        private static async Task<AuthorizationCallback?> AnswerAsync(LoopbackListener listener, LoopbackRequest request, string state)
-        {
-            if (request.Target is null)
-                return null;
-
-            if (!listener.TryGetRedirectQuery(request.Target, out string query))
-            {
-                await request.RespondAsync("404 Not Found", NotFoundMessage).ConfigureAwait(false);
-                return null;
-            }
-
-            // Any web page open in the browser can send requests to a loopback address, and through DNS rebinding such a page
-            // can use a host name of its own. A request that names another host, or lacks the state, is not the redirect.
-            var callback = CallbackQuery.FromQuery(query);
-            if (!listener.IsRedirectHost(request.Host) || !string.Equals(callback.State, state, StringComparison.Ordinal))
-            {
-                await request.RespondAsync("400 Bad Request", RejectedMessage).ConfigureAwait(false);
-                return null;
-            }
-
-            // An empty error names no error, as OAuth2Client.CompleteAuthorizationAsync also reads it, so the page agrees with
-            // how the sign-in ends.
-            bool received = string.IsNullOrEmpty(callback.Error) && !string.IsNullOrEmpty(callback.Code);
-            await request.RespondAsync("200 OK", received ? ReceivedMessage : RejectedMessage).ConfigureAwait(false);
-            return callback;
         }
     }
 }
