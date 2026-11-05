@@ -369,9 +369,8 @@ namespace Polhem.OAuth2
         }
 
         /// <summary>
-        /// Reads the error that a response of the token endpoint, or an unsuccessful response of the token verification
-        /// endpoint, reports. The token endpoint's successful responses are read too, because GitHub reports an error with
-        /// status 200. The default reads the <c>error</c> and <c>error_description</c> strings of RFC 6749, section 5.2.
+        /// Reads the error that a response of the token endpoint reports. Successful responses are read too, because GitHub
+        /// reports an error with status 200. The default reads the <c>error</c> and <c>error_description</c> strings of RFC 6749, section 5.2.
         /// </summary>
         /// <param name="response">The root object of the token response.</param>
         /// <returns>The exception for the error, or null when the response names no error.</returns>
