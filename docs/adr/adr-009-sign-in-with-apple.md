@@ -11,8 +11,10 @@ results" records.
 ## Context
 
 The library signs in .NET MAUI applications on iOS and Mac Catalyst (ADR-006). Guideline 4.8 of the App Store Review Guidelines
-asks an application that offers a third-party sign-in to offer an equivalent option that meets its privacy requirements as
-well, and in practice that is Sign in with Apple.
+asks an application that offers a third-party sign-in to offer another, equivalent sign-in option as well: one that limits
+the data it collects to the user's name and email address, lets users keep their email address private, and does not
+collect interactions with the application for advertising without consent. The guideline names no provider. Sign in with
+Apple meets these conditions and is the usual choice, which is why the library supports it.
 
 Apple differs from the providers before it exactly where the library made assumptions:
 
